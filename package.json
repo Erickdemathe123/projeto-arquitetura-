@@ -1,0 +1,24 @@
+{
+  "name": "projeto-arquitetura-",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Erickdemathe123/projeto-arquitetura-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Erickdemathe123/projeto-arquitetura-/issues"
+  },
+  "homepage": "https://github.com/Erickdemathe123/projeto-arquitetura-#readme",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
