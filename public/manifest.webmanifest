@@ -1,0 +1,10 @@
+{
+  "name": "SGP - Sistema de Geração de Provas",
+  "short_name": "SGP",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f7fa",
+  "theme_color": "#087f8c",
+  "lang": "pt-BR",
+  "icons": []
+}
