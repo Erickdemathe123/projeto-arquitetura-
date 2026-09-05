@@ -222,19 +222,18 @@ Se a equipe usar outras bibliotecas relevantes (ex.: JWT para autenticação, bc
 📌 **N1**, atualizada conforme o projeto cresce
 
 ```
-src/
-  routes/        # define os endpoints e direciona para os controllers
-  controllers/    # recebe a requisição, valida e chama o service
-  services/       # regras de negócio
-  repositories/   # acesso ao banco de dados
-  models/         # representação das entidades
+public/
+  index.html      # entrada da aplicação Vue
+  script.js       # telas e regras do front-end mockado
+  styles.css      # estilos da aplicação
+server.js         # servidor Express de arquivos estáticos
 docs/
-  uml/
-  telas/
-  arquitetura/
-  adr/
-  modelo-dados/
-  api/
+  uml/            # diagramas UML
+  telas/          # prints das telas
+  arquitetura/    # documentação da arquitetura
+  adr/            # decisões de arquitetura
+  modelo-dados/   # modelo de dados
+  api/            # documentação da API
 ```
 
 ## 10. Como Executar o Projeto
