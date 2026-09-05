@@ -17,6 +17,8 @@ createApp({
       questions: [],
       exams: [],
       editingQuestionId: null,
+      editingExamId: null,
+      editingQuestionFromExam: false,
       questionForm: { text: "", subject: "", topic: "", type: "Múltipla escolha", alternatives: ["", "", "", "", ""], correctAlternative: 0 },
       examForm: { name: "", selected: [] }
     };
@@ -24,9 +26,20 @@ createApp({
   computed: {
     currentTitle() {
       return { dashboard: "Início", questions: "Banco de Questões", newQuestion: "Nova Questão", exams: "Minhas Avaliações", newExam: "Montar Prova", scan: "Corrigir Provas" }[this.screen];
+    },
+    examsCountLabel() {
+      if (!this.exams.length) return "Nenhuma avaliação criada.";
+      return `${this.exams.length} ${this.exams.length === 1 ? "avaliação criada" : "avaliações criadas"}.`;
+    }
+    ,
+    questionsCountLabel() {
+      return `${this.questions.length} ${this.questions.length === 1 ? "questão cadastrada" : "questões cadastradas"}.`;
     }
   },
   methods: {
+    examQuestionsCountLabel(exam) {
+      return `${exam.questionIds.length} ${exam.questionIds.length === 1 ? "questão" : "questões"}`;
+    },
     switchMode() {
       this.mode = this.mode === "login" ? "register" : "login";
       this.error = "";
@@ -79,6 +92,7 @@ createApp({
       if (!form.text.trim() || !form.subject.trim() || !form.topic.trim()) return (this.error = "Preencha o enunciado, a disciplina e o assunto.");
       if (form.alternatives.some((alternative) => !alternative.trim())) return (this.error = "Preencha todas as alternativas.");
       const wasEditing = Boolean(this.editingQuestionId);
+      const returnToExam = this.editingQuestionFromExam;
       const question = { id: this.editingQuestionId || Date.now(), ...form, alternatives: [...form.alternatives] };
       if (this.editingQuestionId) {
         const questionIndex = this.questions.findIndex((item) => item.id === this.editingQuestionId);
@@ -89,11 +103,13 @@ createApp({
       this.persist();
       this.questionForm = { text: "", subject: "", topic: "", type: "Múltipla escolha", alternatives: ["", "", "", "", ""], correctAlternative: 0 };
       this.editingQuestionId = null;
+      this.editingQuestionFromExam = false;
       this.notify(wasEditing ? "Questão atualizada com sucesso." : "Questão cadastrada com sucesso.");
-      this.navigate("questions");
+      this.navigate(returnToExam ? "newExam" : "questions");
     },
     editQuestion(question) {
       this.editingQuestionId = question.id;
+      this.editingQuestionFromExam = false;
       this.questionForm = {
         text: question.text,
         subject: question.subject,
@@ -103,6 +119,25 @@ createApp({
         correctAlternative: question.correctAlternative || 0
       };
       this.navigate("newQuestion");
+    },
+    editQuestionFromExam(question) {
+      this.editingQuestionId = question.id;
+      this.editingQuestionFromExam = true;
+      this.questionForm = {
+        text: question.text,
+        subject: question.subject,
+        topic: question.topic,
+        type: "Múltipla escolha",
+        alternatives: [...question.alternatives],
+        correctAlternative: question.correctAlternative || 0
+      };
+      this.navigate("newQuestion");
+    },
+    cancelQuestionEdit() {
+      const returnToExam = this.editingQuestionFromExam;
+      this.editingQuestionId = null;
+      this.editingQuestionFromExam = false;
+      this.navigate(returnToExam ? "newExam" : "questions");
     },
     removeQuestion(question) {
       this.questions = this.questions.filter((item) => item.id !== question.id);
@@ -125,11 +160,29 @@ createApp({
     saveExam() {
       if (!this.examForm.name.trim()) return (this.error = "Informe o nome da avaliação.");
       if (!this.examForm.selected.length) return (this.error = "Selecione ao menos uma questão.");
-      this.exams.push({ id: Date.now(), name: this.examForm.name, questionIds: [...this.examForm.selected], date: new Date().toLocaleDateString("pt-BR") });
+      const wasEditing = Boolean(this.editingExamId);
+      const exam = { id: this.editingExamId || Date.now(), name: this.examForm.name, questionIds: [...this.examForm.selected], date: wasEditing ? this.exams.find((item) => item.id === this.editingExamId).date : new Date().toLocaleDateString("pt-BR") };
+      if (wasEditing) {
+        const examIndex = this.exams.findIndex((item) => item.id === this.editingExamId);
+        this.exams.splice(examIndex, 1, exam);
+      } else {
+        this.exams.push(exam);
+      }
       this.persist();
       this.examForm = { name: "", selected: [] };
-      this.notify("Avaliação criada com sucesso.");
+      this.editingExamId = null;
+      this.notify(wasEditing ? "Avaliação atualizada com sucesso." : "Avaliação criada com sucesso.");
       this.navigate("exams");
+    },
+    editExam(exam) {
+      this.editingExamId = exam.id;
+      this.examForm = { name: exam.name, selected: [...exam.questionIds] };
+      this.navigate("newExam");
+    },
+    removeExam(exam) {
+      this.exams = this.exams.filter((item) => item.id !== exam.id);
+      this.persist();
+      this.notify("Avaliação removida.");
     },
     notify(text) {
       this.toast = text;
@@ -145,11 +198,11 @@ createApp({
     <div v-else class="app-shell">
       <aside class="sidebar"><div class="side-brand"><span class="brand-mark">SGP</span><span>SGP</span></div><nav><button :class="{active: screen === 'dashboard'}" @click="navigate('dashboard')">⌂ <span>Início</span></button><button :class="{active: screen === 'questions' || screen === 'newQuestion'}" @click="navigate('questions')">▤ <span>Banco de Questões</span></button><button :class="{active: screen === 'exams' || screen === 'newExam'}" @click="navigate('exams')">▣ <span>Minhas Avaliações</span></button><button :class="{active: screen === 'scan'}" @click="navigate('scan')">⌗ <span>Corrigir Provas</span></button></nav><button class="logout" @click="logout">↪ <span>Sair</span></button></aside>
       <main class="main-content"><header class="topbar"><div><span class="muted">SGP / </span>{{ currentTitle }}</div><div class="profile"><span>{{ name.charAt(0).toUpperCase() }}</span><strong>{{ name }}</strong><button @click="logout">Sair</button></div></header><section class="content">
-        <template v-if="screen === 'dashboard'"><div class="page-heading"><span class="eyebrow">VISÃO GERAL</span><h1>Olá, {{ name }}!</h1><p>Comece cadastrando suas questões para montar uma avaliação.</p></div><div class="quick-actions"><button @click="navigate('newQuestion')"><b>✎</b><strong>Criar Questão</strong><small>Cadastre sua primeira questão</small></button><button @click="navigate('newExam')"><b>▣</b><strong>Montar Prova</strong><small>Disponível após cadastrar questões</small></button><button @click="navigate('scan')"><b>⌗</b><strong>Corrigir Provas</strong><small>Correção pelo navegador</small></button></div><div class="empty-card"><span>▤</span><h2>Ainda não há avaliações</h2><p>Suas provas criadas aparecerão aqui.</p></div></template>
-        <template v-if="screen === 'questions'"><div class="page-heading row"><div><h1>Banco de Questões</h1><p>{{ questions.length }} questão(ões) cadastrada(s).</p></div><button class="primary-button compact" @click="navigate('newQuestion')">＋ Nova questão</button></div><div v-if="!questions.length" class="empty-card"><span>✎</span><h2>Seu banco está vazio</h2><p>Cadastre questões de Direito para começar.</p><button class="primary-button compact" @click="navigate('newQuestion')">Cadastrar primeira questão</button></div><div v-else class="question-list"><article v-for="(question, index) in questions" :key="question.id" class="question-item"><span class="question-number">{{ index + 1 }}</span><div><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }} · {{ question.type }}</small></div><div class="question-actions"><button class="edit-button" @click="editQuestion(question)" aria-label="Editar questão">✎</button><button class="remove-button" @click="removeQuestion(question)" aria-label="Remover questão">×</button></div></article></div></template>
-        <template v-if="screen === 'newQuestion'"><div class="page-heading"><span class="eyebrow">BANCO DE QUESTÕES</span><h1>{{ editingQuestionId ? "Editar Questão" : "Nova Questão" }}</h1></div><form class="form-card" @submit.prevent="saveQuestion"><div class="form-grid"><label>Disciplina<input v-model="questionForm.subject" placeholder="Digite uma disciplina"></label><label>Assunto<input v-model="questionForm.topic" placeholder="Digite um assunto"></label></div><label>Texto da questão<textarea v-model="questionForm.text" placeholder="Digite o texto da questão"></textarea></label><div class="alternatives"><p class="field-title">Alternativas <span>Marque a resposta correta</span></p><label v-for="(alternative, index) in questionForm.alternatives" :key="index"><span>{{ String.fromCharCode(65 + index) }})</span><input v-model="questionForm.alternatives[index]" :placeholder="'Alternativa ' + String.fromCharCode(65 + index)"><input class="radio" type="radio" v-model="questionForm.correctAlternative" :value="index" :aria-label="'Alternativa correta ' + String.fromCharCode(65 + index)"></label><div class="alternative-actions"><button type="button" class="item-button" @click="addAlternative">＋ Adicionar alternativa</button><button type="button" class="item-button" @click="removeAlternative" :disabled="questionForm.alternatives.length <= 2">− Remover última alternativa</button></div></div><p v-if="error" class="auth-error">{{ error }}</p><div class="form-actions"><button type="button" class="outline-button" @click="editingQuestionId = null; navigate('questions')">Cancelar</button><button class="primary-button compact">{{ editingQuestionId ? "Salvar alterações" : "Salvar questão" }}</button></div></form></template>
-        <template v-if="screen === 'exams'"><div class="page-heading row"><div><span class="eyebrow">AVALIAÇÕES</span><h1>Minhas Avaliações</h1><p>{{ exams.length }} avaliação(ões) criada(s).</p></div><button class="primary-button compact" :disabled="!questions.length" @click="navigate('newExam')">＋ Nova avaliação</button></div><div v-if="!exams.length" class="empty-card"><span>▣</span><h2>Ainda não há avaliações</h2><p>Cadastre questões e monte sua primeira prova.</p></div><div v-else class="question-list"><article v-for="exam in exams" :key="exam.id" class="question-item"><span class="question-number">▣</span><div><strong>{{ exam.name }}</strong><small>{{ exam.questionIds.length }} questão(ões) · Criada em {{ exam.date }}</small></div></article></div></template>
-        <template v-if="screen === 'newExam'"><div class="page-heading"><span class="eyebrow">AVALIAÇÕES</span><h1>Montar Prova</h1><p>Escolha as questões que farão parte da avaliação.</p></div><form class="form-card" @submit.prevent="saveExam"><label>Nome da avaliação<input v-model="examForm.name" placeholder="Ex.: Prova de Direito Constitucional"></label><div class="selection-list"><label v-for="question in questions" :key="question.id"><input type="checkbox" v-model="examForm.selected" :value="question.id"><span><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }}</small></span></label></div><p v-if="error" class="auth-error">{{ error }}</p><div class="form-actions"><button type="button" class="outline-button" @click="navigate('exams')">Cancelar</button><button class="primary-button compact">Criar avaliação</button></div></form></template>
+        <template v-if="screen === 'dashboard'"><div class="page-heading"><span class="eyebrow">VISÃO GERAL</span><h1>Olá, {{ name }}!</h1></div><div class="quick-actions"><button @click="navigate('newQuestion')"><b>✎</b><strong>Criar Questão</strong><small>Cadastre sua primeira questão</small></button><button @click="navigate('newExam')"><b>▣</b><strong>Montar Prova</strong><small>Disponível após cadastrar questões</small></button><button @click="navigate('scan')"><b>⌗</b><strong>Corrigir Provas</strong><small>Correção pelo navegador</small></button></div><h2 v-if="exams.length" class="dashboard-section-title">Minhas provas:</h2><div v-if="!exams.length" class="empty-card"><span>▤</span><h2>Ainda não há avaliações</h2><p>Suas provas criadas aparecerão aqui.</p></div><div v-else class="question-list"><article v-for="exam in exams" :key="exam.id" class="question-item"><span class="question-number">▣</span><div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · Criada em {{ exam.date }}</small></div><div class="question-actions"><button class="edit-button" @click="editExam(exam)" aria-label="Editar avaliação">✎</button><button class="remove-button" @click="removeExam(exam)" aria-label="Remover avaliação">×</button></div></article></div></template>
+        <template v-if="screen === 'questions'"><div class="page-heading row"><div><h1>Banco de Questões</h1><p>{{ questionsCountLabel }}</p></div><button class="primary-button compact" @click="navigate('newQuestion')">＋ Nova questão</button></div><div v-if="!questions.length" class="empty-card"><span>✎</span><h2>Seu banco está vazio</h2><p>Cadastre questões de Direito para começar.</p><button class="primary-button compact" @click="navigate('newQuestion')">Cadastrar primeira questão</button></div><div v-else class="question-list"><article v-for="(question, index) in questions" :key="question.id" class="question-item"><span class="question-number">{{ index + 1 }}</span><div><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }} · {{ question.type }}</small></div><div class="question-actions"><button class="edit-button" @click="editQuestion(question)" aria-label="Editar questão">✎</button><button class="remove-button" @click="removeQuestion(question)" aria-label="Remover questão">×</button></div></article></div></template>
+        <template v-if="screen === 'newQuestion'"><div class="page-heading"><span class="eyebrow">BANCO DE QUESTÕES</span><h1>{{ editingQuestionId ? "Editar Questão" : "Nova Questão" }}</h1></div><form class="form-card" @submit.prevent="saveQuestion"><div class="form-grid"><label>Disciplina<input v-model="questionForm.subject" placeholder="Digite uma disciplina"></label><label>Assunto<input v-model="questionForm.topic" placeholder="Digite um assunto"></label></div><label>Texto da questão<textarea v-model="questionForm.text" placeholder="Digite o texto da questão"></textarea></label><div class="alternatives"><p class="field-title">Alternativas <span>Marque a resposta correta</span></p><label v-for="(alternative, index) in questionForm.alternatives" :key="index"><span>{{ String.fromCharCode(65 + index) }})</span><input v-model="questionForm.alternatives[index]" :placeholder="'Alternativa ' + String.fromCharCode(65 + index)"><input class="radio" type="radio" v-model="questionForm.correctAlternative" :value="index" :aria-label="'Alternativa correta ' + String.fromCharCode(65 + index)"></label><div class="alternative-actions"><button type="button" class="item-button" @click="addAlternative">＋ Adicionar alternativa</button><button type="button" class="item-button" @click="removeAlternative" :disabled="questionForm.alternatives.length <= 2">− Remover última alternativa</button></div></div><p v-if="error" class="auth-error">{{ error }}</p><div class="form-actions"><button type="button" class="outline-button" @click="cancelQuestionEdit">Cancelar</button><button class="primary-button compact">{{ editingQuestionId ? "Salvar alterações" : "Salvar questão" }}</button></div></form></template>
+        <template v-if="screen === 'exams'"><div class="page-heading row"><div><span class="eyebrow">AVALIAÇÕES</span><h1>Minhas Avaliações</h1><p>{{ examsCountLabel }}</p></div><button class="primary-button compact" :disabled="!questions.length" @click="navigate('newExam')">＋ Nova avaliação</button></div><div v-if="!exams.length" class="empty-card"><span>▣</span><h2>Nenhuma avaliação criada</h2><p>Cadastre questões e monte sua primeira prova.</p></div><div v-else class="question-list"><article v-for="exam in exams" :key="exam.id" class="question-item"><span class="question-number">▣</span><div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · Criada em {{ exam.date }}</small></div><div class="question-actions"><button class="edit-button" @click="editExam(exam)" aria-label="Editar avaliação">✎</button><button class="remove-button" @click="removeExam(exam)" aria-label="Remover avaliação">×</button></div></article></div></template>
+        <template v-if="screen === 'newExam'"><div class="page-heading"><span class="eyebrow">AVALIAÇÕES</span><h1>{{ editingExamId ? "Editar Avaliação" : "Montar Prova" }}</h1><p>Escolha as questões que farão parte da avaliação.</p></div><form class="form-card" @submit.prevent="saveExam"><label>Nome da avaliação<input v-model="examForm.name" placeholder="Nome da sua prova"></label><p class="selection-title">Selecione as questões:</p><div class="selection-list"><label v-for="question in questions" :key="question.id"><input type="checkbox" v-model="examForm.selected" :value="question.id"><span><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }}</small></span><button v-if="editingExamId" type="button" class="edit-button selection-edit" @click.stop.prevent="editQuestionFromExam(question)" aria-label="Editar questão da avaliação">✎</button></label></div><p v-if="error" class="auth-error">{{ error }}</p><div class="form-actions"><button type="button" class="outline-button" @click="editingExamId = null; navigate('exams')">Cancelar</button><button class="primary-button compact">{{ editingExamId ? "Salvar alterações" : "Criar avaliação" }}</button></div></form></template>
         <template v-if="screen === 'scan'"><div class="scan-page"><span class="eyebrow">CORREÇÃO INTELIGENTE</span><h1>Corrigir Provas</h1><p>Esta tela está pronta para integrar a leitura do QR Code na próxima etapa.</p><div class="camera-mock"><div class="scan-frame">⌗</div><span>Nenhuma prova escaneada</span></div></div></template>
       </section></main><div v-if="toast" class="toast">{{ toast }}</div>
     </div>
