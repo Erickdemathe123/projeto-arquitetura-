@@ -1,7 +1,9 @@
-const { createApp } = Vue;
-const storageKey = (email) => `sgp:${email.toLowerCase()}`;
+<script>
+import { createEmptyWorkspace, loadWorkspace, saveWorkspace } from "./services/storage";
+import { SCREEN_TITLES } from "./constants/screens";
+import { dateKey } from "./utils/date";
 
-createApp({
+export default {
   data() {
     return {
       screen: "login",
@@ -52,7 +54,7 @@ createApp({
   },
   computed: {
     currentTitle() {
-      return { dashboard: "Início", classes: "Minhas Turmas", questions: "Banco de Questões", newQuestion: "Nova Questão", exams: "Minhas Avaliações", newExam: "Montar Prova", preview: "Pré-visualização", statistics: "Estatísticas", studentPortal: "Consulta do aluno", scan: "Corrigir Provas" }[this.screen];
+      return SCREEN_TITLES[this.screen];
     },
     examsCountLabel() {
       if (!this.exams.length) return "Nenhuma avaliação criada.";
@@ -89,7 +91,7 @@ createApp({
     },
     todayDateKey() {
       const today = new Date();
-      return `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+      return dateKey(today);
     },
     calendarDays() {
       const firstDay = new Date(this.calendarYear, this.calendarMonth, 1).getDay();
@@ -129,21 +131,20 @@ createApp({
       if (!this.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) return (this.error = "Digite um e-mail válido.");
       if (this.password.length < 6) return (this.error = "A senha deve ter pelo menos 6 caracteres.");
       if (this.mode === "register" && this.password !== this.confirmation) return (this.error = "As senhas não coincidem.");
-      const key = storageKey(this.email);
-      const saved = JSON.parse(localStorage.getItem(key) || "null");
+      const saved = loadWorkspace(this.email);
       if (this.mode === "register") {
         if (saved) return (this.error = "Já existe uma conta para este e-mail.");
-        localStorage.setItem(key, JSON.stringify({ name: this.name, password: this.password, questions: [], exams: [], turmas: [] }));
+        saveWorkspace(this.email, createEmptyWorkspace(this.name, this.password));
         this.message = "Conta criada com sucesso!";
       } else {
         if (saved && saved.password !== this.password) return (this.error = "E-mail ou senha inválidos.");
-        if (!saved) localStorage.setItem(key, JSON.stringify({ name: this.email.split("@")[0], password: this.password, questions: [], exams: [], turmas: [] }));
+        if (!saved) saveWorkspace(this.email, createEmptyWorkspace(this.email.split("@")[0], this.password));
         this.message = "Login realizado com sucesso.";
       }
       this.loadWorkspace();
     },
     loadWorkspace() {
-      const saved = JSON.parse(localStorage.getItem(storageKey(this.email)) || "{}");
+      const saved = loadWorkspace(this.email) || {};
       this.name = saved.name || this.name || this.email.split("@")[0];
       this.questions = saved.questions || [];
       this.exams = saved.exams || [];
@@ -154,8 +155,8 @@ createApp({
       this.screen = "dashboard";
     },
     persist() {
-      const saved = JSON.parse(localStorage.getItem(storageKey(this.email)) || "{}");
-      localStorage.setItem(storageKey(this.email), JSON.stringify({ ...saved, name: this.name, password: saved.password || this.password, questions: this.questions, exams: this.exams, turmas: this.turmas }));
+      const saved = loadWorkspace(this.email) || {};
+      saveWorkspace(this.email, { ...saved, name: this.name, password: saved.password || this.password, questions: this.questions, exams: this.exams, turmas: this.turmas });
     },
     navigate(screen) {
       this.screen = screen;
@@ -463,8 +464,12 @@ createApp({
       window.clearTimeout(this.toastTimer);
       this.toastTimer = window.setTimeout(() => { this.toast = ""; }, 3000);
     }
-  },
-  template: `
+  }
+}
+</script>
+
+<template>
+
     <main v-if="screen === 'login' || screen === 'register'" class="auth-page">
       <section class="auth-art"><div class="brand"><span class="brand-mark">SGP</span><span>Sistema de Geração de Provas</span></div><div class="art-copy"><span class="eyebrow">EDUCAÇÃO MAIS INTELIGENTE</span><h2>Crie. Organize.<br><strong>Avalie.</strong></h2><p>Uma plataforma feita para simplificar a criação, organização e geração de provas para professores.</p></div><svg class="auth-illustration" viewBox="0 0 500 330" aria-hidden="true"><circle cx="250" cy="160" r="130" fill="#dcf3ed"/><path d="M95 280h320" stroke="#17394e" stroke-width="3"/><rect x="125" y="170" width="55" height="110" rx="8" fill="#8bb1e9" stroke="#17394e" stroke-width="3"/><rect x="180" y="130" width="52" height="150" rx="8" fill="#83d2b6" stroke="#17394e" stroke-width="3"/><path d="M213 105c0-35 26-62 58-62s58 27 58 62l-12 42H225Z" fill="#ffda69" stroke="#17394e" stroke-width="3"/><path d="m270 185 55-64 26 26 50-59 22 20-66 83-30-28-37 47Z" fill="#6592df"/><path d="M230 204c38 0 63 16 84 35v41c-28-12-57-12-84 0ZM314 239c26-20 53-29 79-29v70c-27-1-52 8-79 19Z" fill="#fff" stroke="#17394e" stroke-width="3"/></svg></section>
       <section class="auth-form"><div class="auth-card"><h1>{{ mode === "login" ? "Bem-vindo" : "Crie sua conta" }}</h1><p class="auth-subtitle">{{ mode === "login" ? "Entre para continuar sua jornada." : "Comece a criar provas de forma simples." }}</p>      <form novalidate @submit.prevent="submitAuth"><label v-if="mode === 'register'">Nome completo<input v-model="name" placeholder="Nome completo"></label><label>E-mail<input v-model="email" type="email" placeholder="E-mail"></label><label>Senha<span class="password-field"><input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="Senha"><button type="button" @click="showPassword = !showPassword" :title="showPassword ? 'Ocultar senha' : 'Mostrar senha'">{{ showPassword ? "◉" : "◌" }}</button></span></label><label v-if="mode === 'register'">Confirmar senha<input v-model="confirmation" type="password" placeholder="Confirmar senha"></label><p v-if="error" class="auth-error" role="alert">{{ error }}</p><p v-if="message" class="auth-message" role="status">{{ message }}</p><button class="primary-button" type="submit">{{ mode === "login" ? "Entrar" : "Cadastrar" }}</button>            </form><button class="text-button" @click="switchMode">{{ mode === "login" ? "Ainda não tenho uma conta" : "Já possuo uma conta" }} <strong>{{ mode === "login" ? "Criar conta" : "Entrar" }}</strong></button></div></section>
@@ -484,5 +489,5 @@ createApp({
         <template v-if="screen === 'scan'"><div class="scan-page"><span class="eyebrow">CORREÇÃO INTELIGENTE</span><h1>Corrigir Provas</h1><p>Esta tela está pronta para integrar a leitura do QR Code na próxima etapa.</p><div class="camera-mock"><div class="scan-frame">⌗</div><span>Nenhuma prova escaneada</span></div></div></template>
       </section></main><div v-if="toast" class="toast">{{ toast }}</div>
     </div>
-  `
-}).mount("#app");
+  
+</template>

@@ -39,11 +39,11 @@
 
 | Nome completo | Papel / principais frentes no projeto |
 |---|---|
-| Erick Andrei Demathé | Ex.: Front-end das telas de cadastro, integração com API |
-| Gabriel Hoeft Tissi | Ex.: Modelagem de dados, back-end de autenticação |
-| Henrique Cezar da Silveira | Ex.: Setup inicial, versionamento, documentação |
-| Renan Gabriel Piechontcoski | Ex.: Documentação, testes, apresentação ao cliente |
-| Tasciane Negelski Broca | Ex.: Front-end das telas de relatório |
+| Erick Andrei Demathé | |
+| Gabriel Hoeft Tissi | |
+| Henrique Cezar da Silveira | Ex.: Setup inicial, Front-end, Versionamento, Documentação |
+| Renan Gabriel Piechontcoski | |
+| Tasciane Negelski Broca | |
 
 ## 📑 Sumário
 
@@ -222,11 +222,25 @@ Se a equipe usar outras bibliotecas relevantes (ex.: JWT para autenticação, bc
 📌 **N1**, atualizada conforme o projeto cresce
 
 ```
-public/
-  index.html      # entrada da aplicação Vue
-  script.js       # telas e regras do front-end mockado
-  styles.css      # estilos da aplicação
-server.js         # servidor Express de arquivos estáticos
+frontend/
+  index.html
+  src/
+    App.vue       # composição atual das telas N1
+    constants/    # valores compartilhados da interface
+    services/     # persistência local e futuras integrações HTTP
+    utils/        # funções reutilizáveis
+    main.js
+    styles.css
+  package.json
+  vite.config.js
+src/
+  config/         # configuração do back-end
+  routes/         # rotas HTTP
+  controllers/    # validação e orquestração
+  services/       # regras de negócio
+  repositories/   # acesso ao MySQL
+  models/         # entidades e estruturas de dados
+server.js         # servidor Express e entrega do build
 docs/
   uml/            # diagramas UML
   telas/          # prints das telas
@@ -246,9 +260,14 @@ Passo a passo para clonar e rodar o projeto localmente, incluindo as versões us
 1. git clone https://github.com/Erickdemathe123/projeto-arquitetura-.git
 2. cd projeto-arquitetura-
 3. npm install
-4. copiar .env.example para .env e configurar as variáveis (ex.: dados de acesso ao MySQL)
-5. npm run dev
+4. npm run build
+5. npm start
 ```
+
+Durante a N1, os dados são armazenados no `localStorage`. O comando `npm run build`
+instala as dependências do frontend e gera `frontend/dist/`, que é servido pelo Express.
+As pastas de camadas em `src/` estão preparadas para a implementação da API na N2,
+sem conexão com o banco nesta etapa.
 
 ## 11. Especificação da API
 
