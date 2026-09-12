@@ -141,12 +141,34 @@ Abaixo de cada imagem, escreva um parágrafo curto explicando o que o diagrama r
 
 📌 **N1**
 
-Prints das telas principais, na ordem do fluxo de navegação (a tela A leva à tela B), salvos em `docs/telas/`. Insira as imagens e, embaixo de cada uma, uma legenda de uma linha dizendo o que ela faz:
+Prints das telas principais, na ordem do fluxo de navegação (a tela A leva à tela B):
 
-```
 ![Tela de login](docs/telas/tela-login.png)
-*Tela de login: autenticação do usuário por e-mail e senha.*
-```
+*Tela de login: autenticação do usuário por e-mail e senha, com opção de criar conta.*
+
+![Tela de início](docs/telas/tela-dashboard.png)
+*Início: visão geral do professor, com atalhos para as principais ações e a lista de provas já criadas.*
+
+![Banco de questões](docs/telas/tela-banco-questoes.png)
+*Banco de Questões: lista as questões cadastradas, com opções de editar e remover.*
+
+![Nova questão](docs/telas/tela-nova-questao.png)
+*Nova Questão: cadastro de uma questão de múltipla escolha, com disciplina, assunto, alternativas e marcação da resposta correta.*
+
+![Minhas avaliações](docs/telas/tela-minhas-avaliacoes.png)
+*Minhas Avaliações: lista as provas montadas, com o código público, o status do gabarito e ações de pré-visualizar, ver estatísticas, editar e remover.*
+
+![Montar prova](docs/telas/tela-montar-prova.png)
+*Montar Prova: configuração dos dados da avaliação (instituição, disciplina, turma, layout) e seleção das questões do banco que vão compor a prova.*
+
+![Minhas turmas](docs/telas/tela-minhas-turmas.png)
+*Minhas Turmas: cadastro das turmas do professor, com a contagem de alunos de cada uma.*
+
+![Corrigir provas](docs/telas/tela-corrigir-provas.png)
+*Corrigir Provas: tela reservada para a leitura das folhas de resposta pela câmera, a ser integrada nas próximas entregas.*
+
+![Portal do aluno](docs/telas/tela-portal-aluno.png)
+*Consulta do aluno: portal público onde o aluno informa o código da prova para ver se o resultado já foi liberado pelo professor.*
 
 ## 5. Arquitetura de Software
 
@@ -302,11 +324,11 @@ Guia rápido de como usar o sistema, do ponto de vista de quem vai operá-lo (o 
 
 Nome: principais contribuições no projeto (ex.: telas de cadastro, integração com banco, documentação). Serve para deixar claro quem fez o quê na entrega da equipe; não substitui o diário de organização de tarefas individual de cada pessoa.
 
-- **Erick Andrei Demathé**: principais contribuições.
+- **Erick Andrei Demathé**: setup inicial do repositório e da estrutura de pastas, revisão e merge dos Pull Requests da equipe, fluxo mock de correção de provas.
 - **Gabriel Hoeft Tissi**: principais contribuições.
-- **Henrique Cezar da Silveira**: principais contribuições.
-- **Renan Gabriel Piechontcoski**: principais contribuições.
-- **Tasciane Negelski Broca**: principais contribuições.
+- **Henrique Cezar da Silveira**: telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas, organização da estrutura Vue do front-end.
+- **Renan Gabriel Piechontcoski**: documentação das telas do sistema (capturas de tela de todas as telas principais em `docs/telas/`) e atualização do README v1 com as imagens e legendas da seção 4.
+- **Tasciane Negelski Broca**: diagramas UML (casos de uso e classes).
 
 ---
 
