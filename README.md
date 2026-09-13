@@ -19,7 +19,7 @@
 
 **Plataforma web para professores criarem, aplicarem e corrigirem provas de forma automatizada, com geração de PDF, embaralhamento de questões/alternativas e correção via câmera do smartphone.**
 
-🔗 **Link do sistema hospedado:** https://...
+🔗 **Link do sistema hospedado:** https://projeto-arquitetura-nine.vercel.app/
 
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
@@ -41,7 +41,7 @@
 |---|---|
 | Erick Andrei Demathé | |
 | Gabriel Hoeft Tissi | |
-| Henrique Cezar da Silveira | Ex.: Setup inicial, Front-end, Versionamento, Documentação |
+| Henrique Cezar da Silveira | Setup inicial, Front-end, Versionamento, Documentação |
 | Renan Gabriel Piechontcoski | |
 | Tasciane Negelski Broca | |
 
@@ -324,9 +324,9 @@ Guia rápido de como usar o sistema, do ponto de vista de quem vai operá-lo (o 
 
 Nome: principais contribuições no projeto (ex.: telas de cadastro, integração com banco, documentação). Serve para deixar claro quem fez o quê na entrega da equipe; não substitui o diário de organização de tarefas individual de cada pessoa.
 
-- **Erick Andrei Demathé**: setup inicial do repositório e da estrutura de pastas, revisão e merge dos Pull Requests da equipe, fluxo mock de correção de provas.
+- **Erick Andrei Demathé**: criação do repositório, revisão e merge dos Pull Requests da equipe, fluxo mock de correção de provas.
 - **Gabriel Hoeft Tissi**: principais contribuições.
-- **Henrique Cezar da Silveira**: telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas, organização da estrutura Vue do front-end.
+- **Henrique Cezar da Silveira**: setup inicial do repositório e da estrutura de pastas, telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas, organização da estrutura Vue do front-end.
 - **Renan Gabriel Piechontcoski**: documentação das telas do sistema (capturas de tela de todas as telas principais em `docs/telas/`) e atualização do README v1 com as imagens e legendas da seção 4.
 - **Tasciane Negelski Broca**: diagramas UML (casos de uso e classes).
 
