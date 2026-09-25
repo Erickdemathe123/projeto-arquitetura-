@@ -3,6 +3,8 @@ import { createEmptyWorkspace, loadWorkspace, saveWorkspace } from "./services/s
 import { SCREEN_TITLES } from "./constants/screens";
 import { dateKey } from "./utils/date";
 
+const SCAN_MOCK_STUDENTS = ["João Silva", "Maria Souza", "Pedro Santos", "Ana Oliveira", "Lucas Pereira", "Beatriz Lima", "Gabriel Costa", "Larissa Almeida"];
+
 export default {
   data() {
     return {
@@ -49,7 +51,11 @@ export default {
       previewExam: null,
       statisticsExam: null,
       studentCode: "",
-      consultedExam: null
+      consultedExam: null,
+      scanStep: "list",
+      scanActiveExam: null,
+      scanResult: null,
+      scanStudentIndex: 0
     };
   },
   computed: {
@@ -119,6 +125,48 @@ export default {
     examQuestionsCountLabel(exam) {
       return `${exam.questionIds.length} ${exam.questionIds.length === 1 ? "questão" : "questões"}`;
     },
+    examCorrectionStatusLabel(exam) {
+      if (exam.correctionStatus === "concluida") return "Corrigida";
+      if (exam.correctionStatus === "em_andamento") return "Em correção";
+      return "Pendente";
+    },
+    startScan(exam = null) {
+      const target = exam || this.exams.find((item) => item.correctionStatus !== "concluida");
+      if (!target) return this.notify("Não há provas pendentes para corrigir.");
+      this.scanActiveExam = target;
+      this.scanResult = null;
+      this.scanStep = "camera";
+    },
+    backToScanList() {
+      this.scanStep = "list";
+      this.scanActiveExam = null;
+      this.scanResult = null;
+    },
+    captureScan() {
+      const name = SCAN_MOCK_STUDENTS[this.scanStudentIndex % SCAN_MOCK_STUDENTS.length];
+      this.scanStudentIndex += 1;
+      const score = Math.round((Math.random() * 4 + 6) * 10) / 10;
+      this.scanResult = { name, score };
+      if (this.scanActiveExam && this.scanActiveExam.correctionStatus !== "concluida") {
+        this.scanActiveExam.correctionStatus = "em_andamento";
+        this.persist();
+      }
+      this.scanStep = "result";
+    },
+    scanNextStudent() {
+      this.scanResult = null;
+      this.scanStep = "camera";
+    },
+    finishScanTurma() {
+      if (this.scanActiveExam) {
+        this.scanActiveExam.correctionStatus = "concluida";
+        this.persist();
+      }
+      this.notify("Correção da turma finalizada.");
+      this.scanStep = "list";
+      this.scanActiveExam = null;
+      this.scanResult = null;
+    },
     switchMode() {
       this.mode = this.mode === "login" ? "register" : "login";
       this.error = "";
@@ -160,6 +208,11 @@ export default {
     },
     navigate(screen) {
       this.screen = screen;
+      if (screen === "scan") {
+        this.scanStep = "list";
+        this.scanActiveExam = null;
+        this.scanResult = null;
+      }
       this.error = "";
     },
     logout() {
@@ -290,6 +343,7 @@ export default {
         questionSnapshots: existingExam && existingExam.questionSnapshots ? existingExam.questionSnapshots : selectedQuestions.map((question) => ({ ...question, alternatives: [...question.alternatives] })),
         publicCode: existingExam && existingExam.publicCode ? existingExam.publicCode : `SGP-${Date.now().toString(36).toUpperCase()}`,
         released: existingExam ? existingExam.released === true : false,
+        correctionStatus: existingExam ? existingExam.correctionStatus || "pendente" : "pendente",
         createdAt: existingExam ? existingExam.createdAt || existingExam.date : new Date().toLocaleDateString("pt-BR")
       };
       if (wasEditing) {
@@ -486,7 +540,11 @@ export default {
         <template v-if="screen === 'newExam'"><div class="page-heading"><span class="eyebrow">AVALIAÇÕES</span><h1>{{ editingExamId ? "Editar Avaliação" : "Montar Prova" }}</h1><p>Configure os dados da prova, selecione as questões e prepare o documento editável.</p></div><form class="form-card" @submit.prevent="saveExam"><h2 class="form-section-title">Dados da avaliação</h2><div class="form-grid"><label>Nome da avaliação<input v-model="examForm.name" placeholder="Nome da sua prova"></label>        <label>Data da aplicação<div class="date-field"><input class="date-text-input" v-model="examForm.date" @input="formatDateInput" type="text" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10">        <button type="button" class="calendar-trigger" @click="toggleCalendar" aria-label="Abrir calendário"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg></button><div v-if="calendarOpen" class="calendar-popover"><div class="calendar-header"><button type="button" @click="changeCalendarMonth(-1)" aria-label="Mês anterior">‹</button><strong>{{ calendarMonthLabel }}</strong><button type="button" @click="changeCalendarMonth(1)" aria-label="Próximo mês">›</button></div><div class="calendar-weekdays"><span v-for="weekday in ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']" :key="weekday">{{ weekday }}</span></div><div class="calendar-days"><button v-for="(day, index) in calendarDays" :key="index" type="button" :class="{ empty: !day, today: calendarDayIsSelected(day) }" :disabled="!day" @click="day && selectCalendarDay(day)">{{ day }}</button></div></div></div></label><label>Instituição<input v-model="examForm.institution" placeholder="Nome da instituição"></label><label>Curso<input v-model="examForm.course" placeholder="Nome do curso"></label><label>Disciplina<select v-model="examForm.subject"><option value="">Selecione uma disciplina</option><option v-for="subject in availableSubjects" :key="subject" :value="subject">{{ subject }}</option></select></label><label>Professor<input v-model="examForm.professor" placeholder="Nome do professor"></label><label>Turma<select v-model="examForm.className"><option value="">Selecione uma turma</option><option v-for="className in availableClasses" :key="className" :value="className">{{ className }}</option></select></label></div><h2 class="form-section-title">Cabeçalho e instruções</h2><div class="header-config"><label>Logo da instituição<input type="file" accept="image/*" @change="handleLogoUpload"></label><img v-if="examForm.logo" class="logo-preview" :src="examForm.logo" alt="Logo da instituição"></div><label>Instruções da prova<textarea v-model="examForm.instructions" placeholder="Digite as orientações para os alunos"></textarea></label><h2 class="form-section-title">Configurações do documento</h2><div class="form-grid"><label>Layout da prova<select v-model="examForm.layout"><option>Uma coluna</option><option>Duas colunas</option></select></label><label>Número de versões<input v-model.number="examForm.versions" type="number" min="1"></label></div><div class="toggle-list"><label><input v-model="examForm.shuffleQuestions" type="checkbox"> Embaralhar questões</label><label><input v-model="examForm.shuffleAlternatives" type="checkbox"> Embaralhar alternativas</label><label><input v-model="examForm.addBlankPage" type="checkbox"> Adicionar página em branco se necessário para impressão frente e verso</label></div><h2 class="form-section-title">Questões da avaliação</h2><p class="selection-title">Selecione as questões:</p><div v-if="!questions.length" class="empty-card compact"><span>✎</span><h2>Sem questões disponíveis</h2><p>Cadastre a primeira questão para começar.</p></div><div v-else class="selection-list"><label v-for="question in filteredQuestionsForExam" :key="question.id"><input type="checkbox" v-model="examForm.selected" :value="question.id"><span><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }}</small></span><button v-if="editingExamId" type="button" class="edit-button selection-edit" @click.stop.prevent="editQuestionFromExam(question)" aria-label="Editar questão da avaliação">✎</button></label></div><p v-if="error" class="auth-error">{{ error }}</p><div class="form-actions"><button type="button" class="outline-button" @click="editingExamId = null; navigate('exams')">Cancelar</button>        <button type="button" class="outline-button" @click="previewExamForm">Pré-visualizar</button><button class="primary-button compact">{{ editingExamId ? "Salvar alterações" : "Salvar avaliação" }}</button></div></form></template>
         <template v-if="screen === 'preview'"><div class="page-heading row"><div><span class="eyebrow">VISUALIZAÇÃO</span><h1>Pré-visualização da prova</h1><p>Confira o caderno e a folha de respostas antes da geração do documento.</p></div><button class="outline-button" @click="navigate('newExam')">Voltar para montagem</button></div><div class="preview-grid"><section class="document-preview"><div class="preview-paper"><div class="preview-header"><img v-if="previewExam && previewExam.logo" :src="previewExam.logo" alt="Logo da instituição"><div><strong>{{ previewExam && previewExam.institution || "Instituição" }}</strong><span>{{ previewExam && previewExam.course || "Curso" }}</span><span>{{ previewExam && previewExam.subject || "Disciplina" }}</span></div></div><h2>{{ previewExam && previewExam.name || "Nome da avaliação" }}</h2><p class="preview-meta">{{ previewExam && previewExam.professor || "Professor" }} · {{ previewExam && previewExam.className || "Turma" }} · {{ previewExam && previewExam.date || "Data da aplicação" }}</p><p v-if="previewExam && previewExam.instructions" class="preview-instructions">{{ previewExam.instructions }}</p><article v-for="(question, index) in (previewExam ?         questionsForExam(previewExam) : [])" :key="question.id" class="preview-question"><strong>{{ index + 1 }}. {{ question.text }}</strong><span v-for="(alternative, alternativeIndex) in question.alternatives" :key="alternativeIndex">{{ String.fromCharCode(65 + alternativeIndex) }}) {{ alternative }}</span></article><p v-if="previewExam && !previewExam.questionIds.length" class="preview-empty">As questões selecionadas aparecerão aqui.</p></div></section><section class="document-preview answer-sheet"><div class="preview-paper"><div class="answer-sheet-heading"><span class="qr-placeholder">QR</span><div><h2>Folha de respostas</h2><p>{{ previewExam && previewExam.name || "Nome da avaliação" }}</p></div></div><label>Aluno: ____________________________________</label><label>RA: _______________________________________</label><div class="answer-grid"><div v-for="number in (previewExam ? previewExam.questionIds.length : 5)" :key="number"><strong>{{ number }}</strong><span v-for="letter in ['A', 'B', 'C', 'D', 'E']" :key="letter">{{ letter }} ○</span></div></div><p class="preview-note">Prévia visual da folha de respostas. O QR Code e a leitura serão implementados posteriormente.</p></div></section></div></template>
         <template v-if="screen === 'statistics'"><div class="page-heading row"><div><span class="eyebrow">ANÁLISE PEDAGÓGICA</span><h1>Estatísticas da avaliação</h1><p>{{ statisticsExam && statisticsExam.name || "Selecione uma avaliação" }}</p></div><button class="outline-button" @click="navigate('dashboard')">Voltar</button></div><div class="stats-grid"><article class="stat-card"><span>Alunos corrigidos</span><strong>0</strong><small>Aguardando correção</small></article><article class="stat-card"><span>Média da turma</span><strong>—</strong><small>Disponível após a leitura</small></article><article class="stat-card"><span>Questões analisadas</span><strong>0</strong><small>Sem respostas processadas</small></article></div><section class="empty-card"><span>▥</span><h2>Estatísticas ainda não disponíveis</h2><p>Quando as provas forem corrigidas, a taxa de acertos e as alternativas mais marcadas aparecerão aqui.</p></section></template>
-        <template v-if="screen === 'scan'"><div class="scan-page"><span class="eyebrow">CORREÇÃO INTELIGENTE</span><h1>Corrigir Provas</h1><p>Esta tela está pronta para integrar a leitura do QR Code na próxima etapa.</p><div class="camera-mock"><div class="scan-frame">⌗</div><span>Nenhuma prova escaneada</span></div></div></template>
+        <template v-if="screen === 'scan'">
+        <div v-if="scanStep === 'list'"><div class="page-heading row"><div><span class="eyebrow">CORREÇÃO INTELIGENTE</span><h1>Corrigir Provas</h1><p>Selecione uma avaliação para corrigir ou escaneie a turma inteira.</p></div><button class="primary-button compact" :disabled="!exams.length" @click="startScan()">⌗ Escanear Turma</button></div><div v-if="!exams.length" class="empty-card"><span>⌗</span><h2>Nenhuma avaliação para corrigir</h2><p>Cadastre uma avaliação em "Montar Prova" para liberar a correção.</p></div><div v-else class="question-list"><article v-for="exam in exams" :key="exam.id" class="question-item"><span class="question-number">⌗</span><div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · {{ exam.className || "Turma não definida" }} · {{ examCorrectionStatusLabel(exam) }}</small></div><div class="question-actions"><button class="edit-button" @click="startScan(exam)" aria-label="Corrigir agora" title="Corrigir agora">▶</button></div></article></div></div>
+        <div v-else-if="scanStep === 'camera'" class="scan-page"><span class="eyebrow">CORREÇÃO INTELIGENTE</span><h1>{{ scanActiveExam ? scanActiveExam.name : "Escanear Turma" }}</h1><p>Aponte a câmera para o QR Code da folha de respostas.</p><div class="camera-mock"><div class="scan-frame">⌗</div><span>Aguardando captura...</span></div><div class="scan-actions"><button class="outline-button" @click="backToScanList">Cancelar</button><button class="primary-button compact" @click="captureScan">Capturar</button></div></div>
+        <div v-else class="scan-page"><span class="eyebrow">CORREÇÃO INTELIGENTE</span><h1>Prova corrigida</h1><div class="empty-card scan-result-card"><span>✅</span><h2>Aluno identificado: {{ scanResult.name }}</h2><p>Nota: {{ scanResult.score.toFixed(1) }} / 10.0</p></div><div class="scan-actions"><button class="outline-button" @click="scanNextStudent">Escanear próxima prova</button><button class="primary-button compact" @click="finishScanTurma">Finalizar turma</button></div></div>
+        </template>
       </section></main><div v-if="toast" class="toast">{{ toast }}</div>
     </div>
   
