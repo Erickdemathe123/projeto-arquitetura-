@@ -1,12 +1,8 @@
-# 🍔 FastBurger — Guia de Modelagem UML
-
-> **Exemplo de referência** para a atividade em grupo: como extrair, analisar e modelar um cenário de negócio em quatro diagramas UML (Caso de Uso, Atividade, Classe e Sequência).
-
----
+# SGP - Sistema de Geracao de Provas — Guia de Modelagem UML
 
 ## 📋 Cenário Base
 
-> *"Precisamos de um sistema de pedidos online para a nossa hamburgueria gourmet, o FastBurger. O Cliente acessa o aplicativo para consultar o cardápio, montar o seu pedido e finalizar a compra informando o endereço de entrega e a forma de pagamento. O Atendente do restaurante recebe o pedido no painel administrativo, verifica os detalhes e aprova o envio para a cozinha. O Entregador recebe a rota de entrega quando o pedido fica pronto, realiza o transporte e atualiza o status no app para 'Entregue' assim que o cliente recebe o produto."*
+> *"O cliente (professor) precisa de uma solução para otimizar o tempo gasto na correção de grandes volumes de provas. O sistema deve permitir criar e organizar provas (embaralhando questões e alternativas para evitar cola), gerar folhas de respostas com QR code/gabarito e realizar a correção automatizada através da leitura dessas folhas. Além disso, o sistema deve oferecer relatórios de notas e análises estatísticas sobre o desempenho dos alunos para auxílio pedagógico."*
 
 ---
 
