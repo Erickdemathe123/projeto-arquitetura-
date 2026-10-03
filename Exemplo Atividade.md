@@ -18,23 +18,26 @@
 
 | Ator | Papel no sistema |
 |---|---|
-| `Cliente` | Consulta cardápio, monta e finaliza o pedido |
-| `Atendente` | Recebe, verifica e aprova o pedido |
-| `Entregador` | Recebe a rota, transporta e atualiza o status |
+| `Professor` | Responsável pela gestão académica de avaliações, desde a importação de alunos, elaboração e correção de exames até à emissão de relatórios e estatísticas. |
+| `Aluno` | Responsável por identificar-se e por consultar os seus resultados. |
+
 
 **Ações / Casos de uso identificados:**
 
-- Consultar Cardápio
-- Montar Pedido
-- Finalizar Compra
-- Receber Pedido
-- Aprovar Pedido
-- Receber Rota de Entrega
-- Atualizar Status de Entrega
+- Importar lista de alunos
+- Criar e editar provas 
+- Gerar provas
+- Gerar gabarito
+- Corrigir prova
+- Consultar avaliação
+- Gerar estatística das respostas 
+- Gerar relatório de notas
+- Editar layout da prova
+- Identificar-se na prova
+- Consultar resultado
 
 ### 🖼️ Diagrama de Caso de Uso
 
-![Diagrama de Casos de Uso do FastBurger](casodeuso.png)
 
 ---
 
