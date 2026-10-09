@@ -102,7 +102,7 @@ Pergunta-chave: *"Quantos desse podem estar ligados a aquele?"*
   Um Entregador pode realizar várias entregas/pedidos ao longo do dia (`0..*`). Um Pedido de entrega é atribuído a um entregador (`0..1` se pendente, ou `1..1` quando despachado).
 
 ### 🖼️ Diagrama de Classes
-
+<img width="531" height="900" alt="classe" src="https://github.com/user-attachments/assets/ef1f81f4-0254-41f0-ad79-f6577f66d79b" />
 ![Diagrama de Classes do FastBurger](classe.png)
 
 ---
