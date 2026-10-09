@@ -43,27 +43,27 @@
 
 ### 🔎 Passo 2A — Análise do Fluxo Cronológico
 
-Sequência lógica extraída do relato:
+Sequência lógica extraída do fluxo:
 
-1. Cliente consulta o cardápio e monta o pedido.
-2. Cliente finaliza a compra (informando pagamento e endereço).
-3. O Atendente recebe o pedido.
-4. O Atendente verifica os detalhes.
-5. **Decisão:** o pedido foi aprovado?
-   - **[Não]** → Atendente notifica o cliente do cancelamento/erro.
-   - **[Sim]** → Cozinha prepara o pedido.
-6. Pedido fica pronto e é repassado ao Entregador.
-7. Entregador realiza o transporte e entrega ao cliente.
-8. Entregador atualiza o status para **"Entregue"** (fim).
+Professor acessa a tela "Corrigir Provas".
+O sistema carrega as avaliações cadastradas no armazenamento local.
+Decisão: existe avaliação pendente de correção?
+[Não] → Sistema exibe o aviso "Não há provas pendentes para corrigir" (fim).
+[Sim] → Sistema exibe a lista de avaliações (pendente / em correção / corrigida).
+Professor seleciona uma avaliação ou clica em "Escanear Turma".
+Sistema exibe a tela de escaneamento (simulada, conforme escopo da N1).
+Professor clica em "Capturar".
+Sistema executa captureScan(), gerando aluno e nota simulados, e atualiza o status da avaliação para "em_andamento".
+Sistema exibe o resultado (aluno identificado + nota).
+Decisão: o professor escolhe continuar corrigindo?
+[Escanear próxima prova] → retorna ao passo 6.
+[Finalizar turma] → Sistema executa finishScanTurma(), atualizando o status da avaliação para "concluida".
+Sistema retorna à lista de avaliações (fim).
+Raias identificadas: diferente do cenário de entrega (com Cliente, Atendente, Cozinha e Entregador como responsáveis distintos), aqui o processo envolve apenas dois responsáveis — o Professor, que decide e interage, e o próprio Sistema, que processa e persiste os dados. Por isso o diagrama foi modelado sem raias: com só duas partes, raias não adicionam clareza e um fluxo linear com pontos de decisão já representa bem o cenário.
 
-**Raias identificadas:** cada etapa do processo pertence a um responsável diferente, o que torna o diagrama de atividades com raias o mais adequado para representar este cenário:
-
-| Raia | Responsabilidades |
-|---|---|
-| **Cliente** | Consultar cardápio, montar pedido, finalizar compra, receber o produto |
-| **Atendente** | Receber pedido, verificar detalhes, aprovar/rejeitar |
-| **Cozinha** | Preparar o pedido |
-| **Entregador** | Receber rota, transportar, atualizar status |
+Responsável	Responsabilidades
+Professor	Acessar a tela, selecionar avaliação, clicar em "Escanear Turma"/"Capturar", decidir entre escanear próxima prova ou finalizar turma
+Sistema (SGP)	Carregar avaliações, exibir listas e telas, gerar aluno/nota simulados, atualizar e persistir o status da avaliação
 
 ### 🖼️ Diagrama de Atividades
 
