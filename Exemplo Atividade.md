@@ -86,24 +86,23 @@ Sequência lógica extraída do fluxo:
 
 | Classe | Descrição |
 |---|---|
-| **Cliente** | Quem consome e faz os pedidos |
-| **Pedido** | O registro central da compra realizada |
-| **Atendente** | Quem gerencia e valida os pedidos recebidos |
-| **Entregador** | Quem executa o transporte do produto até o cliente |
+| **Professor** | Quem cria as questões e monta/gerencia as avaliações |
+| **Avaliacao** | O registro central da prova aplicada |
+| **Turma** | Quem agrupa os alunos e é vinculada às avaliações aplicadas |
+| **Aluno** | Quem é corrigido nas avaliações aplicadas à sua turma |
+| **Questao** | Item do banco de questões, reaproveitado na montagem das avaliações |
 
-#### Interpretando associações e multiplicidades
+**Interpretando associações e multiplicidades**
 
 Pergunta-chave: *"Quantos desse podem estar ligados a aquele?"*
 
-- **Cliente ↔ Pedido**
-  Um Cliente pode realizar zero ou vários pedidos ao longo do tempo (`0..*`). Um Pedido específico pertence obrigatoriamente a um, e somente um, Cliente (`1..1`).
-  → Associação simples `1` — `0..*`.
+- **Professor ↔ Questao:** Um Professor pode criar zero ou várias questões (`0..*`). Uma Questão é criada por um, e somente um, Professor (`1`). → Associação simples `1` — `0..*`.
+- **Professor ↔ Avaliacao:** Um Professor pode montar várias avaliações (`0..*`). Uma Avaliação é montada por um, e somente um, Professor (`1`). → Associação simples `1` — `0..*`.
+- **Turma ↔ Aluno:** Uma Turma pode possuir vários alunos (`0..*`). Um Aluno pertence a uma, e somente uma, Turma (`1`). → Associação simples `1` — `0..*`.
+- **Turma ↔ Avaliacao:** Uma Turma pode ser avaliada em várias avaliações ao longo do tempo (`0..*`). Uma Avaliação é aplicada a uma, e somente uma, Turma (`1`). → Associação simples `1` — `0..*`.
+- **Avaliacao ↔ Questao:** Uma Avaliação pode conter várias questões (`0..*`), e uma Questão pode compor várias avaliações diferentes, pois é reaproveitada do banco de questões (`0..*`). → Associação muitos-para-muitos `0..*` — `0..*`.
+- **Aluno ↔ Avaliacao:** Um Aluno pode ser corrigido em várias avaliações ao longo do tempo (`0..*`), e uma Avaliação corrige vários alunos (`0..*`). → Associação muitos-para-muitos `0..*` — `0..*`.
 
-- **Pedido ↔ Atendente**
-  Um Atendente pode gerenciar vários pedidos (`0..*`). Um Pedido é supervisionado/aprovado por um atendente específico (`1..1`).
-
-- **Pedido ↔ Entregador**
-  Um Entregador pode realizar várias entregas/pedidos ao longo do dia (`0..*`). Um Pedido de entrega é atribuído a um entregador (`0..1` se pendente, ou `1..1` quando despachado).
 
 ### 🖼️ Diagrama de Classes
 <img width="531" height="900" alt="classe" src="https://github.com/user-attachments/assets/ef1f81f4-0254-41f0-ad79-f6577f66d79b" />
