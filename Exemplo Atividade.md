@@ -103,8 +103,6 @@ Pergunta-chave: *"Quantos desse podem estar ligados a aquele?"*
 
 ### 🖼️ Diagrama de Classes
 <img width="531" height="900" alt="classe" src="https://github.com/user-attachments/assets/ef1f81f4-0254-41f0-ad79-f6577f66d79b" />
-![Diagrama de Classes do FastBurger](classe.png)
-
 ---
 
 ## 4️⃣ Diagrama de Sequência
