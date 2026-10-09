@@ -1,0 +1,33 @@
+@startuml
+
+start
+:Professor acessa "Corrigir Provas";
+:Carregar avaliações do armazenamento local;
+
+if (Existe avaliação pendente?) then (sim)
+  :Exibir lista de avaliações\n(pendente / em correção / corrigida);
+  :Professor seleciona avaliação\nou clica em "Escanear Turma";
+  :Exibir tela de escaneamento (mock);
+
+  repeat
+    :Professor clica em "Capturar";
+    :captureScan()\ngera aluno e nota simulados;
+    :Atualizar avaliação\nstatusCorrecao = "em_andamento";
+    :Exibir resultado\n(aluno identificado + nota);
+
+    if (Professor escolhe) then (Escanear próxima prova)
+    else (Finalizar turma)
+      :finishScanTurma();
+      :Atualizar avaliação\nstatusCorrecao = "concluida";
+      break
+    endif
+  repeat while (continuar corrigindo?) is (sim) not (não)
+
+  :Retornar à lista de avaliações;
+else (não)
+  :Exibir aviso\n"Não há provas pendentes para corrigir";
+endif
+
+stop
+
+@enduml
