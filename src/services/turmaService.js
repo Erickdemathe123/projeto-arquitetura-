@@ -132,8 +132,9 @@ async function entrarComCodigo(dados) {
   if (!codigo) throw new ErroDeNegocio(400, 'Informe o código de convite.');
   const turma = await turmaRepository.buscarPorCodigo(codigo);
   if (!turma) throw new ErroDeNegocio(404, 'Código de convite inválido.');
-  const aluno = await matricularNaTurma(turma, dados);
-  return { turma: { id: turma.id, nome: turma.nome }, aluno };
+  await matricularNaTurma(turma, dados);
+  // Devolve só a turma: não expõe nome/e-mail de quem tem aquele RA
+  return { turma: { id: turma.id, nome: turma.nome } };
 }
 
 // Usado pelo professor: matricula o aluno manualmente
@@ -154,6 +155,105 @@ async function listarAlunos(professorId, turmaId) {
   return turmaRepository.listarAlunos(turmaId);
 }
 
+// ---------- Importação de alunos por CSV (RF05) ----------
+
+const MAX_LINHAS_CSV = 1000;
+
+// Separa uma linha do CSV em campos, respeitando valores entre aspas (ex.: "Silva; João")
+function separarCampos(linha, separador) {
+  const campos = [];
+  let atual = '';
+  let entreAspas = false;
+  for (let i = 0; i < linha.length; i++) {
+    const c = linha[i];
+    if (c === '"') {
+      if (entreAspas && linha[i + 1] === '"') {
+        atual += '"';
+        i++;
+      } else {
+        entreAspas = !entreAspas;
+      }
+    } else if (c === separador && !entreAspas) {
+      campos.push(atual.trim());
+      atual = '';
+    } else {
+      atual += c;
+    }
+  }
+  campos.push(atual.trim());
+  return campos;
+}
+
+// Deixa o nome da coluna sem acento, sem espaços e em minúsculas ("Nome " -> "nome")
+function normalizarCabecalho(valor) {
+  return valor.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+}
+
+// Converte o texto do CSV em uma lista de { linha, nome, ra }
+function lerCsv(conteudo) {
+  const textoCsv = String(conteudo || '').replace(/^\uFEFF/, ''); // remove o BOM que o Excel coloca
+  const linhas = textoCsv.split(/\r?\n/)
+    .map((valor, indice) => ({ numero: indice + 1, valor }))
+    .filter((linha) => linha.valor.trim() !== '');
+  if (!linhas.length) return [];
+
+  // Excel em português costuma salvar com ";"; outros programas usam ","
+  const separador = linhas[0].valor.includes(';') ? ';' : ',';
+
+  // Se a primeira linha for o cabeçalho, usa a posição das colunas "nome" e "ra"
+  let colunaNome = 0;
+  let colunaRa = 1;
+  const cabecalho = separarCampos(linhas[0].valor, separador).map(normalizarCabecalho);
+  if (cabecalho.includes('nome') && cabecalho.includes('ra')) {
+    colunaNome = cabecalho.indexOf('nome');
+    colunaRa = cabecalho.indexOf('ra');
+    linhas.shift();
+  }
+
+  return linhas.map(({ numero, valor }) => {
+    const campos = separarCampos(valor, separador);
+    return { linha: numero, nome: campos[colunaNome] || '', ra: campos[colunaRa] || '' };
+  });
+}
+
+async function importarAlunos(professorId, turmaId, conteudo) {
+  const turma = await buscarTurmaDoProfessor(professorId, turmaId);
+  garantirAtiva(turma, 'importar alunos');
+
+  const registros = lerCsv(conteudo);
+  if (!registros.length) {
+    throw new ErroDeNegocio(400, 'O arquivo CSV está vazio. Use as colunas nome e RA.');
+  }
+  if (registros.length > MAX_LINHAS_CSV) {
+    throw new ErroDeNegocio(400, `O arquivo pode ter no máximo ${MAX_LINHAS_CSV} alunos.`);
+  }
+
+  const resultado = { total: registros.length, matriculados: [], jaMatriculados: [], erros: [] };
+  const rasNoArquivo = new Set();
+
+  for (const { linha, nome, ra } of registros) {
+    try {
+      if (!nome) throw new ErroDeNegocio(400, 'Nome não informado.');
+      if (ra && rasNoArquivo.has(ra)) throw new ErroDeNegocio(400, 'RA repetido no arquivo.');
+      rasNoArquivo.add(ra);
+
+      const aluno = await obterOuCriarAluno({ nome, ra });
+      if (await turmaRepository.estaMatriculado(turma.id, aluno.id)) {
+        resultado.jaMatriculados.push({ linha, ra: aluno.ra, nome: aluno.nome });
+        continue;
+      }
+      await turmaRepository.matricular(turma.id, aluno.id);
+      resultado.matriculados.push({ linha, ra: aluno.ra, nome: aluno.nome });
+    } catch (erro) {
+      // Erro de validação de uma linha não interrompe a importação das demais
+      if (!(erro instanceof ErroDeNegocio)) throw erro;
+      resultado.erros.push({ linha, ra, motivo: erro.message });
+    }
+  }
+
+  return resultado;
+}
+
 module.exports = {
   ErroDeNegocio,
   criarTurma,
@@ -165,5 +265,6 @@ module.exports = {
   entrarComCodigo,
   matricularAluno,
   removerAluno,
-  listarAlunos
+  listarAlunos,
+  importarAlunos
 };
