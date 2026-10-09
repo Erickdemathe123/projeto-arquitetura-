@@ -34,6 +34,8 @@
 
 ### 🖼️ Diagrama de Caso de Uso
 
+![Diagrama de Caso de Uso do SGP](docs/uml/casodeuso.png)
+
 
 ---
 
@@ -109,17 +111,19 @@ Pergunta-chave: *"Quantos desse podem estar ligados a aquele?"*
 
 ### 🔎 Passo 4A — Como Analisar e Ler o Diagrama
 
-**Regra de ouro:** leia sempre de cima para baixo, como se fosse o feed de um celular.
+**Regra de ouro:** leia de cima para baixo; quanto mais abaixo a mensagem aparece, mais tarde ela acontece.
 
-Cenário analisado: **Criação e Aprovação do Pedido no FastBurger.**
+Cenário analisado: **Montar e salvar avaliação no SGP.**
 
-1. **Atores e objetos (o elenco):** no topo, os participantes da cena na horizontal (`Cliente`, `AppMobile`, `Servidor`, `BancoDeDados`, `Atendente`).
-2. **Linhas de vida (o tempo passando):** as linhas tracejadas verticais que descem de cada objeto representam o tempo correndo — quanto mais abaixo, mais tarde o evento acontece.
-3. **Mensagens (os diálogos):** setas horizontais mostram o pedido/ação de um objeto para o outro. Setas contínuas = envio de mensagem/chamada de método; setas tracejadas = retorno da resposta.
-4. **Bloco `alt` (alternativas/decisões):** representa desvios condicionais (o famoso SE/SENÃO) — no cenário do FastBurger, a decisão é a **aprovação manual do Atendente** após verificar os detalhes do pedido, e não uma validação automática de pagamento.
+Pré-condição: **o Professor já está autenticado no sistema**. O login não faz parte desta sequência.
 
+1. **Atores e objetos (o elenco):** no topo estão `Professor`, `Front-end Web`, `Rota de Avaliações`, `AvaliacaoController`, `AvaliacaoService`, `AvaliacaoRepository`, `AvaliacaoModel`/`AvaliacaoQuestaoModel` e `MySQL`.
+2. **Linhas de vida (o tempo passando):** as linhas tracejadas verticais representam cada participante ao longo da interação.
+3. **Mensagens (os diálogos):** as setas contínuas representam solicitações ou chamadas entre participantes; as setas tracejadas representam retornos.
+4. **Sequência principal:** o Professor preenche os dados e seleciona questões no Front-end. O Front-end envia a solicitação à API, que encaminha a operação pela rota, controller e service. O service valida os dados e as questões. Com dados válidos, o repository prepara as entidades, inicia uma transação no MySQL, grava a avaliação e associa cada questão selecionada com sua ordem e peso. Após confirmar a transação, o sistema retorna os dados da avaliação criada ao Front-end, que confirma o sucesso ao Professor.
+5. **Bloco `alt` (alternativas/decisões):** representa a validação dos dados. Se forem inválidos, a API retorna HTTP 400 e o Front-end apresenta as mensagens para correção. Se forem válidos, a avaliação é persistida e o sistema retorna HTTP 201.
+6. **Responsabilidade do Model e do Repository:** o Model representa e prepara as entidades do domínio; o Repository é responsável pelo acesso ao banco de dados. O Model não acessa o MySQL diretamente.
 
 ### 🖼️ Diagrama de Sequência
 
-![Diagrama de Sequência do FastBurger](sequencia.png)
-
+![Diagrama de Sequência - Montar e salvar avaliação no SGP](docs/uml/sequencia.png)
