@@ -67,7 +67,8 @@ Sequência lógica extraída do relato:
 
 ### 🖼️ Diagrama de Atividades
 
-![Diagrama de Atividades do FastBurger com raias](atividade.png)
+<img width="588" height="1107" alt="diagrama atividades" src="https://github.com/user-attachments/assets/118cbd4e-fc5a-4e0c-b258-402702e79147" />
+
 
 > 💡 Cada raia (coluna) representa uma nova coluna no diagrama, indicando a transferência de responsabilidade entre os atores/participantes do processo — é essa notação que diferencia um diagrama de atividades "simples" de um diagrama de atividades **com raias**, exigido pela notação UML quando o processo envolve mais de um responsável.
 
