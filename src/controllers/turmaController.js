@@ -107,6 +107,19 @@ const listarAlunos = tratar(async (req, res) => {
   res.json(alunos);
 });
 
+// Recebe o conteúdo do CSV como texto puro no corpo da requisição (Content-Type: text/csv)
+const importarAlunos = tratar(async (req, res) => {
+  if (typeof req.body !== 'string') {
+    throw new ErroDeNegocio(415, 'Envie o arquivo CSV como texto (Content-Type: text/csv).');
+  }
+  const resultado = await turmaService.importarAlunos(
+    obterProfessorId(req),
+    lerId(req.params.id, 'Id da turma'),
+    req.body
+  );
+  res.json(resultado);
+});
+
 module.exports = {
   criar,
   listar,
@@ -117,5 +130,6 @@ module.exports = {
   entrar,
   matricular,
   removerAluno,
-  listarAlunos
+  listarAlunos,
+  importarAlunos
 };
