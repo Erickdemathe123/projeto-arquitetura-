@@ -1,0 +1,57 @@
+@startuml
+
+class Professor {
+  -idProfessor: Int
+  -nome: String
+  -email: String
+  -senha: String
+  +criarQuestao()
+  +montarAvaliacao()
+  +liberarGabarito()
+}
+
+class Turma {
+  -idTurma: Int
+  -nome: String
+  +cadastrarAluno()
+  +importarAlunos()
+}
+
+class Aluno {
+  -idAluno: Int
+  -nome: String
+  -ra: String
+  +consultarResultado()
+}
+
+class Questao {
+  -idQuestao: Int
+  -enunciado: String
+  -disciplina: String
+  -assunto: String
+  -tipo: String
+  -alternativaCorreta: Int
+  +editar()
+}
+
+class Avaliacao {
+  -idAvaliacao: Int
+  -nome: String
+  -instituicao: String
+  -disciplina: String
+  -dataAplicacao: DateTime
+  -codigoPublico: String
+  -gabaritoLiberado: Boolean
+  -statusCorrecao: String
+  +calcularNota(): Float
+  +gerarDocumento()
+}
+
+Professor "1"   --> "0..*" Avaliacao : monta >
+Professor "1"   --> "0..*" Questao   : cria >
+Turma     "1"   --> "0..*" Aluno     : possui >
+Turma     "1"   --> "0..*" Avaliacao : é avaliada em >
+Aluno     "0..*" -- "0..*" Avaliacao : é corrigido em
+Avaliacao "0..*" -- "0..*" Questao   : contém
+
+@enduml

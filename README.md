@@ -126,17 +126,47 @@ Restrições e qualidades do sistema (desempenho, segurança, usabilidade, compa
 
 📌 **N2**
 
-Diagrama de casos de uso, diagrama de classes e diagrama de atividades do sistema (e demais diagramas que forem necessários). Exporte cada diagrama como imagem (PNG ou SVG) e salve em `docs/uml/`, depois insira aqui:
+Diagrama de casos de uso, diagrama de classes e diagrama de atividades do sistema (e demais diagramas que forem necessários). Os diagramas são escritos em PlantUML (fonte em `docs/uml/*.puml`) e exportados como PNG para a mesma pasta.
 
-```
-![Diagrama de Casos de Uso](docs/uml/casos-de-uso.png)
+### Diagrama de Classes
 
 ![Diagrama de Classes](docs/uml/diagrama-classes.png)
 
-![Diagrama de Atividades](docs/uml/diagrama-atividades.png)
-```
+Representa as principais entidades do domínio do SGP: `Professor`, `Turma`, `Aluno`, `Questao` e `Avaliacao`. O professor cria questões e monta avaliações; a turma possui alunos e é vinculada a uma avaliação; a avaliação é composta por questões (relação muitos-para-muitos) e, na correção, associada aos alunos corrigidos.
 
-Abaixo de cada imagem, escreva um parágrafo curto explicando o que o diagrama representa.
+### Diagrama de Atividades — Corrigir Provas
+
+![Diagrama de Atividades](docs/uml/diagrama-atividades-corrigir-provas.png)
+
+Descreve o fluxo de atividades da correção de provas, incluindo o desvio de decisão quando não há avaliação pendente, o laço de captura de alunos (repetido a cada "Capturar") e o ponto de decisão entre "Escanear próxima prova" e "Finalizar turma", que encerra o laço e atualiza o status da avaliação para "concluída".
+
+**Sequência lógica extraída do fluxo:**
+
+1. Professor acessa a tela "Corrigir Provas".
+2. O sistema carrega as avaliações cadastradas no armazenamento local.
+3. **Decisão:** existe avaliação pendente de correção?
+   - **[Não]** → Sistema exibe o aviso "Não há provas pendentes para corrigir" (fim).
+   - **[Sim]** → Sistema exibe a lista de avaliações (pendente / em correção / corrigida).
+4. Professor seleciona uma avaliação ou clica em "Escanear Turma".
+5. Sistema exibe a tela de escaneamento (simulada, conforme escopo da N1).
+6. Professor clica em "Capturar".
+7. Sistema executa `captureScan()`, gerando aluno e nota simulados, e atualiza o status da avaliação para `"em_andamento"`.
+8. Sistema exibe o resultado (aluno identificado + nota).
+9. **Decisão:** o professor escolhe continuar corrigindo?
+   - **[Escanear próxima prova]** → retorna ao passo 6.
+   - **[Finalizar turma]** → Sistema executa `finishScanTurma()`, atualizando o status da avaliação para `"concluida"`.
+10. Sistema retorna à lista de avaliações (fim).
+
+**Raias identificadas:** o processo envolve apenas dois responsáveis — o Professor, que decide e interage, e o próprio Sistema, que processa e persiste os dados. Por isso o diagrama foi modelado sem raias (swimlanes): com só duas partes, raias não adicionam clareza, e um fluxo linear com pontos de decisão já representa bem o cenário.
+
+| Responsável | Responsabilidades |
+|---|---|
+| **Professor** | Acessar a tela, selecionar avaliação, clicar em "Escanear Turma"/"Capturar", decidir entre escanear próxima prova ou finalizar turma |
+| **Sistema (SGP)** | Carregar avaliações, exibir listas e telas, gerar aluno/nota simulados, atualizar e persistir o status da avaliação |
+
+### Diagrama de Casos de Uso
+
+*(pendente — adicionar quando o levantamento de atores/casos de uso do sistema for finalizado)*
 
 ## 4. Telas do Sistema
 
