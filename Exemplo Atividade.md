@@ -39,44 +39,46 @@
 
 ---
 
-## 2️⃣ Diagrama de Atividades
+## 2. Diagrama de Atividades
 
-### 🔎 Passo 2A — Análise do Fluxo Cronológico
+### 2A. Análise do fluxo
 
-Sequência lógica extraída do fluxo:
+O diagrama representa o fluxo principal do SGP, desde o login do professor até a consulta da nota pelo aluno, seguindo o "Fluxo Resumido" da Especificação (seção 4). Foram identificados três responsáveis (raias): **Professor**, **Sistema** e **Aluno**.
 
-1. Professor acessa a tela "Corrigir Provas".
-2. O sistema carrega as avaliações cadastradas no armazenamento local.
-3. **Decisão:** existe avaliação pendente de correção?
-   - **[Não]** → Sistema exibe o aviso "Não há provas pendentes para corrigir" (fim).
-   - **[Sim]** → Sistema exibe a lista de avaliações (pendente / em correção / corrigida).
-4. Professor seleciona uma avaliação ou clica em "Escanear Turma".
-5. Sistema exibe a tela de escaneamento (simulada, conforme escopo da N1).
-6. Professor clica em "Capturar".
-7. Sistema executa `captureScan()`, gerando aluno e nota simulados, e atualiza o status da avaliação para `"em_andamento"`.
-8. Sistema exibe o resultado (aluno identificado + nota).
-9. **Decisão:** o professor escolhe continuar corrigindo?
-   - **[Escanear próxima prova]** → retorna ao passo 6.
-   - **[Finalizar turma]** → Sistema executa `finishScanTurma()`, atualizando o status da avaliação para `"concluida"`.
-10. Sistema retorna à lista de avaliações (fim).
+Ações em ordem cronológica:
 
-**Raias identificadas:** o processo envolve apenas dois responsáveis — o Professor, que decide e interage, e o próprio Sistema, que processa e persiste os dados. Por isso o diagrama foi modelado sem raias (swimlanes): com só duas partes, raias não adicionam clareza, e um fluxo linear com pontos de decisão já representa bem o cenário.
+1. O professor faz login; se as credenciais forem inválidas, o sistema exibe erro e o professor tenta novamente.
+2. O professor cadastra turma e alunos, cadastra questões, monta a prova e cria a aplicação (prova x turma).
+3. O professor define número de versões, embaralhamento e se haverá identificação do aluno.
+4. O sistema embaralha questões e alternativas e gera as versões em PDF com QR Code e folha de respostas.
+5. O professor imprime e aplica a prova; o aluno a resolve e marca a folha de respostas.
+6. O professor escaneia a folha (câmera do celular, pelo navegador); se o QR Code não for reconhecido, o sistema informa a falha e o professor escaneia novamente.
+7. O sistema compara com o gabarito da versão e calcula a nota.
+8. Decisão "Aluno identificado na prova?": se **sim**, o sistema registra a nota automaticamente; se **não**, o professor lança a nota manualmente usando nome e matrícula escritos na prova.
+9. O sistema gera estatísticas por questão e o relatório de notas em Excel.
+10. O professor libera o gabarito e o aluno consulta o resultado.
 
-| Responsável | Responsabilidades |
-|---|---|
-| **Professor** | Acessar a tela, selecionar avaliação, clicar em "Escanear Turma"/"Capturar", decidir entre escanear próxima prova ou finalizar turma |
-| **Sistema (SGP)** | Carregar avaliações, exibir listas e telas, gerar aluno/nota simulados, atualizar e persistir o status da avaliação |
+### 2B. Raias
 
+| Raia | Responsabilidade |
+|------|------------------|
+| Professor | Login, cadastros, montagem da prova, aplicação, escaneamento, lançamento manual de nota, liberação do gabarito |
+| Sistema | Validação de login, embaralhamento, geração dos PDFs, leitura do QR Code/gabarito, cálculo e registro da nota, estatísticas e relatórios |
+| Aluno | Resolução da prova e consulta do resultado |
 
-### 🖼️ Diagrama de Atividades
+### 2C. Diagrama
 
-<img width="588" height="1107" alt="diagrama atividades" src="https://github.com/user-attachments/assets/118cbd4e-fc5a-4e0c-b258-402702e79147" />
+![Diagrama de Atividades do SGP](docs/uml/diagrama-atividades-sgp.png)
 
+*Figura – Diagrama de Atividades do SGP. Decisões: login válido, QR Code reconhecido e aluno identificado na prova. Observação: o escaneamento foi modelado pela câmera no navegador, conforme o README (RNF05).*
 
-> 💡 Cada raia (coluna) representa uma nova coluna no diagrama, indicando a transferência de responsabilidade entre os atores/participantes do processo — é essa notação que diferencia um diagrama de atividades "simples" de um diagrama de atividades **com raias**, exigido pela notação UML quando o processo envolve mais de um responsável.
+### 2D. Passo a passo da criação
 
-
----
+1. Leitura do fluxo resumido da Especificação e do enunciado da atividade.
+2. Listagem das ações em ordem cronológica e separação por responsável.
+3. Identificação das decisões e dos laços de repetição (login e escaneamento).
+4. Escrita do diagrama em PlantUML (raias, `while`, `if/else`) e renderização.
+5. Revisão do fluxo de ponta a ponta e salvamento do PNG em `docs/uml/`.
 
 ## 3️⃣ Diagrama de Classes
 
