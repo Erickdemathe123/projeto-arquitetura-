@@ -1,13 +1,13 @@
 // Model: representa um aluno e converte linhas do banco em objetos da aplicação.
 class Aluno {
-  constructor({ id, nome, ra, email, criado_em, matriculado_em }) {
+  constructor({ id, name, ra, email, created_at, enrolled_at }) {
     this.id = id;
-    this.nome = nome;
+    this.nome = name;
     this.ra = ra;
     this.email = email || null;
-    this.criadoEm = criado_em;
+    this.criadoEm = created_at;
     // Só vem preenchido quando o aluno é listado dentro de uma turma
-    this.matriculadoEm = matriculado_em !== undefined ? matriculado_em : undefined;
+    this.matriculadoEm = enrolled_at !== undefined ? enrolled_at : undefined;
   }
 
   static fromRow(row) {
