@@ -8,7 +8,8 @@
     "build": "npm --prefix frontend install && npm --prefix frontend run build",
     "dev": "npm --prefix frontend run dev",
     "dev:api": "node --watch server.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "test:integration": "node --test test/integration/*.test.js"
   },
   "repository": {
     "type": "git",
@@ -25,6 +26,7 @@
   "dependencies": {
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
     "mysql2": "^3.11.0"
   }
 }

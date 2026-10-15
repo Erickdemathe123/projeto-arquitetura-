@@ -10,6 +10,7 @@ function criarApp() {
   app.use(express.json({ limit: '1mb' }));
   app.use('/health', healthRoutes);
   app.use('/api/turmas', turmaRoutes);
+  app.use('/api/questoes', require('./routes/questaoRoutes'));
   const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
   if (fs.existsSync(frontendDist)) app.use(express.static(frontendDist));
   app.use((req, res) => res.status(404).json({ erro: 'Rota não encontrada.' }));

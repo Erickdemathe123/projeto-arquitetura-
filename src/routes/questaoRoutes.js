@@ -1,0 +1,11 @@
+const { Router } = require('express');
+const controller = require('../controllers/questaoController');
+const autenticarProfessor = require('../middlewares/autenticarProfessor');
+const router = Router();
+router.use(autenticarProfessor);
+router.get('/', controller.listar);
+router.get('/:id', controller.obter);
+router.post('/', controller.criar);
+router.put('/:id', controller.atualizar);
+router.delete('/:id', controller.remover);
+module.exports = router;

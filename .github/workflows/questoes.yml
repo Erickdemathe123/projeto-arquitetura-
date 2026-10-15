@@ -1,0 +1,30 @@
+name: API de questoes (T12)
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: sgp_ci_test_only
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -psgp_ci_test_only"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci
+      - run: npm test
+      - run: npm run test:integration
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PASSWORD: sgp_ci_test_only
+      - run: npm --prefix frontend ci && npm --prefix frontend run build
