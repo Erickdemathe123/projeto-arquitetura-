@@ -1,0 +1,24 @@
+const { test, after } = require('node:test');
+const assert = require('node:assert/strict');
+const pool = require('../src/config/db');
+const criarApp = require('../src/app');
+after(() => pool.end());
+test('HTTP: saúde consulta banco e oculta detalhes de falha', async (t) => {
+  const server = criarApp().listen(0, '127.0.0.1');
+  await new Promise(resolve => server.once('listening', resolve));
+  t.after(() => new Promise(resolve => server.close(resolve)));
+  const url = `http://127.0.0.1:${server.address().port}`;
+  const query = t.mock.method(pool, 'query', async () => [[{ ok: 1 }]]);
+  let response = await fetch(`${url}/health`);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { status: 'ok', banco: 'conectado' });
+  assert.equal(query.mock.calls[0].arguments[0].sql, 'SELECT 1');
+  query.mock.mockImplementation(async () => { throw new Error('senha-secreta'); });
+  response = await fetch(`${url}/health`);
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { status: 'indisponivel', banco: 'desconectado' });
+  response = await fetch(`${url}/api/inexistente`);
+  assert.equal(response.status, 404);
+  response = await fetch(`${url}/api/turmas`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{' });
+  assert.equal(response.status, 400);
+});
