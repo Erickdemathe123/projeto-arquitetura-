@@ -13,7 +13,15 @@ async function main() {
   const databases = [prefix + '_fresh', prefix + '_upgrade'];
   async function runFile(file, database) {
     const sql = (await fs.readFile(path.join(__dirname, file), 'utf8')).replace(/\bsgp\b/g, database);
-    await connection.query(sql);
+    for (const statement of sql.split(/;\s*(?:\r?\n|$)/).filter(part=>part.trim())) {
+      try { await connection.query(statement); }
+      catch (error) {
+        console.error('Falha em', file, statement.slice(0, 160));
+        const [warnings] = await connection.query('SHOW WARNINGS');
+        console.error(warnings);
+        throw error;
+      }
+    }
   }
   const rejects = (sql,code) => assert.rejects(connection.query(sql), error => error.code === code);
   try {
