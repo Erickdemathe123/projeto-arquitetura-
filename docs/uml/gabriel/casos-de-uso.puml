@@ -1,0 +1,23 @@
+@startuml
+left to right direction
+actor Professor
+actor Aluno
+rectangle "Sistema Gerenciador de Provas — N2" {
+  usecase "Autenticar-se" as Auth
+  usecase "Gerenciar turmas" as Classes
+  usecase "Importar alunos\npor CSV" as Import
+  usecase "Gerenciar questões" as Questions
+  usecase "Montar prova" as Exams
+  usecase "Vincular prova\na uma turma" as Applications
+  usecase "Matricular aluno" as Enroll
+}
+Professor -- Auth
+Professor -- Classes
+Professor -- Import
+Professor -- Questions
+Professor -- Exams
+Professor -- Applications
+Aluno -- Auth
+Aluno -- Enroll
+Import ..> Enroll : <<include>>
+@enduml
