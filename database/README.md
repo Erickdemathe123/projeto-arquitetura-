@@ -51,6 +51,8 @@ Mesmo quem executou o 001 pode usar o 002; aplicações adicionais são copiadas
   tem CHECK fixo; não representa um segundo usuário.
 - Alternative guarda text, is_correct e position (0–4). Índice único condicional
   impede duas corretas; a API T12 exige 2–5 e exatamente uma na mesma transação.
+  O índice combina question_id com um marcador calculado somente de is_correct,
+  para manter a chave estrangeira e a exclusão em cascata compatíveis com MySQL.
 - Exam não tem class_id. Application liga prova e turma do mesmo professor.
   ExamQuestion possui ID próprio, points positivo e position única por prova.
 - T15/T16 devem exigir ao menos um item antes da aplicação e mudar draft para
