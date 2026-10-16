@@ -19,7 +19,7 @@
 
 **Plataforma web para professores criarem, aplicarem e corrigirem provas de forma automatizada, com geração de PDF, embaralhamento de questões/alternativas e correção via câmera do smartphone.**
 
-🔗 **Link do sistema hospedado:** https://projeto-arquitetura-nine.vercel.app/
+🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
