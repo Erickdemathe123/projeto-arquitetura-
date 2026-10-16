@@ -1,15 +1,15 @@
 // Model: representa uma turma e converte linhas do banco em objetos da aplicação.
 class Turma {
-  constructor({ id, professor_id, nome, descricao, codigo_convite, arquivada, criado_em, atualizado_em, total_alunos }) {
+  constructor({ id, teacher_id, name, description, invite_code, archived, created_at, updated_at, total_alunos }) {
     this.id = id;
-    this.professorId = professor_id;
-    this.nome = nome;
-    this.descricao = descricao || null;
-    this.codigoConvite = codigo_convite;
-    this.arquivada = Boolean(arquivada);
+    this.professorId = teacher_id;
+    this.nome = name;
+    this.descricao = description || null;
+    this.codigoConvite = invite_code;
+    this.arquivada = Boolean(archived);
     this.totalAlunos = total_alunos !== undefined ? Number(total_alunos) : undefined;
-    this.criadoEm = criado_em;
-    this.atualizadoEm = atualizado_em;
+    this.criadoEm = created_at;
+    this.atualizadoEm = updated_at;
   }
 
   static fromRow(row) {

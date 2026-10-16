@@ -7,7 +7,8 @@
     "start": "node server.js",
     "build": "npm --prefix frontend install && npm --prefix frontend run build",
     "dev": "npm --prefix frontend run dev",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev:api": "node --watch server.js",
+    "test": "node --test test/*.test.js"
   },
   "repository": {
     "type": "git",

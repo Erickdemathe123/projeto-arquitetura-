@@ -305,6 +305,8 @@ docs/
 
 ## 10. Como Executar o Projeto
 
+Para a API com MySQL e a rota de saúde, consulte [Base do back-end](docs/backend.md).
+
 📌 **N1**, revisado a cada entrega
 
 Passo a passo para clonar e rodar o projeto localmente, incluindo as versões usadas (ex.: Node 20.x):
