@@ -3,12 +3,14 @@ const path = require('node:path');
 const fs = require('node:fs');
 const turmaRoutes = require('./routes/turmaRoutes');
 const healthRoutes = require('./routes/healthRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 function criarApp() {
   const app = express();
   app.disable('x-powered-by');
   app.use(express.json({ limit: '1mb' }));
   app.use('/health', healthRoutes);
+  app.use('/api/auth', authRoutes);
   app.use('/api/turmas', turmaRoutes);
   const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
   if (fs.existsSync(frontendDist)) app.use(express.static(frontendDist));

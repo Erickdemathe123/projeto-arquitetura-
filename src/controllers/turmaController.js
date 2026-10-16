@@ -6,6 +6,9 @@ const { ErroDeNegocio } = turmaService;
 // pelo cabeçalho "x-professor-id". Quando a autenticação ficar pronta,
 // basta trocar esta função para ler o id do token (ex.: req.usuario.id).
 function obterProfessorId(req) {
+  if (req.usuario && req.usuario.id) {
+    return req.usuario.id;
+  }
   const id = Number(req.header('x-professor-id'));
   if (!Number.isInteger(id) || id <= 0) {
     throw new ErroDeNegocio(401, 'Professor não identificado.');

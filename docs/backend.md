@@ -24,3 +24,28 @@ servidor com `.env` configurado e consulte `curl -i http://localhost:3000/health
 
 As rotas existentes de turmas ainda usam `x-professor-id` provisório. A
 autenticação delas e a integração das telas dependem das tarefas T11/T19.
+
+## Autenticação e JWT (T11)
+
+A API de autenticação foi implementada em `src/routes/authRoutes.js`, `src/controllers/authController.js`,
+`src/services/authService.js`, `src/repositories/userRepository.js` e `src/models/userModel.js`.
+
+### Endpoints
+* `POST /api/auth/cadastro`: Cria conta de professor ou aluno. Valida formato e domínio de e-mail,
+  e-mail único, senha com no mínimo 6 caracteres e gera hash com `bcrypt` (12 rounds). Retorna `{ usuario, token }`.
+* `POST /api/auth/login`: Autentica o usuário validando e-mail e hash da senha. Retorna `{ usuario, token }`.
+* `GET /api/auth/me`: Rota protegida por JWT que retorna os dados do usuário autenticado.
+
+### Middleware de Proteção
+Para proteger qualquer rota do back-end (ex.: questões, turmas, provas), utilize o middleware em
+`src/middlewares/authMiddleware.js`:
+
+```javascript
+const { autenticar, exigirRole } = require('../middlewares/authMiddleware');
+
+// Exige token JWT válido (injetando req.usuario = { id, role, email, name })
+router.use(autenticar);
+
+// Exige papel específico (ex.: apenas professores podem criar/editar recursos)
+router.post('/', exigirRole('professor'), controller.criar);
+```
