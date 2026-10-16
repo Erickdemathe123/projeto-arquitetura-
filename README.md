@@ -124,6 +124,11 @@ Restrições e qualidades do sistema (desempenho, segurança, usabilidade, compa
 
 ## 3. Modelagem (UML)
 
+Revisão da T05 para 16/10, seguindo o documento de Gabriel:
+[quatro diagramas, fontes editáveis e passo a passo](docs/uml/gabriel/README.md).
+O banco da T07 segue esse modelo de oito entidades. Os diagramas abaixo
+preservam as versões anteriores do grupo.
+
 📌 **N2**
 
 Diagrama de casos de uso, diagrama de classes e diagrama de atividades do sistema (e demais diagramas que forem necessários). Os diagramas são escritos em PlantUML (fonte em `docs/uml/*.puml`) e exportados como PNG para a mesma pasta.

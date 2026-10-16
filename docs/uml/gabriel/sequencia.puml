@@ -1,0 +1,44 @@
+@startuml
+autonumber
+actor Professor
+participant "Front-end" as Front
+participant "API Express" as API
+participant "Auth JWT" as Auth
+participant Service
+participant Repository
+database MySQL
+Professor -> Front : Preenche o formulário
+Front -> API : POST /api/v1/questions + Bearer JWT
+API -> Auth : Verificar token e papel
+alt Token ausente ou inválido
+  Auth --> API : Falha de autenticação
+  API --> Front : 401 JSON
+else Papel diferente de professor
+  Auth --> API : Papel não autorizado
+  API --> Front : 403 JSON
+else Professor autenticado
+  Auth --> API : Identidade segura do professor
+  API -> Service : Criar questão
+  Service -> Service : Validar 2–5 alternativas e uma correta
+  alt Dados inválidos
+    Service --> API : Erro de validação
+    API --> Front : 400 JSON
+  else Dados válidos
+    Service -> Repository : Salvar questão
+    Repository -> MySQL : BEGIN + INSERT questão e alternativas
+    alt Falha de persistência
+      Repository -> MySQL : ROLLBACK
+      Repository --> Service : Erro
+      Service --> API : Erro interno
+      API --> Front : 500 JSON sem detalhes internos
+    else Sucesso
+      Repository -> MySQL : COMMIT
+      MySQL --> Repository : ID e alternativas
+      Repository --> Service : Objeto persistido
+      Service --> API : Questão
+      API --> Front : 201 Created + JSON
+      Front --> Professor : Mostra sucesso
+    end
+  end
+end
+@enduml
