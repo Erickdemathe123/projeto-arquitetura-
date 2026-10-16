@@ -65,12 +65,12 @@ CREATE TABLE IF NOT EXISTS alternatives (
   is_correct BOOLEAN NOT NULL,
   position TINYINT UNSIGNED NOT NULL,
   -- Índice técnico garante no máximo uma correta; a API exige exatamente uma.
-  correct_question_id BIGINT UNSIGNED GENERATED ALWAYS AS
-    (CASE WHEN is_correct = 1 THEN question_id ELSE NULL END) STORED,
+  correct_marker TINYINT GENERATED ALWAYS AS
+    (CASE WHEN is_correct = 1 THEN 1 ELSE NULL END) STORED,
   CONSTRAINT ck_alternative_position CHECK (position BETWEEN 0 AND 4),
   CONSTRAINT ck_alternative_boolean CHECK (is_correct IN (0, 1)),
   CONSTRAINT uq_alternative_position UNIQUE (question_id, position),
-  CONSTRAINT uq_alternative_correct UNIQUE (correct_question_id),
+  CONSTRAINT uq_alternative_correct UNIQUE (question_id, correct_marker),
   CONSTRAINT fk_alternative_question FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
 
