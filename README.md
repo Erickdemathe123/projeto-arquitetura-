@@ -310,24 +310,93 @@ docs/
 
 ## 10. Como Executar o Projeto
 
-Para a API com MySQL e a rota de saúde, consulte [Base do back-end](docs/backend.md).
+📌 **N1**, revisado a cada entrega (atualizado na N2: API conectada ao MySQL)
 
-📌 **N1**, revisado a cada entrega
+### Pré-requisitos
 
-Passo a passo para clonar e rodar o projeto localmente, incluindo as versões usadas (ex.: Node 20.x):
+| Ferramenta | Versão usada |
+|---|---|
+| Node.js | 22.x (LTS) |
+| npm | 10 ou superior (vem com o Node) |
+| MySQL | 8.4 ou superior, instalado localmente **ou** via Docker |
+| Git | qualquer versão recente |
+
+### 1. Clonar e instalar as dependências
 
 ```
-1. git clone https://github.com/Erickdemathe123/projeto-arquitetura-.git
-2. cd projeto-arquitetura-
-3. npm install
-4. npm run build
-5. npm start
+git clone https://github.com/Erickdemathe123/projeto-arquitetura-.git
+cd projeto-arquitetura-
+npm ci
 ```
 
-Durante a N1, os dados são armazenados no `localStorage`. O comando `npm run build`
-instala as dependências do frontend e gera `frontend/dist/`, que é servido pelo Express.
-As pastas de camadas em `src/` estão preparadas para a implementação da API na N2,
-sem conexão com o banco nesta etapa.
+### 2. Subir o banco MySQL
+
+**Opção A: MySQL instalado na máquina.** Crie o banco e as tabelas com o script
+de criação e, se quiser dados de teste, rode também o seed (apenas em desenvolvimento):
+
+```
+mysql -u root -p < database/schema.sql
+mysql -u root -p < database/seed.sql
+```
+
+**Opção B: Docker.** O arquivo `docker-compose.yml` sobe um MySQL 8.4 na porta 3306
+e, na primeira inicialização, aplica `schema.sql` e `seed.sql` automaticamente:
+
+```
+docker compose up -d
+```
+
+A senha do usuário `root` desse container é `sgp_dev_local` (somente para uso local).
+Para recriar o banco do zero, rode `docker compose down -v` e suba de novo.
+
+### 3. Configurar as variáveis de ambiente
+
+Copie o modelo e preencha com os dados do seu MySQL (`cp` no Linux/macOS, `copy` no Windows):
+
+```
+cp .env.example .env
+```
+
+| Variável | Para que serve |
+|---|---|
+| `PORT` | Porta da API (padrão 3000) |
+| `DB_HOST`, `DB_PORT` | Endereço do MySQL (`localhost` e `3306`) |
+| `DB_USER`, `DB_PASSWORD` | Usuário e senha do MySQL (no Docker: `root` / `sgp_dev_local`) |
+| `DB_NAME` | Nome do banco (`sgp`) |
+| `JWT_SECRET`, `JWT_EXPIRES_IN` | Segredo e validade do token de login |
+
+O `.env` está no `.gitignore` e nunca deve ser enviado ao GitHub.
+
+### 4. Executar
+
+```
+npm run build
+npm start
+```
+
+O `npm run build` instala as dependências do front-end e gera `frontend/dist/`, que é
+servido pelo Express em http://localhost:3000. Para desenvolver, use dois terminais:
+`npm run dev:api` (API com reinício automático) e `npm run dev` (front-end no Vite).
+
+### 5. Validar a conexão com o banco
+
+Com o servidor rodando, acesse http://localhost:3000/health:
+
+- `200 {"status":"ok","banco":"conectado"}`: API conectada ao MySQL.
+- `503 {"status":"indisponivel","banco":"desconectado"}`: confira o MySQL e o `.env`.
+
+### 6. Testes automatizados
+
+```
+npm test                          # API (não precisa de MySQL)
+node database/test-schema.cjs     # schema e seed (precisa de MySQL com permissão para criar bancos)
+```
+
+Mais detalhes da API e da autenticação em [Base do back-end](docs/backend.md) e do
+banco em [database/README.md](database/README.md).
+
+> Na N1, os dados ficavam no `localStorage` do navegador. Na N2, a API passa a
+> persistir no MySQL, e as telas estão sendo ligadas aos endpoints (tarefas T18 a T21).
 
 ## 11. Especificação da API
 
