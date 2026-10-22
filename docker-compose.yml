@@ -1,0 +1,22 @@
+# MySQL local para desenvolvimento (T10). Não usar em produção.
+# Na primeira subida, aplica database/schema.sql e database/seed.sql.
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: sgp-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: sgp_dev_local
+    ports:
+      - '3306:3306'
+    volumes:
+      - sgp-mysql-data:/var/lib/mysql
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02-seed.sql:ro
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', '127.0.0.1', '-psgp_dev_local']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  sgp-mysql-data:
