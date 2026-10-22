@@ -246,18 +246,189 @@ Aqui no README, liste os ADRs (Registros de Decisão Arquitetural) criados (se n
 
 📌 **N2**
 
-Diagrama MER/DER do banco de dados, exportado como imagem e salvo em `docs/modelo-dados/`:
+O banco MySQL (`sgp`) segue as oito entidades do diagrama de classes: `User`, `Class`,
+`Enrollment`, `Question`, `Alternative`, `Exam`, `ExamQuestion` e `Application`. O script
+de criação está em [`database/schema.sql`](database/schema.sql) e as regras de migração e
+integridade em [`database/README.md`](database/README.md).
 
-```
-![Modelo Entidade-Relacionamento](docs/modelo-dados/mer-der.png)
+### Diagrama Entidade-Relacionamento
+
+Gerado a partir do `schema.sql` (o GitHub renderiza o diagrama abaixo):
+
+```mermaid
+erDiagram
+    users ||--o{ classes : "professor cria"
+    users ||--o{ enrollments : "aluno se matricula"
+    classes ||--o{ enrollments : "possui"
+    users ||--o{ questions : "professor cria"
+    questions ||--|{ alternatives : "tem 2 a 5"
+    users ||--o{ exams : "professor cria"
+    exams ||--o{ exam_questions : "compõe"
+    questions ||--o{ exam_questions : "usada em"
+    exams ||--o{ applications : "aplicada em"
+    classes ||--o{ applications : "recebe"
+
+    users {
+        BIGINT id PK
+        VARCHAR name
+        VARCHAR email UK
+        VARCHAR password_hash
+        VARCHAR role
+        VARCHAR ra UK
+    }
+    classes {
+        BIGINT id PK
+        VARCHAR name
+        CHAR invite_code UK
+        BIGINT teacher_id FK
+        BOOLEAN archived
+    }
+    enrollments {
+        BIGINT id PK
+        BIGINT class_id FK
+        BIGINT student_id FK
+    }
+    questions {
+        BIGINT id PK
+        TEXT statement
+        BIGINT teacher_id FK
+        VARCHAR subject
+        VARCHAR topic
+    }
+    alternatives {
+        BIGINT id PK
+        BIGINT question_id FK
+        VARCHAR text
+        BOOLEAN is_correct
+        TINYINT position
+    }
+    exams {
+        BIGINT id PK
+        VARCHAR title
+        ENUM status
+        BIGINT teacher_id FK
+        VARCHAR public_code UK
+    }
+    exam_questions {
+        BIGINT id PK
+        BIGINT exam_id FK
+        BIGINT question_id FK
+        DECIMAL points
+        INT position
+    }
+    applications {
+        BIGINT id PK
+        BIGINT exam_id FK
+        BIGINT class_id FK
+        DATETIME applied_at
+    }
 ```
 
-Em seguida, o dicionário de dados: uma tabela por entidade, com os campos, tipos e uma breve descrição.
+### Dicionário de Dados
+
+Convenções: PK = chave primária, FK = chave estrangeira, UK = valor único. Todos os IDs são
+`BIGINT UNSIGNED AUTO_INCREMENT`. As colunas técnicas `teacher_role` e `student_role` têm valor
+fixo e existem só para que as FKs compostas `(id, role)` impeçam, por exemplo, um aluno de ser
+dono de uma turma.
+
+#### `users`: professores e alunos
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| id | INT (PK) | Identificador único do registro |
-| nome | VARCHAR(120) | Nome do usuário |
+| id | BIGINT UNSIGNED (PK) | Identificador do usuário |
+| name | VARCHAR(120) | Nome completo (obrigatório) |
+| email | VARCHAR(160) (UK) | E-mail de login, único em todo o sistema; obrigatório para professor |
+| password_hash | VARCHAR(255) | Hash bcrypt da senha; obrigatório para professor |
+| role | VARCHAR(9) | Papel: `professor` ou `aluno` |
+| ra | VARCHAR(30) (UK) | Registro acadêmico do aluno (usado na importação por CSV) |
+| created_at | TIMESTAMP | Data de criação do registro |
+
+#### `classes`: turmas
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| id | BIGINT UNSIGNED (PK) | Identificador da turma |
+| name | VARCHAR(120) | Nome da turma |
+| invite_code | CHAR(8) (UK) | Código de convite para o aluno entrar na turma |
+| teacher_id | BIGINT UNSIGNED (FK → users) | Professor dono da turma |
+| teacher_role | VARCHAR(9) | Técnico, sempre `professor` |
+| description | VARCHAR(255) | Descrição opcional |
+| archived | BOOLEAN | Indica se a turma foi arquivada (padrão `FALSE`) |
+| created_at | TIMESTAMP | Data de criação |
+| updated_at | TIMESTAMP | Data da última alteração |
+
+#### `enrollments`: matrículas (aluno × turma)
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| id | BIGINT UNSIGNED (PK) | Identificador da matrícula |
+| class_id | BIGINT UNSIGNED (FK → classes) | Turma; apagar a turma remove as matrículas (cascade) |
+| student_id | BIGINT UNSIGNED (FK → users) | Aluno matriculado |
+| student_role | VARCHAR(9) | Técnico, sempre `aluno` |
+| enrolled_at | DATETIME | Data da matrícula |
+
+Um aluno só pode estar uma vez em cada turma (`UNIQUE (class_id, student_id)`).
+
+#### `questions`: banco de questões
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| id | BIGINT UNSIGNED (PK) | Identificador da questão |
+| statement | TEXT | Enunciado |
+| teacher_id | BIGINT UNSIGNED (FK → users) | Professor autor; cada professor vê só as suas questões |
+| teacher_role | VARCHAR(9) | Técnico, sempre `professor` |
+| subject | VARCHAR(120) | Disciplina |
+| topic | VARCHAR(120) | Assunto |
+| created_at | TIMESTAMP | Data de criação |
+| updated_at | TIMESTAMP | Data da última alteração |
+
+#### `alternatives`: alternativas de cada questão
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| id | BIGINT UNSIGNED (PK) | Identificador da alternativa |
+| question_id | BIGINT UNSIGNED (FK → questions) | Questão; apagar a questão remove as alternativas (cascade) |
+| text | VARCHAR(255) | Texto da alternativa |
+| is_correct | BOOLEAN | Indica a alternativa correta |
+| position | TINYINT UNSIGNED | Ordem de 0 a 4 (A a E), única por questão |
+| correct_marker | TINYINT (gerado) | Coluna calculada que garante no máximo uma correta por questão |
+
+#### `exams`: provas
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| id | BIGINT UNSIGNED (PK) | Identificador da prova |
+| title | VARCHAR(120) | Título da prova |
+| status | ENUM | `draft` (rascunho), `ready` (aplicada) ou `closed` (encerrada) |
+| teacher_id | BIGINT UNSIGNED (FK → users) | Professor autor |
+| teacher_role | VARCHAR(9) | Técnico, sempre `professor` |
+| public_code | VARCHAR(20) (UK) | Código público da prova, para consulta do aluno |
+| legacy_details | JSON | Metadados da avaliação herdados da versão N1 |
+| created_at | TIMESTAMP | Data de criação |
+
+#### `exam_questions`: questões de cada prova
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| id | BIGINT UNSIGNED (PK) | Identificador do item |
+| exam_id | BIGINT UNSIGNED (FK → exams) | Prova; apagar a prova remove os itens (cascade) |
+| question_id | BIGINT UNSIGNED (FK → questions) | Questão usada |
+| teacher_id | BIGINT UNSIGNED | Professor; garante que prova e questão são do mesmo dono |
+| points | DECIMAL(6,2) | Pontuação da questão (maior que zero, padrão 1.00) |
+| position | INT UNSIGNED | Ordem da questão na prova, única por prova |
+
+#### `applications`: aplicação de uma prova a uma turma
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| id | BIGINT UNSIGNED (PK) | Identificador da aplicação |
+| exam_id | BIGINT UNSIGNED (FK → exams) | Prova aplicada |
+| class_id | BIGINT UNSIGNED (FK → classes) | Turma que recebe a prova |
+| teacher_id | BIGINT UNSIGNED | Professor; garante que prova e turma são do mesmo dono |
+| applied_at | DATETIME | Data em que a prova foi aplicada |
+| created_at | TIMESTAMP | Data de criação |
+
+Cada prova só pode ser aplicada uma vez à mesma turma (`UNIQUE (exam_id, class_id)`).
 
 ## 8. Stack Tecnológica
 
