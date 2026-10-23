@@ -2,6 +2,7 @@
 import { createEmptyWorkspace, loadWorkspace, saveWorkspace } from "./services/storage";
 import { SCREEN_TITLES } from "./constants/screens";
 import { dateKey } from "./utils/date";
+import { authApi, questoesApi, isAuthenticated } from "./services/api";
 
 const SCAN_MOCK_STUDENTS = ["João Silva", "Maria Souza", "Pedro Santos", "Ana Oliveira", "Lucas Pereira", "Beatriz Lima", "Gabriel Costa", "Larissa Almeida"];
 
@@ -18,6 +19,8 @@ export default {
       error: "",
       message: "",
       toast: "",
+      loadingAuth: false,
+      currentUser: null,
       questions: [],
       exams: [],
       turmas: [],
@@ -121,6 +124,22 @@ export default {
       });
     }
   },
+  async mounted() {
+    if (isAuthenticated()) {
+      try {
+        const user = await authApi.me();
+        if (user && user.email) {
+          this.currentUser = user;
+          this.name = user.name;
+          this.email = user.email;
+          await this.loadWorkspace();
+        }
+      } catch (erro) {
+        console.warn("Sessão expirada ou inválida:", erro.message);
+        authApi.logout();
+      }
+    }
+  },
   methods: {
     examQuestionsCountLabel(exam) {
       return `${exam.questionIds.length} ${exam.questionIds.length === 1 ? "questão" : "questões"}`;
@@ -172,29 +191,72 @@ export default {
       this.error = "";
       this.message = "";
     },
-    submitAuth() {
+    async submitAuth() {
       this.error = "";
       this.message = "";
       if (this.mode === "register" && !this.name.trim()) return (this.error = "Informe seu nome completo.");
       if (!this.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) return (this.error = "Digite um e-mail válido.");
       if (this.password.length < 6) return (this.error = "A senha deve ter pelo menos 6 caracteres.");
       if (this.mode === "register" && this.password !== this.confirmation) return (this.error = "As senhas não coincidem.");
-      const saved = loadWorkspace(this.email);
-      if (this.mode === "register") {
-        if (saved) return (this.error = "Já existe uma conta para este e-mail.");
-        saveWorkspace(this.email, createEmptyWorkspace(this.name, this.password));
-        this.message = "Conta criada com sucesso!";
-      } else {
-        if (saved && saved.password !== this.password) return (this.error = "E-mail ou senha inválidos.");
-        if (!saved) saveWorkspace(this.email, createEmptyWorkspace(this.email.split("@")[0], this.password));
-        this.message = "Login realizado com sucesso.";
+
+      try {
+        this.loadingAuth = true;
+        if (this.mode === "register") {
+          const res = await authApi.cadastro({
+            nome: this.name.trim(),
+            email: this.email.trim(),
+            senha: this.password,
+            role: "professor"
+          });
+          this.currentUser = res.usuario;
+          this.message = "Conta criada com sucesso!";
+        } else {
+          const res = await authApi.login({
+            email: this.email.trim(),
+            senha: this.password
+          });
+          this.currentUser = res.usuario;
+          this.name = res.usuario.name;
+          this.message = "Login realizado com sucesso.";
+        }
+        await this.loadWorkspace();
+      } catch (erro) {
+        // Erros de negócio da API (400, 401, 409) são exibidos diretamente ao usuário
+        if (erro.status === 400 || erro.status === 401 || erro.status === 409) {
+          this.error = erro.message;
+          return;
+        }
+        console.warn("API de autenticação indisponível, usando fallback local:", erro.message);
+        const saved = loadWorkspace(this.email);
+        if (this.mode === "register") {
+          if (saved) return (this.error = "Já existe uma conta para este e-mail.");
+          saveWorkspace(this.email, createEmptyWorkspace(this.name, this.password));
+          this.message = "Conta criada com sucesso!";
+        } else {
+          if (saved && saved.password !== this.password) return (this.error = "E-mail ou senha inválidos.");
+          if (!saved) saveWorkspace(this.email, createEmptyWorkspace(this.email.split("@")[0], this.password));
+          this.message = "Login realizado com sucesso.";
+        }
+        await this.loadWorkspace();
+      } finally {
+        this.loadingAuth = false;
       }
-      this.loadWorkspace();
     },
-    loadWorkspace() {
+    async loadWorkspace() {
       const saved = loadWorkspace(this.email) || {};
-      this.name = saved.name || this.name || this.email.split("@")[0];
-      this.questions = saved.questions || [];
+      this.name = this.currentUser?.name || saved.name || this.name || this.email.split("@")[0];
+
+      try {
+        const apiQuestions = await questoesApi.listar();
+        if (apiQuestions && Array.isArray(apiQuestions)) {
+          this.questions = apiQuestions;
+        } else {
+          this.questions = saved.questions || [];
+        }
+      } catch {
+        this.questions = saved.questions || [];
+      }
+
       this.exams = saved.exams || [];
       this.turmas = (saved.turmas || []).map((turma) => ({
         ...turma,
@@ -216,6 +278,8 @@ export default {
       this.error = "";
     },
     logout() {
+      authApi.logout();
+      this.currentUser = null;
       this.screen = "login";
       this.mode = "login";
       this.password = "";
@@ -260,13 +324,27 @@ export default {
       this.persist();
       this.notify("Aluno removido.");
     },
-    saveQuestion() {
+    async saveQuestion() {
       const form = this.questionForm;
       if (!form.text.trim() || !form.subject.trim() || !form.topic.trim()) return (this.error = "Preencha o enunciado, a disciplina e o assunto.");
       if (form.alternatives.some((alternative) => !alternative.trim())) return (this.error = "Preencha todas as alternativas.");
       const wasEditing = Boolean(this.editingQuestionId);
       const returnToExam = this.editingQuestionFromExam;
       const question = { id: this.editingQuestionId || Date.now(), ...form, alternatives: [...form.alternatives] };
+
+      try {
+        if (this.editingQuestionId) {
+          await questoesApi.editar(this.editingQuestionId, question);
+        } else {
+          const criada = await questoesApi.criar(question);
+          if (criada && criada.id) {
+            question.id = criada.id;
+          }
+        }
+      } catch (err) {
+        console.warn("API de questões indisponível ou com erro, mantendo local:", err.message);
+      }
+
       if (this.editingQuestionId) {
         const questionIndex = this.questions.findIndex((item) => item.id === this.editingQuestionId);
         this.questions.splice(questionIndex, 1, question);
@@ -312,7 +390,12 @@ export default {
       this.editingQuestionFromExam = false;
       this.navigate(returnToExam ? "newExam" : "questions");
     },
-    removeQuestion(question) {
+    async removeQuestion(question) {
+      try {
+        await questoesApi.remover(question.id);
+      } catch (err) {
+        console.warn("API de questões indisponível ao remover, mantendo local:", err.message);
+      }
       this.questions = this.questions.filter((item) => item.id !== question.id);
       this.exams = this.exams.map((exam) => ({ ...exam, questionIds: exam.questionIds.filter((id) => id !== question.id) }));
       this.persist();
@@ -526,7 +609,7 @@ export default {
 
     <main v-if="screen === 'login' || screen === 'register'" class="auth-page">
       <section class="auth-art"><div class="brand"><span class="brand-mark">SGP</span><span>Sistema de Geração de Provas</span></div><div class="art-copy"><span class="eyebrow">EDUCAÇÃO MAIS INTELIGENTE</span><h2>Crie. Organize.<br><strong>Avalie.</strong></h2><p>Uma plataforma feita para simplificar a criação, organização e geração de provas para professores.</p></div><svg class="auth-illustration" viewBox="0 0 500 330" aria-hidden="true"><circle cx="250" cy="160" r="130" fill="#dcf3ed"/><path d="M95 280h320" stroke="#17394e" stroke-width="3"/><rect x="125" y="170" width="55" height="110" rx="8" fill="#8bb1e9" stroke="#17394e" stroke-width="3"/><rect x="180" y="130" width="52" height="150" rx="8" fill="#83d2b6" stroke="#17394e" stroke-width="3"/><path d="M213 105c0-35 26-62 58-62s58 27 58 62l-12 42H225Z" fill="#ffda69" stroke="#17394e" stroke-width="3"/><path d="m270 185 55-64 26 26 50-59 22 20-66 83-30-28-37 47Z" fill="#6592df"/><path d="M230 204c38 0 63 16 84 35v41c-28-12-57-12-84 0ZM314 239c26-20 53-29 79-29v70c-27-1-52 8-79 19Z" fill="#fff" stroke="#17394e" stroke-width="3"/></svg></section>
-      <section class="auth-form"><div class="auth-card"><h1>{{ mode === "login" ? "Bem-vindo" : "Crie sua conta" }}</h1><p class="auth-subtitle">{{ mode === "login" ? "Entre para continuar sua jornada." : "Comece a criar provas de forma simples." }}</p>      <form novalidate @submit.prevent="submitAuth"><label v-if="mode === 'register'">Nome completo<input v-model="name" placeholder="Nome completo"></label><label>E-mail<input v-model="email" type="email" placeholder="E-mail"></label><label>Senha<span class="password-field"><input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="Senha"><button type="button" @click="showPassword = !showPassword" :title="showPassword ? 'Ocultar senha' : 'Mostrar senha'">{{ showPassword ? "◉" : "◌" }}</button></span></label><label v-if="mode === 'register'">Confirmar senha<input v-model="confirmation" type="password" placeholder="Confirmar senha"></label><p v-if="error" class="auth-error" role="alert">{{ error }}</p><p v-if="message" class="auth-message" role="status">{{ message }}</p><button class="primary-button" type="submit">{{ mode === "login" ? "Entrar" : "Cadastrar" }}</button>            </form><button class="text-button" @click="switchMode">{{ mode === "login" ? "Ainda não tenho uma conta" : "Já possuo uma conta" }} <strong>{{ mode === "login" ? "Criar conta" : "Entrar" }}</strong></button></div></section>
+      <section class="auth-form"><div class="auth-card"><h1>{{ mode === "login" ? "Bem-vindo" : "Crie sua conta" }}</h1><p class="auth-subtitle">{{ mode === "login" ? "Entre para continuar sua jornada." : "Comece a criar provas de forma simples." }}</p>      <form novalidate @submit.prevent="submitAuth"><label v-if="mode === 'register'">Nome completo<input v-model="name" placeholder="Nome completo"></label><label>E-mail<input v-model="email" type="email" placeholder="E-mail"></label><label>Senha<span class="password-field"><input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="Senha"><button type="button" @click="showPassword = !showPassword" :title="showPassword ? 'Ocultar senha' : 'Mostrar senha'">{{ showPassword ? "◉" : "◌" }}</button></span></label><label v-if="mode === 'register'">Confirmar senha<input v-model="confirmation" type="password" placeholder="Confirmar senha"></label><p v-if="error" class="auth-error" role="alert">{{ error }}</p><p v-if="message" class="auth-message" role="status">{{ message }}</p><button class="primary-button" type="submit" :disabled="loadingAuth">{{ loadingAuth ? "Processando..." : (mode === "login" ? "Entrar" : "Cadastrar") }}</button>            </form><button class="text-button" @click="switchMode">{{ mode === "login" ? "Ainda não tenho uma conta" : "Já possuo uma conta" }} <strong>{{ mode === "login" ? "Criar conta" : "Entrar" }}</strong></button></div></section>
     </main>
     <main v-else-if="screen === 'studentPortal'" class="student-portal"><div class="student-portal-card"><span class="brand-mark">SGP</span><h1>Consulta de resultado</h1><p>Informe o código único impresso na sua prova.</p><form @submit.prevent="consultStudentResult"><label>Código da prova<input v-model="studentCode" placeholder="Ex.: SGP-ABC123"></label><p v-if="error" class="auth-error">{{ error }}</p><button class="primary-button" type="submit">Consultar</button></form><div v-if="consultedExam" class="student-result"><div v-if="!consultedExam.released" class="empty-card"><span>🔒</span><h2>Gabarito ainda não liberado</h2><p>O professor precisa liberar o resultado para esta consulta.</p></div><div v-else class="released-result"><span class="eyebrow">RESULTADO LIBERADO</span><h2>{{ consultedExam.name }}</h2><p>O resultado da sua avaliação está disponível.</p><div class="result-placeholder">Nota e respostas aparecerão aqui após a correção.</div></div></div><button class="text-button" @click="screen = 'login'">Acesso do professor</button></div></main>
     <div v-else class="app-shell">
