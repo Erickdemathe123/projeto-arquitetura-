@@ -2,13 +2,7 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const userRepository = require('../repositories/userRepository');
-
-class ErroDeNegocio extends Error {
-  constructor(status, mensagem) {
-    super(mensagem);
-    this.status = status;
-  }
-}
+const { ErroDeNegocio } = require('../errors/appError');
 
 const SALT_ROUNDS = 12;
 const JWT_SECRET = process.env.JWT_SECRET || 'sgp_jwt_secret_dev_key_2026';

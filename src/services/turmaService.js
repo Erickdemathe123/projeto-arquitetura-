@@ -3,13 +3,7 @@ const crypto = require('crypto');
 const turmaRepository = require('../repositories/turmaRepository');
 const alunoRepository = require('../repositories/alunoRepository');
 
-// Erro com status HTTP, para o controller saber qual código devolver
-class ErroDeNegocio extends Error {
-  constructor(status, mensagem) {
-    super(mensagem);
-    this.status = status;
-  }
-}
+const { ErroDeNegocio } = require('../errors/appError');
 
 // Sem 0, O, 1 e I para evitar confusão ao digitar o código
 const ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
