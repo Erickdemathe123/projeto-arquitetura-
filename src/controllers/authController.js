@@ -3,10 +3,13 @@ const authService = require('../services/authService');
 const { ErroDeNegocio } = authService;
 
 function tratar(acao) {
-  return async (req, res) => {
+  return async (req, res, next) => {
     try {
-      await acao(req, res);
+      await acao(req, res, next);
     } catch (erro) {
+      if (typeof next === 'function') {
+        return next(erro);
+      }
       if (erro instanceof ErroDeNegocio) {
         return res.status(erro.status).json({ erro: erro.message });
       }
