@@ -14,8 +14,10 @@ users.role distingue professor/aluno e email tem unicidade global.
 ## Instalação nova
 
 Requer MySQL 8.4+ e Node 22. Execute `npm ci`, configure `.env` e aplique
-`mysql -u root -p < database/schema.sql`. O script cria e seleciona sgp.
-Não rode o seed na hospedagem. Use usuário com privilégios restritos para a API.
+`mysql -u root -p sgp < database/schema.sql`. Crie o banco `sgp` antes de
+aplicar o schema. Os scripts usam o banco selecionado pela conexão; não criam
+nem selecionam bancos por conta própria. Não rode o seed na hospedagem. Use
+usuário com privilégios restritos para a API.
 
 ## Migração de banco existente
 
@@ -66,8 +68,8 @@ Mesmo quem executou o 001 pode usar o 002; aplicações adicionais são copiadas
 
 ## Seed e testes
 
-`mysql -u root -p < database/seed.sql` popula dados fictícios e repetíveis em
-desenvolvimento: dois professores, dois alunos, duas turmas, matrículas,
+`mysql -u root -p sgp < database/seed.sql` popula dados fictícios e repetíveis
+em desenvolvimento: dois professores, dois alunos, duas turmas, matrículas,
 questões com alternativas, prova e aplicação. Senha de teste dos professores:
 SgpTeste2026! (bcrypt). Não carregar essas contas em produção.
 

@@ -17,6 +17,21 @@ inicia HTTP e encerra conexões nos sinais SIGINT/SIGTERM. O fluxo de saúde seg
 rota → controller → service → repository. Model representa entidades de domínio,
 como Turma; a consulta de conectividade não representa uma entidade persistida.
 
+## MySQL gerenciado no Aiven
+
+O serviço MySQL do Aiven exige TLS. Configure no Render as variáveis
+`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` e `DB_NAME=defaultdb`.
+Ative `DB_SSL=true` e adicione o CA certificate do Aiven como Secret File no
+Render, definindo `DB_SSL_CA_PATH` para o caminho do arquivo (por exemplo,
+`/etc/secrets/aiven-ca.pem`). O pool valida o certificado TLS; não desative
+`rejectUnauthorized`.
+
+Importe `database/schema.sql` selecionando primeiro o banco `defaultdb`.
+Não execute `database/seed.sql` no banco de produção. Restrinja no Aiven as
+origens de rede permitidas às faixas de saída do Render necessárias ao serviço.
+Cadastre a senha e o segredo JWT diretamente no painel do Render; não os envie
+ao Git, ao README ou ao chat.
+
 Execute `npm test` para verificar respostas HTTP de saúde, erro do banco,
 rota desconhecida e JSON inválido. O teste substitui somente o acesso ao banco;
 não comprova conectividade com um MySQL instalado. Para essa checagem, inicie o
