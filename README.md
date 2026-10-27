@@ -506,8 +506,9 @@ npm ci
 de criação e, se quiser dados de teste, rode também o seed (apenas em desenvolvimento):
 
 ```
-mysql -u root -p < database/schema.sql
-mysql -u root -p < database/seed.sql
+mysql -u root -p -e "CREATE DATABASE sgp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+mysql -u root -p sgp < database/schema.sql
+mysql -u root -p sgp < database/seed.sql
 ```
 
 **Opção B: Docker.** O arquivo `docker-compose.yml` sobe um MySQL 8.4 na porta 3306
@@ -534,9 +535,14 @@ cp .env.example .env
 | `DB_HOST`, `DB_PORT` | Endereço do MySQL (`localhost` e `3306`) |
 | `DB_USER`, `DB_PASSWORD` | Usuário e senha do MySQL (no Docker: `root` / `sgp_dev_local`) |
 | `DB_NAME` | Nome do banco (`sgp`) |
+| `DB_SSL` | Ativa TLS quando `true` (necessário para o Aiven) |
+| `DB_SSL_CA_PATH` | Caminho para o CA certificate quando TLS estiver ativo |
 | `JWT_SECRET`, `JWT_EXPIRES_IN` | Segredo e validade do token de login |
 
 O `.env` está no `.gitignore` e nunca deve ser enviado ao GitHub.
+Para usar o Aiven, configure as variáveis de banco no Render com `DB_NAME=defaultdb`,
+`DB_SSL=true` e o caminho do CA certificate instalado como Secret File. Cadastre
+a senha diretamente no painel do Render, nunca no repositório.
 
 ### 4. Executar
 

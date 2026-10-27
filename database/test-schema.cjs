@@ -12,6 +12,8 @@ async function main() {
   const prefix = 'sgp_t07_test_' + process.pid + '_' + Date.now();
   const databases = [prefix + '_fresh', prefix + '_upgrade'];
   async function runFile(file, database) {
+    await connection.query('CREATE DATABASE IF NOT EXISTS `' + database + '`');
+    await connection.query('USE `' + database + '`');
     const sql = (await fs.readFile(path.join(__dirname, file), 'utf8')).replace(/\bsgp\b/g, database);
     for (const statement of sql.split(/;\s*(?:\r?\n|$)/).filter(part=>part.trim())) {
       try { await connection.query(statement); }

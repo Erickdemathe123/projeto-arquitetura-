@@ -1,5 +1,13 @@
 const mysql = require('mysql2/promise');
+const fs = require('node:fs');
 require('dotenv').config();
+
+const sslEnabled = /^(1|true|yes)$/i.test(process.env.DB_SSL || '');
+const sslCaPath = process.env.DB_SSL_CA_PATH?.trim();
+
+if (sslCaPath && !sslEnabled) {
+  throw new Error('DB_SSL_CA_PATH requer DB_SSL=true.');
+}
 
 // Pool de conexões com o MySQL. Os dados vêm do arquivo .env (não versionado).
 const pool = mysql.createPool({
@@ -12,7 +20,15 @@ const pool = mysql.createPool({
   connectionLimit: 10,
   connectTimeout: 5000,
   queueLimit: 100,
-  charset: 'utf8mb4'
+  charset: 'utf8mb4',
+  ...(sslEnabled
+    ? {
+        ssl: {
+          rejectUnauthorized: true,
+          ...(sslCaPath ? { ca: fs.readFileSync(sslCaPath, 'utf8') } : {})
+        }
+      }
+    : {})
 });
 
 module.exports = pool;

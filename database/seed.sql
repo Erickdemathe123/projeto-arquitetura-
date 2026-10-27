@@ -1,5 +1,4 @@
 -- Dados fictícios. Executar manualmente apenas em desenvolvimento/teste.
-USE sgp;
 START TRANSACTION;
 INSERT INTO users (name,email,password_hash,role,ra) VALUES
 ('Professor Teste A','professor.a@example.test','$2b$12$4v1wcESnqVO4wQYHQ1pJSuS32RsErJo0Et6yFKHBsl3xrCE.DAQ62','professor',NULL),

@@ -6,6 +6,7 @@ services:
     container_name: sgp-mysql
     environment:
       MYSQL_ROOT_PASSWORD: sgp_dev_local
+      MYSQL_DATABASE: sgp
     ports:
       - '3306:3306'
     volumes:

@@ -1,7 +1,5 @@
 -- Modelo de Gabriel: User, Class, Enrollment, Question, Alternative,
 -- Exam, ExamQuestion e Application. MySQL 8.4+.
-CREATE DATABASE IF NOT EXISTS sgp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-USE sgp;
 
 CREATE TABLE IF NOT EXISTS users (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
