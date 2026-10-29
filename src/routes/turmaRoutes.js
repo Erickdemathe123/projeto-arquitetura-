@@ -1,12 +1,16 @@
 // Rotas: mapeiam método + endereço para a função do controller.
-// Este roteador é montado em /api/turmas no server.js.
+// Este roteador é montado em /api/turmas no app.js.
 const { Router, text } = require('express');
 const controller = require('../controllers/turmaController');
+const { autenticar, exigirRole } = require('../middlewares/authMiddleware');
 
 const router = Router();
 
-// Aluno entra na turma com o código de convite
+// Rota pública: aluno entra na turma com o código de convite
 router.post('/entrar', controller.entrar);
+
+// Todas as rotas abaixo exigem login de professor (token JWT)
+router.use(autenticar, exigirRole('professor'));
 
 // Turmas do professor
 router.post('/', controller.criar);
