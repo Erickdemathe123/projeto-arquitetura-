@@ -136,7 +136,56 @@ export const questoesApi = {
   }
 };
 
-export default {
+export const turmasApi = {
+  listar(arquivadas = false) {
+    return request(`/turmas${arquivadas ? '?arquivadas=true' : ''}`, { method: 'GET' });
+  },
+
+  criar({ nome, descricao }) {
+    return request('/turmas', {
+      method: 'POST',
+      body: JSON.stringify({ nome, descricao })
+    });
+  },
+
+  editar(id, { nome, descricao }) {
+    return request(`/turmas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ nome, descricao })
+    });
+  },
+
+  arquivar(id, arquivada = true) {
+    return request(`/turmas/${id}/arquivar`, {
+      method: 'PATCH',
+      body: JSON.stringify({ arquivada })
+    });
+  },
+
+  listarAlunos(id) {
+    return request(`/turmas/${id}/alunos`, { method: 'GET' });
+  },
+
+  matricular(id, { nome, ra }) {
+    return request(`/turmas/${id}/alunos`, {
+      method: 'POST',
+      body: JSON.stringify({ nome, ra })
+    });
+  },
+
+  removerAluno(id, alunoId) {
+    return request(`/turmas/${id}/alunos/${alunoId}`, { method: 'DELETE' });
+  },
+
+  // Envia o conteúdo do arquivo CSV como texto puro (RF05)
+  importarCsv(id, conteudoCsv) {
+    return request(`/turmas/${id}/alunos/importar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/csv' },
+      body: conteudoCsv
+    });
+  }
+};export default {
   getToken,
   setToken,
   removeToken,
