@@ -185,7 +185,9 @@ export const turmasApi = {
       body: conteudoCsv
     });
   }
-};export default {
+};
+  
+export default {
   getToken,
   setToken,
   removeToken,
