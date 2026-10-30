@@ -119,7 +119,10 @@ export const avaliacoesApi = {
     body: JSON.stringify({ released })
   }),
   remover: (id) => request(`/avaliacoes/${id}`, { method: 'DELETE' }),
-  consultarCodigo: (code) => request(`/avaliacoes/codigo/${encodeURIComponent(code)}`, { method: 'GET' })
+  consultarCodigo: (code, ra) => request(
+    `/avaliacoes/codigo/${encodeURIComponent(code)}${ra ? `?ra=${encodeURIComponent(ra)}` : ''}`,
+    { method: 'GET' }
+  )
 };
 
 export const resultadosApi = {

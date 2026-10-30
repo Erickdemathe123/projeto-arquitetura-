@@ -6,6 +6,8 @@
 
 🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
 
+> **Estado da N2:** login/cadastro, turmas e alunos, banco de questões, avaliações, correção de provas (lançamento de notas) e consulta de resultado pelo aluno são persistidos pela API Express no MySQL. A geração de arquivos, a leitura automática de respostas (câmera/QR) e as estatísticas ainda não estão implementadas; a interface informa essa indisponibilidade.
+
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
 ![Express](https://img.shields.io/badge/Express-000000?style=for-the-badge&logo=express&logoColor=white)
@@ -591,7 +593,7 @@ retornam `204 No Content`.
 | PUT | `/api/avaliacoes/:id` | Professor | Atualiza a avaliação usando os mesmos campos da criação |
 | PATCH | `/api/avaliacoes/:id/gabarito` | Professor | Altera a liberação do gabarito com `{ "released": true }` ou `{ "released": false }` |
 | DELETE | `/api/avaliacoes/:id` | Professor | Remove avaliação |
-| GET | `/api/avaliacoes/codigo/:code` | Público | Consulta avaliação pelo código público e informa os dados públicos e a disponibilidade do gabarito |
+| GET | `/api/avaliacoes/codigo/:code` | Público | Consulta avaliação pelo código público; com `?ra=<RA>`, retorna também a nota correspondente quando o gabarito estiver liberado e houver resultado lançado para esse aluno |
 | GET | `/api/avaliacoes/:id/resultados` | Professor | Lista os resultados da avaliação e retorna `totalMatriculados`, `corrigidos` e `status` (`pendente`, `em_andamento` ou `concluida`) |
 | POST | `/api/avaliacoes/:id/resultados` | Professor | Registra ou atualiza nota com `ra` e `score` (de `0` a `10`); exige avaliação aplicada a uma turma e aluno matriculado nela |
 | DELETE | `/api/avaliacoes/:id/resultados/:alunoId` | Professor | Remove o resultado do aluno na avaliação |
@@ -614,7 +616,7 @@ Guia rápido de como usar o sistema, do ponto de vista de quem vai operá-lo (o 
 
 📌 **N1**
 
-- **Erick Andrei Demathé**: criação do repositório; diagramas UML de classes e de atividades e extensão inicial do schema do banco (N2); correção de provas integrada ao MySQL — tabela `results`, API `/api/avaliacoes/:id/resultados` e tela "Corrigir Provas" (T20).
+- **Erick Andrei Demathé**: criação do repositório; diagramas UML de classes e de atividades e extensão inicial do schema do banco (N2); correção de provas integrada ao MySQL — tabela `results`, API `/api/avaliacoes/:id/resultados` e tela "Corrigir Provas" — e consulta de resultado pelo aluno por código + RA (RF10) (T20).
 - **Gabriel Hoeft Tissi**: principais contribuições.
 - **Henrique Cezar da Silveira**: setup inicial do repositório e da estrutura de pastas; desenvolvimento das telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas; organização e estruturação do front-end em Vue; configuração da publicação do front-end na Vercel, do back-end no Render e do banco MySQL no Aiven; integração entre os serviços, incluindo o encaminhamento das chamadas `/api` pela Vercel e a conexão segura da API com o banco.
 - **Renan Gabriel Piechontcoski**: documentação das telas do sistema (capturas de tela de todas as telas principais em `docs/telas/`) e atualização do README v1 com as imagens e legendas da seção 4.
