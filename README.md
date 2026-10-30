@@ -427,11 +427,17 @@ Tecnologias usadas no projeto e por que cada uma foi escolhida. A stack obrigat�
 ![Express](https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=flat-square&logo=mysql&logoColor=white)
 
-- **Node.js**: ambiente de execução do back-end.
-- **Express**: framework para as rotas e a API REST.
-- **MySQL**: banco de dados relacional.
-
-Se a equipe usar outras bibliotecas relevantes (ex.: JWT para autenticação, bcrypt para senhas, dotenv para variáveis de ambiente), liste aqui também, com uma linha dizendo para que serve cada uma.
+- **Node.js 22**: ambiente de execução do back-end.
+- **Express 5**: framework das rotas e da API REST, organizada em camadas (rota → controller → serviço → repositório → model).
+- **MySQL 8.4**: banco de dados relacional, acessado pela biblioteca **mysql2**, com pool de conexões e consultas parametrizadas.
+- **bcrypt**: gera o hash das senhas antes de gravá-las no banco (RNF06).
+- **jsonwebtoken (JWT)**: gera e valida o token de login que protege as rotas da API.
+- **dotenv**: lê as configurações (banco, porta, segredo do JWT) do arquivo `.env`, que não vai para o GitHub.
+- **Vue 3 + Vite**: front-end em página única; o Vite roda o ambiente de desenvolvimento e gera o build em `frontend/dist/`.
+- **node:test**: executor de testes nativo do Node, usado no `npm test`.
+- **Docker Compose**: sobe um MySQL local para desenvolvimento.
+- **Hospedagem**: front-end na **Vercel**, API no **Render** e banco MySQL no **Aiven** (conexão com TLS). A Vercel encaminha as chamadas `/api` para o Render.
+- **GitHub Actions**: valida o schema do banco em todo PR que altera a pasta `database/`.
 
 ## 9. Estrutura de Pastas
 
