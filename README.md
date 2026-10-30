@@ -1,18 +1,3 @@
-> **Este é o modelo (esqueleto) do README.md do projeto.** Ele mostra os títulos, subtítulos e o que escrever em cada um, com exemplos de como e onde inserir diagramas, prints e links. Copie a estrutura abaixo para o `README.md` do repositório da sua equipe e vá preenchendo e expandindo ao longo do semestre. Não é para entregar este arquivo preenchido com estes textos de exemplo, ele existe só para te mostrar o padrão esperado.
->
-> O README evolui em 3 versões, uma por entrega: **v1 na N1**, **v2 na N2** e **final na N3**. Cada seção abaixo tem uma marca (📌 **N1** / 📌 **N2** / 📌 **N3**) indicando a partir de qual entrega ela passa a ser obrigatória. O conteúdo de uma entrega anterior continua no README, só é ajustado se necessário, nunca apagado.
-
----
-
-## Como usar este modelo
-
-1. Crie a pasta `docs/` na raiz do repositório, com as subpastas `docs/uml/`, `docs/telas/`, `docs/arquitetura/`, `docs/adr/`, `docs/modelo-dados/` e `docs/api/`.
-2. Salve cada diagrama, print ou arquivo de apoio na subpasta correspondente.
-3. No README, referencie a imagem com a sintaxe `![Descrição da imagem](docs/pasta/arquivo.png)`, assim ela aparece direto na página do repositório, sem precisar abrir outro arquivo.
-4. Mantenha o Sumário atualizado conforme for preenchendo as seções.
-
----
-
 <div align="center">
 
 # 🚀 SGP — Sistema de Geração de Provas
@@ -36,8 +21,6 @@
 
 </div>
 
-> 💡 Troque os links dos badges acima se quiser (ex.: apontar a badge de status para "N2" ou "N3" conforme a fase). Eles são só visuais, não afetam o código.
-
 ## 👥 Equipe
 
 | Nome completo | Papel / principais frentes no projeto |
@@ -46,7 +29,7 @@
 | Gabriel Hoeft Tissi | |
 | Henrique Cezar da Silveira | Setup inicial, Front-end, Versionamento, Documentação |
 | Renan Gabriel Piechontcoski | |
-| Tasciane Negelski Broca | |
+| Tasciane Negelski Broca | Diagramas UML (casos de uso), API de turmas e importação de alunos por CSV, integração das turmas no front-end, README v2 |
 
 ## 📑 Sumário
 
@@ -173,7 +156,11 @@ Descreve o fluxo de atividades da correção de provas, incluindo o desvio de de
 
 ### Diagrama de Casos de Uso
 
-*(pendente — adicionar quando o levantamento de atores/casos de uso do sistema for finalizado)*
+![Diagrama de Casos de Uso](docs/uml/casodeuso.png)
+
+Mostra os dois atores externos do SGP e o que cada um faz no sistema. O **Professor** importa a lista de alunos, cria e edita provas, gera as provas e o gabarito, corrige as provas, consulta as avaliações, gera as estatísticas das respostas e o relatório de notas e edita o layout da prova. O **Aluno** se identifica na prova e consulta o seu resultado.
+
+A análise do cenário, a lista de atores e casos de uso e o passo a passo da criação estão em [N2-P1.md](N2-P1.md). A versão revisada na T05, que inclui autenticação, turmas e matrícula, está em [docs/uml/gabriel](docs/uml/gabriel/README.md).
 
 ## 4. Telas do Sistema
 
@@ -442,15 +429,17 @@ Tecnologias usadas no projeto e por que cada uma foi escolhida. A stack obrigat�
 ![Express](https://img.shields.io/badge/Express-000000?style=flat-square&logo=express&logoColor=white)
 ![MySQL](https://img.shields.io/badge/MySQL-4479A1?style=flat-square&logo=mysql&logoColor=white)
 
-- **Node.js**: ambiente de execução do back-end.
-- **Express**: framework para as rotas e a API REST.
-- **MySQL**: banco de dados relacional.
-- **Vue.js e Vite**: interface web reativa e ferramenta de desenvolvimento/build do front-end.
-- **JWT**: autenticação das rotas administrativas.
-- **bcrypt**: hash seguro das senhas.
-- **dotenv**: carregamento das configurações locais por variáveis de ambiente.
-
-Se a equipe usar outras bibliotecas relevantes (ex.: JWT para autenticação, bcrypt para senhas, dotenv para variáveis de ambiente), liste aqui também, com uma linha dizendo para que serve cada uma.
+- **Node.js 22**: ambiente de execução do back-end.
+- **Express 5**: framework das rotas e da API REST, organizada em camadas (rota → controller → serviço → repositório → model).
+- **MySQL 8.4**: banco de dados relacional, acessado pela biblioteca **mysql2**, com pool de conexões e consultas parametrizadas.
+- **bcrypt**: gera o hash das senhas antes de gravá-las no banco (RNF06).
+- **jsonwebtoken (JWT)**: gera e valida o token de login que protege as rotas da API.
+- **dotenv**: lê as configurações (banco, porta, segredo do JWT) do arquivo `.env`, que não vai para o GitHub.
+- **Vue 3 + Vite**: front-end em página única; o Vite roda o ambiente de desenvolvimento e gera o build em `frontend/dist/`.
+- **node:test**: executor de testes nativo do Node, usado no `npm test`.
+- **Docker Compose**: sobe um MySQL local para desenvolvimento.
+- **Hospedagem**: front-end na **Vercel**, API no **Render** e banco MySQL no **Aiven** (conexão com TLS). A Vercel encaminha as chamadas `/api` para o Render.
+- **GitHub Actions**: valida o schema do banco em todo PR que altera a pasta `database/`.
 
 ## 9. Estrutura de Pastas
 
@@ -575,32 +564,45 @@ npm test                          # API (não precisa de MySQL)
 node database/test-schema.cjs     # schema e seed (precisa de MySQL com permissão para criar bancos)
 ```
 
-Mais detalhes do banco em [database/README.md](database/README.md).
+Mais detalhes da API e da autenticação em [Base do back-end](docs/backend.md) e do banco em [database/README.md](database/README.md).
 
-> Na N1, os dados de domínio ficavam no `localStorage` do navegador. Na N2, as telas de turmas/alunos, questões e avaliações usam a API e o MySQL; não há migração dos dados locais antigos. O `localStorage` permanece apenas para armazenar o token de autenticação.
+### 7. Estado atual da integração com o banco
+
+Na N1, os dados ficavam no `localStorage` do navegador. Na N2, a API passa a persistir no MySQL. Situação de cada parte do sistema:
+
+| Funcionalidade | Situação na N2 |
+|---|---|
+| Cadastro e login de professor (RF01) | Integrado à API e ao MySQL (T11 e T18), com senha criptografada (bcrypt) e token JWT |
+| Turmas, matrículas e importação de alunos por CSV (RF05) | API pronta (T13 e T14) e tela "Minhas Turmas" ligada aos endpoints (T19), com rotas protegidas por login |
+| Banco de questões (RF02) | Tela pronta para usar `/api/questoes` (T18); enquanto a API de questões (T12) não estiver no servidor, os dados ficam no navegador |
+| Avaliações, correção e estatísticas (RF03 a RF12) | Ainda no `localStorage`; as tabelas `exams`, `exam_questions` e `applications` já existem no banco |
+| Verificação de saúde (`/health`) | Consulta o MySQL e informa se o banco está conectado |
 
 ## 11. Especificação da API
 
 📌 **N2**
 
-As rotas administrativas exigem JWT de usuário com papel `professor`. A consulta por código é pública e informa apenas se o gabarito foi liberado; não retorna nota nem respostas.
+Todas as rotas respondem em JSON. Nas rotas marcadas como **Professor** ou **Logado**, é preciso enviar o token recebido no login no cabeçalho `Authorization: Bearer <token>`. Os erros seguem o formato `{ "erro": "mensagem" }`.
 
-| Método | Rota | Descrição |
-|---|---|---|
-| POST | `/api/auth/cadastro` | Cadastra professor e inicia sessão |
-| POST | `/api/auth/login` | Autentica professor |
-| GET | `/api/auth/me` | Retorna o usuário autenticado |
-| GET, POST | `/api/turmas` | Lista e cria turmas do professor |
-| PATCH | `/api/turmas/:id/arquivar` | Arquiva turma |
-| GET, POST | `/api/turmas/:id/alunos` | Lista e matricula alunos |
-| DELETE | `/api/turmas/:id/alunos/:alunoId` | Remove matrícula |
-| POST | `/api/turmas/:id/alunos/importar` | Importa alunos de CSV (`text/csv`) |
-| GET, POST | `/api/questoes` | Lista e cria questões |
-| PUT, DELETE | `/api/questoes/:id` | Atualiza ou remove questão |
-| GET, POST | `/api/avaliacoes` | Lista e cria avaliações |
-| PUT, DELETE | `/api/avaliacoes/:id` | Atualiza ou remove avaliação |
-| PATCH | `/api/avaliacoes/:id/gabarito` | Libera ou bloqueia consulta do gabarito |
-| GET | `/api/avaliacoes/codigo/:code` | Consulta pública de disponibilidade pelo código |
+| Método | Rota | Acesso | Descrição |
+|---|---|---|---|
+| GET | `/health` | Público | Verifica se a API está no ar e conectada ao MySQL |
+| POST | `/api/auth/cadastro` | Público | Cadastra um usuário (professor ou aluno) |
+| POST | `/api/auth/login` | Público | Faz login com e-mail e senha e devolve o token JWT |
+| GET | `/api/auth/me` | Logado | Retorna os dados do usuário do token |
+| POST | `/api/turmas/entrar` | Público | Aluno entra numa turma com o código de convite (`codigo`, `ra` e `nome`) |
+| GET | `/api/turmas` | Professor | Lista as turmas do professor (`?arquivadas=true` lista as arquivadas) |
+| POST | `/api/turmas` | Professor | Cria uma turma (`nome` e `descricao`) e gera o código de convite |
+| GET | `/api/turmas/:id` | Professor | Detalha uma turma |
+| PUT | `/api/turmas/:id` | Professor | Edita o nome e a descrição da turma |
+| PATCH | `/api/turmas/:id/arquivar` | Professor | Arquiva a turma (com `{ "arquivada": false }`, desarquiva) |
+| POST | `/api/turmas/:id/codigo` | Professor | Gera um novo código de convite |
+| GET | `/api/turmas/:id/alunos` | Professor | Lista os alunos matriculados na turma |
+| POST | `/api/turmas/:id/alunos` | Professor | Matricula um aluno (`ra` e `nome`); reaproveita o cadastro se o RA já existir |
+| DELETE | `/api/turmas/:id/alunos/:alunoId` | Professor | Remove o aluno da turma |
+| POST | `/api/turmas/:id/alunos/importar` | Professor | Importa alunos de um CSV (RF05) enviado como texto (`Content-Type: text/csv`), com as colunas `nome` e `RA` separadas por `;` ou `,` e até 1000 linhas; devolve as listas `matriculados`, `jaMatriculados` e `erros` (por linha) |
+
+As rotas de questões (`/api/questoes`) serão documentadas aqui quando a T12 for entregue.
 
 ## 12. Testes e Validações
 
@@ -626,7 +628,7 @@ Nome: principais contribuições no projeto (ex.: telas de cadastro, integraçã
 - **Gabriel Hoeft Tissi**: principais contribuições.
 - **Henrique Cezar da Silveira**: setup inicial do repositório e da estrutura de pastas, telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas, organização da estrutura Vue do front-end.
 - **Renan Gabriel Piechontcoski**: documentação das telas do sistema (capturas de tela de todas as telas principais em `docs/telas/`) e atualização do README v1 com as imagens e legendas da seção 4.
-- **Tasciane Negelski Broca**: diagramas UML (casos de uso e classes).
+- **Tasciane Negelski Broca**: diagramas UML de casos de uso e de classes (N1) e passo a passo do diagrama de casos de uso; API de turmas e matrículas e de importação de alunos por CSV; integração da tela de turmas ao back-end, com rotas protegidas por login; README v2.
 
 ---
 
