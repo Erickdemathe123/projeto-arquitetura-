@@ -69,10 +69,11 @@ async function remover(professorId, id) {
   if (!removed) throw new ErroDeNegocio(404, 'Avaliação não encontrada.');
 }
 
-async function consultarCodigo(code) {
+async function consultarCodigo(code, ra) {
   const normalized = typeof code === 'string' ? code.trim().toUpperCase() : '';
   if (!normalized) throw new ErroDeNegocio(400, 'Informe o código da prova.');
-  const result = await repository.buscarPublicoPorCodigo(normalized);
+  const raLimpo = typeof ra === 'string' ? ra.trim() : '';
+  const result = await repository.buscarPublicoPorCodigo(normalized, raLimpo || null);
   if (!result) throw new ErroDeNegocio(404, 'Código de prova não encontrado.');
   return result;
 }

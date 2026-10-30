@@ -51,6 +51,7 @@ export default {
       calendarYear: new Date().getFullYear(),
       previewExam: null,
       studentCode: "",
+      studentRa: "",
       consultedExam: null,
       scanStep: "list",
       scanLoading: false,
@@ -569,15 +570,15 @@ export default {
     },
     async consultStudentResult() {
       const code = this.studentCode.trim().toUpperCase();
+      const ra = this.studentRa.trim();
+      if (!ra) {
+        this.consultedExam = null;
+        this.error = "Informe também o seu RA.";
+        return;
+      }
       try {
-        const result = await avaliacoesApi.consultarCodigo(code);
-        if (!result.resultAvailable) {
-          this.consultedExam = null;
-          this.error = `A avaliação "${result.name}" foi encontrada, mas notas e respostas ainda não estão disponíveis porque a correção não está implementada.`;
-        } else {
-          this.consultedExam = result;
-          this.error = "";
-        }
+        this.consultedExam = await avaliacoesApi.consultarCodigo(code, ra);
+        this.error = "";
       } catch (erro) {
         this.consultedExam = null;
         this.error = erro.message;
@@ -585,6 +586,7 @@ export default {
     },
     openStudentPortal() {
       this.studentCode = "";
+      this.studentRa = "";
       this.consultedExam = null;
       this.error = "";
       this.screen = "studentPortal";
@@ -701,7 +703,7 @@ export default {
       <section class="auth-art"><div class="brand"><span class="brand-mark">SGP</span><span>Sistema de Geração de Provas</span></div><div class="art-copy"><span class="eyebrow">EDUCAÇÃO MAIS INTELIGENTE</span><h2>Crie. Organize.<br><strong>Avalie.</strong></h2><p>Uma plataforma feita para simplificar a criação, organização e geração de provas para professores.</p></div><svg class="auth-illustration" viewBox="0 0 500 330" aria-hidden="true"><circle cx="250" cy="160" r="130" fill="#dcf3ed"/><path d="M95 280h320" stroke="#17394e" stroke-width="3"/><rect x="125" y="170" width="55" height="110" rx="8" fill="#8bb1e9" stroke="#17394e" stroke-width="3"/><rect x="180" y="130" width="52" height="150" rx="8" fill="#83d2b6" stroke="#17394e" stroke-width="3"/><path d="M213 105c0-35 26-62 58-62s58 27 58 62l-12 42H225Z" fill="#ffda69" stroke="#17394e" stroke-width="3"/><path d="m270 185 55-64 26 26 50-59 22 20-66 83-30-28-37 47Z" fill="#6592df"/><path d="M230 204c38 0 63 16 84 35v41c-28-12-57-12-84 0ZM314 239c26-20 53-29 79-29v70c-27-1-52 8-79 19Z" fill="#fff" stroke="#17394e" stroke-width="3"/></svg></section>
       <section class="auth-form"><div class="auth-card"><h1>{{ mode === "login" ? "Bem-vindo" : "Crie sua conta" }}</h1><p class="auth-subtitle">{{ mode === "login" ? "Entre para continuar sua jornada." : "Comece a criar provas de forma simples." }}</p>      <form novalidate @submit.prevent="submitAuth"><label v-if="mode === 'register'">Nome completo<input v-model="name" placeholder="Nome completo"></label><label>E-mail<input v-model="email" type="email" placeholder="E-mail"></label><label>Senha<span class="password-field"><input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="Senha"><button type="button" @click="showPassword = !showPassword" :title="showPassword ? 'Ocultar senha' : 'Mostrar senha'">{{ showPassword ? "◉" : "◌" }}</button></span></label><label v-if="mode === 'register'">Confirmar senha<input v-model="confirmation" type="password" placeholder="Confirmar senha"></label><p v-if="error" class="auth-error" role="alert">{{ error }}</p><p v-if="message" class="auth-message" role="status">{{ message }}</p><button class="primary-button" type="submit" :disabled="loadingAuth">{{ loadingAuth ? "Processando..." : (mode === "login" ? "Entrar" : "Cadastrar") }}</button>            </form><button class="text-button" @click="switchMode">{{ mode === "login" ? "Ainda não tenho uma conta" : "Já possuo uma conta" }} <strong>{{ mode === "login" ? "Criar conta" : "Entrar" }}</strong></button></div></section>
     </main>
-    <main v-else-if="screen === 'studentPortal'" class="student-portal"><div class="student-portal-card"><span class="brand-mark">SGP</span><h1>Consulta de resultado</h1><p>Informe o código único impresso na sua prova.</p><form @submit.prevent="consultStudentResult"><label>Código da prova<input v-model="studentCode" placeholder="Ex.: SGP-ABC123"></label><p v-if="error" class="auth-error">{{ error }}</p><button class="primary-button" type="submit">Consultar</button></form><div v-if="consultedExam" class="student-result"><div v-if="!consultedExam.released" class="empty-card"><span>🔒</span><h2>Gabarito ainda não liberado</h2><p>O professor precisa liberar o resultado para esta consulta.</p></div><div v-else class="released-result"><span class="eyebrow">RESULTADO LIBERADO</span><h2>{{ consultedExam.name }}</h2><p>O resultado da sua avaliação está disponível.</p><div class="result-placeholder">Nota e respostas aparecerão aqui após a correção.</div></div></div><button class="text-button" @click="screen = 'login'">Acesso do professor</button></div></main>
+    <main v-else-if="screen === 'studentPortal'" class="student-portal"><div class="student-portal-card"><span class="brand-mark">SGP</span><h1>Consulta de resultado</h1><p>Informe o código único impresso na sua prova e o seu RA.</p><form @submit.prevent="consultStudentResult"><label>Código da prova<input v-model="studentCode" placeholder="Ex.: SGP-ABC123"></label><label>RA<input v-model="studentRa" placeholder="Seu registro acadêmico"></label><p v-if="error" class="auth-error">{{ error }}</p><button class="primary-button" type="submit">Consultar</button></form><div v-if="consultedExam" class="student-result"><div v-if="!consultedExam.released" class="empty-card"><span>🔒</span><h2>Gabarito ainda não liberado</h2><p>O professor precisa liberar o resultado para esta consulta.</p></div><div v-else-if="!consultedExam.resultAvailable" class="empty-card"><span>⌗</span><h2>Nota ainda não lançada</h2><p>O professor ainda não corrigiu a sua prova, ou o RA informado não confere com o desta avaliação.</p></div><div v-else class="released-result"><span class="eyebrow">RESULTADO LIBERADO</span><h2>{{ consultedExam.name }}</h2><p>Nota: <strong>{{ consultedExam.score }}</strong> / 10.0</p></div></div><button class="text-button" @click="screen = 'login'">Acesso do professor</button></div></main>
     <div v-else class="app-shell">
       <aside class="sidebar"><div class="side-brand"><span class="brand-mark">SGP</span><span>SGP</span></div><nav><button title="Início" :class="{active: screen === 'dashboard'}" @click="navigate('dashboard')">⌂ <span>Início</span></button><button title="Banco de Questões" :class="{active: screen === 'questions' || screen === 'newQuestion'}" @click="navigate('questions')">▤ <span>Banco de Questões</span></button><button title="Minhas Avaliações" :class="{active: screen === 'exams' || screen === 'newExam'}" @click="navigate('exams')">▣ <span>Minhas Avaliações</span></button><button title="Minhas Turmas" :class="{active: screen === 'classes'}" @click="navigate('classes'); selectedTurmaId = null">♙ <span>Minhas Turmas</span></button><button title="Corrigir Provas" :class="{active: screen === 'scan'}" @click="openScan">⌗ <span>Corrigir Provas</span></button></nav><button class="logout" @click="logout" title="Sair">↪ <span>Sair</span></button></aside>
       <main class="main-content"><header class="topbar"><div><span class="muted">SGP / </span>{{ currentTitle }}</div><div class="profile"><span>{{ name.charAt(0).toUpperCase() }}</span><strong>{{ name }}</strong><button @click="logout">Sair</button></div></header><section class="content">

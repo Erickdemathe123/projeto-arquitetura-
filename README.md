@@ -6,7 +6,7 @@
 
 🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
 
-> **Estado da N2:** login/cadastro, turmas e alunos, banco de questões, avaliações e correção de provas (lançamento de notas) são persistidos pela API Express no MySQL. A geração de arquivos, a leitura automática de respostas (câmera/QR) e as estatísticas ainda não estão implementadas; a interface informa essa indisponibilidade.
+> **Estado da N2:** login/cadastro, turmas e alunos, banco de questões, avaliações, correção de provas (lançamento de notas) e consulta de resultado pelo aluno são persistidos pela API Express no MySQL. A geração de arquivos, a leitura automática de respostas (câmera/QR) e as estatísticas ainda não estão implementadas; a interface informa essa indisponibilidade.
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -579,6 +579,7 @@ Na N1, os dados ficavam no `localStorage` do navegador. Na N2, a API passa a per
 | Banco de questões (RF02) | Integrado à API e ao MySQL (`/api/questoes`, T12 e T18) |
 | Avaliações e montagem de prova (RF03) | Integrada à API e ao MySQL (`/api/avaliacoes`); tabelas `exams`, `exam_questions` e `applications` |
 | Correção de provas (RF09) | Integrada à API e ao MySQL (`/api/avaliacoes/:id/resultados`, T20): o professor lança a nota de cada aluno por RA e o sistema calcula o andamento da correção (pendente/em correção/corrigida) |
+| Consulta de resultado pelo aluno (RF10) | Integrada à API e ao MySQL (T20): o aluno informa o código da prova e o RA; a nota só aparece se o gabarito estiver liberado e o RA corresponder a um resultado lançado |
 | Estatísticas (RF11, RF12) | Ainda não implementadas |
 | Verificação de saúde (`/health`) | Consulta o MySQL e informa se o banco está conectado |
 
@@ -614,7 +615,7 @@ Todas as rotas respondem em JSON. Nas rotas marcadas como **Professor** ou **Log
 | PUT | `/api/avaliacoes/:id` | Professor | Edita uma avaliação |
 | PATCH | `/api/avaliacoes/:id/gabarito` | Professor | Libera ou bloqueia o gabarito (`{ "released": true }`) |
 | DELETE | `/api/avaliacoes/:id` | Professor | Remove uma avaliação |
-| GET | `/api/avaliacoes/codigo/:code` | Público | Consulta se uma avaliação existe e se o gabarito está liberado, pelo código público |
+| GET | `/api/avaliacoes/codigo/:code` | Público | Consulta se uma avaliação existe e se o gabarito está liberado, pelo código público; com `?ra=<RA>`, também devolve a nota do aluno (`score`) quando o gabarito estiver liberado e houver um resultado lançado para esse RA |
 | GET | `/api/avaliacoes/:id/resultados` | Professor | Lista as notas já corrigidas da avaliação e o andamento (`pendente`/`em_andamento`/`concluida`), comparando com o total de alunos matriculados na turma aplicada |
 | POST | `/api/avaliacoes/:id/resultados` | Professor | Lança/atualiza a nota de um aluno (`ra` e `score`, de 0 a 10); exige que o aluno esteja matriculado na turma da avaliação |
 | DELETE | `/api/avaliacoes/:id/resultados/:alunoId` | Professor | Remove a nota lançada para um aluno |
@@ -639,7 +640,7 @@ Guia rápido de como usar o sistema, do ponto de vista de quem vai operá-lo (o 
 
 Nome: principais contribuições no projeto (ex.: telas de cadastro, integração com banco, documentação). Serve para deixar claro quem fez o quê na entrega da equipe; não substitui o diário de organização de tarefas individual de cada pessoa.
 
-- **Erick Andrei Demathé**: criação do repositório; diagramas UML de classes e de atividades e extensão inicial do schema do banco (N2); correção de provas integrada ao MySQL — tabela `results`, API `/api/avaliacoes/:id/resultados` e tela "Corrigir Provas" (T20).
+- **Erick Andrei Demathé**: criação do repositório; diagramas UML de classes e de atividades e extensão inicial do schema do banco (N2); correção de provas integrada ao MySQL — tabela `results`, API `/api/avaliacoes/:id/resultados` e tela "Corrigir Provas" — e consulta de resultado pelo aluno por código + RA (RF10) (T20).
 - **Gabriel Hoeft Tissi**: principais contribuições.
 - **Henrique Cezar da Silveira**: setup inicial do repositório e da estrutura de pastas, telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas, organização da estrutura Vue do front-end.
 - **Renan Gabriel Piechontcoski**: documentação das telas do sistema (capturas de tela de todas as telas principais em `docs/telas/`) e atualização do README v1 com as imagens e legendas da seção 4.
