@@ -1,7 +1,7 @@
 <script>
 import { SCREEN_TITLES } from "./constants/screens";
 import { dateKey } from "./utils/date";
-import { authApi, questoesApi, turmasApi, avaliacoesApi, isAuthenticated } from "./services/api";
+import { authApi, questoesApi, turmasApi, avaliacoesApi, resultadosApi, isAuthenticated } from "./services/api";
 
 export default {
   data() {
@@ -52,6 +52,11 @@ export default {
       previewExam: null,
       studentCode: "",
       consultedExam: null,
+      scanStep: "list",
+      scanLoading: false,
+      scanSummaries: {},
+      scanActiveExam: null,
+      scanForm: { ra: "", score: "" },
     };
   },
   computed: {
@@ -79,6 +84,9 @@ export default {
     },
     availableClasses() {
       return [...new Set(this.turmas.map((turma) => turma.name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    },
+    examsForScan() {
+      return this.exams.filter((exam) => exam.applicationClassId);
     },
     filteredQuestionsForExam() {
       if (!this.examForm.subject) return this.questions;
@@ -599,6 +607,67 @@ export default {
     openStatistics() {
       this.notify("Estatísticas indisponíveis: ainda não há respostas de avaliações persistidas.");
     },
+    scanTurmaName(exam) {
+      const turma = this.turmas.find((item) => item.id === exam.applicationClassId);
+      return turma ? turma.name : "Turma";
+    },
+    scanStatusLabel(examId) {
+      const status = this.scanSummaries[examId]?.status;
+      if (status === "concluida") return "Corrigida";
+      if (status === "em_andamento") return "Em correção";
+      return "Pendente";
+    },
+    async openScan() {
+      this.scanStep = "list";
+      this.scanActiveExam = null;
+      this.navigate("scan");
+      await this.loadScanSummaries();
+    },
+    async loadScanSummaries() {
+      this.scanLoading = true;
+      try {
+        const entries = await Promise.all(
+          this.examsForScan.map(async (exam) => [exam.id, await resultadosApi.listar(exam.id)])
+        );
+        this.scanSummaries = Object.fromEntries(entries);
+      } catch (erro) {
+        this.error = erro.message;
+      } finally {
+        this.scanLoading = false;
+      }
+    },
+    openScanExam(exam) {
+      this.scanActiveExam = exam;
+      this.scanForm = { ra: "", score: "" };
+      this.error = "";
+      this.scanStep = "form";
+    },
+    backToScanList() {
+      this.scanStep = "list";
+      this.scanActiveExam = null;
+    },
+    async submitScanResult() {
+      if (!this.scanActiveExam) return;
+      this.error = "";
+      try {
+        const resultado = await resultadosApi.registrar(this.scanActiveExam.id, this.scanForm);
+        this.scanSummaries[this.scanActiveExam.id] = await resultadosApi.listar(this.scanActiveExam.id);
+        this.scanForm = { ra: "", score: "" };
+        this.notify(`Nota registrada para ${resultado.studentName}.`);
+      } catch (erro) {
+        this.error = erro.message;
+      }
+    },
+    async removeScanResult(resultado) {
+      if (!this.scanActiveExam) return;
+      try {
+        await resultadosApi.remover(this.scanActiveExam.id, resultado.studentId);
+        this.scanSummaries[this.scanActiveExam.id] = await resultadosApi.listar(this.scanActiveExam.id);
+        this.notify("Nota removida.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
+    },
     async importStudents(event) {
       const [file] = event.target.files;
       event.target.value = "";
@@ -634,9 +703,9 @@ export default {
     </main>
     <main v-else-if="screen === 'studentPortal'" class="student-portal"><div class="student-portal-card"><span class="brand-mark">SGP</span><h1>Consulta de resultado</h1><p>Informe o código único impresso na sua prova.</p><form @submit.prevent="consultStudentResult"><label>Código da prova<input v-model="studentCode" placeholder="Ex.: SGP-ABC123"></label><p v-if="error" class="auth-error">{{ error }}</p><button class="primary-button" type="submit">Consultar</button></form><div v-if="consultedExam" class="student-result"><div v-if="!consultedExam.released" class="empty-card"><span>🔒</span><h2>Gabarito ainda não liberado</h2><p>O professor precisa liberar o resultado para esta consulta.</p></div><div v-else class="released-result"><span class="eyebrow">RESULTADO LIBERADO</span><h2>{{ consultedExam.name }}</h2><p>O resultado da sua avaliação está disponível.</p><div class="result-placeholder">Nota e respostas aparecerão aqui após a correção.</div></div></div><button class="text-button" @click="screen = 'login'">Acesso do professor</button></div></main>
     <div v-else class="app-shell">
-      <aside class="sidebar"><div class="side-brand"><span class="brand-mark">SGP</span><span>SGP</span></div><nav><button title="Início" :class="{active: screen === 'dashboard'}" @click="navigate('dashboard')">⌂ <span>Início</span></button><button title="Banco de Questões" :class="{active: screen === 'questions' || screen === 'newQuestion'}" @click="navigate('questions')">▤ <span>Banco de Questões</span></button><button title="Minhas Avaliações" :class="{active: screen === 'exams' || screen === 'newExam'}" @click="navigate('exams')">▣ <span>Minhas Avaliações</span></button><button title="Minhas Turmas" :class="{active: screen === 'classes'}" @click="navigate('classes'); selectedTurmaId = null">♙ <span>Minhas Turmas</span></button><button title="Corrigir Provas" :class="{active: screen === 'scan'}" @click="navigate('scan')">⌗ <span>Corrigir Provas</span></button></nav><button class="logout" @click="logout" title="Sair">↪ <span>Sair</span></button></aside>
+      <aside class="sidebar"><div class="side-brand"><span class="brand-mark">SGP</span><span>SGP</span></div><nav><button title="Início" :class="{active: screen === 'dashboard'}" @click="navigate('dashboard')">⌂ <span>Início</span></button><button title="Banco de Questões" :class="{active: screen === 'questions' || screen === 'newQuestion'}" @click="navigate('questions')">▤ <span>Banco de Questões</span></button><button title="Minhas Avaliações" :class="{active: screen === 'exams' || screen === 'newExam'}" @click="navigate('exams')">▣ <span>Minhas Avaliações</span></button><button title="Minhas Turmas" :class="{active: screen === 'classes'}" @click="navigate('classes'); selectedTurmaId = null">♙ <span>Minhas Turmas</span></button><button title="Corrigir Provas" :class="{active: screen === 'scan'}" @click="openScan">⌗ <span>Corrigir Provas</span></button></nav><button class="logout" @click="logout" title="Sair">↪ <span>Sair</span></button></aside>
       <main class="main-content"><header class="topbar"><div><span class="muted">SGP / </span>{{ currentTitle }}</div><div class="profile"><span>{{ name.charAt(0).toUpperCase() }}</span><strong>{{ name }}</strong><button @click="logout">Sair</button></div></header><section class="content">
-        <template v-if="screen === 'dashboard'"><div class="page-heading"><span class="eyebrow">VISÃO GERAL</span><h1>Olá, {{ name }}!</h1></div><div class="quick-actions"><button @click="navigate('newQuestion')"><b>✎</b><strong>Criar Questão</strong><small>Cadastre sua primeira questão</small></button><button :disabled="!questions.length" @click="navigate('newExam')"><b>▣</b><strong>Montar Prova</strong><small>Disponível após cadastrar questões</small></button><button @click="navigate('classes'); selectedTurmaId = null"><b>♙</b><strong>Minhas Turmas</strong><small>Organize seus alunos</small></button><button @click="navigate('scan')"><b>⌗</b><strong>Corrigir Provas</strong><small>Correção pelo navegador</small></button></div><h2 v-if="exams.length" class="dashboard-section-title">Minhas provas:</h2><div v-if="!exams.length" class="empty-card"><span>▤</span><h2>Ainda não há avaliações</h2><p>Suas provas criadas aparecerão aqui.</p></div><div v-else class="question-list"><article v-for="exam in exams" :key="exam.id" class="question-item"><span class="question-number">▣</span><div>        <strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · Código: {{ exam.publicCode || "Código pendente" }} · {{ exam.released === true ? "Gabarito liberado" : "Gabarito bloqueado" }}</small></div>        <div class="question-actions"><button class="edit-button" @click="releaseExam(exam)" :aria-label="exam.released === true ? 'Bloquear gabarito' : 'Liberar gabarito'" :title="exam.released === true ? 'Bloquear gabarito' : 'Liberar gabarito'">{{ exam.released === true ? "🔓" : "🔒" }}</button><button class="edit-button" @click="previewSavedExam(exam)" aria-label="Pré-visualizar prova" title="Pré-visualizar prova">◉</button><button class="edit-button" @click="openStatistics(exam)" aria-label="Ver estatísticas" title="Ver estatísticas">▥</button><button class="edit-button" @click="editExam(exam)" aria-label="Editar avaliação" title="Editar avaliação">✎</button><button class="remove-button" @click="removeExam(exam)" aria-label="Remover avaliação" title="Remover avaliação">×</button></div></article></div></template>
+        <template v-if="screen === 'dashboard'"><div class="page-heading"><span class="eyebrow">VISÃO GERAL</span><h1>Olá, {{ name }}!</h1></div><div class="quick-actions"><button @click="navigate('newQuestion')"><b>✎</b><strong>Criar Questão</strong><small>Cadastre sua primeira questão</small></button><button :disabled="!questions.length" @click="navigate('newExam')"><b>▣</b><strong>Montar Prova</strong><small>Disponível após cadastrar questões</small></button><button @click="navigate('classes'); selectedTurmaId = null"><b>♙</b><strong>Minhas Turmas</strong><small>Organize seus alunos</small></button><button @click="openScan"><b>⌗</b><strong>Corrigir Provas</strong><small>Correção pelo navegador</small></button></div><h2 v-if="exams.length" class="dashboard-section-title">Minhas provas:</h2><div v-if="!exams.length" class="empty-card"><span>▤</span><h2>Ainda não há avaliações</h2><p>Suas provas criadas aparecerão aqui.</p></div><div v-else class="question-list"><article v-for="exam in exams" :key="exam.id" class="question-item"><span class="question-number">▣</span><div>        <strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · Código: {{ exam.publicCode || "Código pendente" }} · {{ exam.released === true ? "Gabarito liberado" : "Gabarito bloqueado" }}</small></div>        <div class="question-actions"><button class="edit-button" @click="releaseExam(exam)" :aria-label="exam.released === true ? 'Bloquear gabarito' : 'Liberar gabarito'" :title="exam.released === true ? 'Bloquear gabarito' : 'Liberar gabarito'">{{ exam.released === true ? "🔓" : "🔒" }}</button><button class="edit-button" @click="previewSavedExam(exam)" aria-label="Pré-visualizar prova" title="Pré-visualizar prova">◉</button><button class="edit-button" @click="openStatistics(exam)" aria-label="Ver estatísticas" title="Ver estatísticas">▥</button><button class="edit-button" @click="editExam(exam)" aria-label="Editar avaliação" title="Editar avaliação">✎</button><button class="remove-button" @click="removeExam(exam)" aria-label="Remover avaliação" title="Remover avaliação">×</button></div></article></div></template>
         <template v-if="screen === 'classes'"><div v-if="!selectedTurma"><div class="page-heading"><span class="eyebrow">ORGANIZAÇÃO</span><h1>Minhas Turmas</h1><p>Cadastre suas turmas e organize os alunos.</p></div><form class="form-card turma-form" @submit.prevent="saveTurma"><label>Nome da turma<input v-model="turmaForm.name" placeholder="Digite o nome da turma"></label><p v-if="error" class="auth-error">{{ error }}</p><div class="form-actions"><button class="primary-button compact">Criar turma</button></div></form><h2 class="dashboard-section-title">Turmas cadastradas</h2><div v-if="!turmas.length" class="empty-card"><span>♙</span><h2>Nenhuma turma criada</h2><p>Crie sua primeira turma para cadastrar alunos.</p></div><div v-else class="question-list"><article v-for="turma in turmas" :key="turma.id" class="question-item"><span class="question-number">♙</span><div><strong>{{ turma.name }}</strong><small>{{ turma.students.length }} {{ turma.students.length === 1 ? "aluno cadastrado" : "alunos cadastrados" }}</small></div><div class="question-actions"><button class="edit-button" @click="openTurma(turma)" aria-label="Acessar turma">→</button><button class="remove-button" @click="removeTurma(turma)" aria-label="Remover turma">×</button></div></article></div></div><div v-else><div class="page-heading row"><div><span class="eyebrow">TURMA</span><h1>{{ selectedTurma.name }}</h1><p>{{ selectedTurma.students.length }} {{ selectedTurma.students.length === 1 ? "aluno cadastrado" : "alunos cadastrados" }}</p></div><button class="outline-button" @click="closeTurma">Voltar para turmas</button></div>        <form class="form-card turma-form" @submit.prevent="saveAluno"><div class="form-grid"><label>Nome do aluno<input v-model="alunoForm.name" placeholder="Digite o nome do aluno"></label><label>RA<input v-model="alunoForm.ra" placeholder="Registro acadêmico"></label></div><p v-if="error" class="auth-error">{{ error }}</p><div class="form-actions"><button class="primary-button compact">Cadastrar aluno</button><label class="outline-button file-button">Importar CSV<input type="file" accept=".csv,text/csv" @change="importStudents"></label></div></form><h2 class="dashboard-section-title">Alunos da turma</h2><div v-if="!selectedTurma.students.length" class="empty-card"><span>♙</span><h2>Nenhum aluno cadastrado</h2><p>Cadastre o primeiro aluno desta turma.</p></div><div v-else class="question-list"><article v-for="aluno in selectedTurma.students" :key="aluno.id" class="question-item"><span class="question-number">♙</span><div><strong>{{ aluno.name }}</strong><small>RA: {{ aluno.ra }}</small></div><div class="question-actions"><button class="remove-button" @click="removeAluno(aluno)" aria-label="Remover aluno">×</button></div></article></div></div></template>
         <template v-if="screen === 'questions'"><div class="page-heading row"><div><h1>Banco de Questões</h1><p>{{ questionsCountLabel }}</p></div><button class="primary-button compact" @click="navigate('newQuestion')">＋ Nova questão</button></div><div v-if="!questions.length" class="empty-card"><span>✎</span><h2>Seu banco está vazio</h2><p>Cadastre a primeira questão para começar.</p><button class="primary-button compact" @click="navigate('newQuestion')">Cadastrar primeira questão</button></div><div v-else class="question-list"><article v-for="(question, index) in questions" :key="question.id" class="question-item"><span class="question-number">{{ index + 1 }}</span><div><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }} · {{ question.type }}</small></div><div class="question-actions"><button class="edit-button" @click="editQuestion(question)" aria-label="Editar questão">✎</button><button class="remove-button" @click="removeQuestion(question)" aria-label="Remover questão">×</button></div></article></div></template>
         <template v-if="screen === 'newQuestion'"><div class="page-heading"><span class="eyebrow">BANCO DE QUESTÕES</span><h1>{{ editingQuestionId ? "Editar Questão" : "Nova Questão" }}</h1></div><form class="form-card" @submit.prevent="saveQuestion"><div class="form-grid"><label>Disciplina<input v-model="questionForm.subject" placeholder="Digite uma disciplina"></label><label>Assunto<input v-model="questionForm.topic" placeholder="Digite um assunto"></label></div><label>Texto da questão<textarea v-model="questionForm.text" placeholder="Digite o texto da questão"></textarea></label><div class="alternatives"><p class="field-title">Alternativas <span>Marque a resposta correta</span></p><label v-for="(alternative, index) in questionForm.alternatives" :key="index"><span>{{ String.fromCharCode(65 + index) }})</span><input v-model="questionForm.alternatives[index]" :placeholder="'Alternativa ' + String.fromCharCode(65 + index)"><input class="radio" type="radio" v-model="questionForm.correctAlternative" :value="index" :aria-label="'Alternativa correta ' + String.fromCharCode(65 + index)"></label><div class="alternative-actions"><button type="button" class="item-button" @click="addAlternative">＋ Adicionar alternativa</button><button type="button" class="item-button" @click="removeAlternative" :disabled="questionForm.alternatives.length <= 2">− Remover última alternativa</button></div></div><p v-if="error" class="auth-error">{{ error }}</p><div class="form-actions"><button type="button" class="outline-button" @click="cancelQuestionEdit">Cancelar</button><button class="primary-button compact">{{ editingQuestionId ? "Salvar alterações" : "Salvar questão" }}</button></div></form></template>
@@ -645,8 +714,8 @@ export default {
         <template v-if="screen === 'preview'"><div class="page-heading row"><div><span class="eyebrow">VISUALIZAÇÃO</span><h1>Pré-visualização da prova</h1><p>Confira o caderno e a folha de respostas antes da geração do documento.</p></div><button class="outline-button" @click="navigate('newExam')">Voltar para montagem</button></div><div class="preview-grid"><section class="document-preview"><div class="preview-paper"><div class="preview-header"><img v-if="previewExam && previewExam.logo" :src="previewExam.logo" alt="Logo da instituição"><div><strong>{{ previewExam && previewExam.institution || "Instituição" }}</strong><span>{{ previewExam && previewExam.course || "Curso" }}</span><span>{{ previewExam && previewExam.subject || "Disciplina" }}</span></div></div><h2>{{ previewExam && previewExam.name || "Nome da avaliação" }}</h2><p class="preview-meta">{{ previewExam && previewExam.professor || "Professor" }} · {{ previewExam && previewExam.className || "Turma" }} · {{ previewExam && previewExam.date || "Data da aplicação" }}</p><p v-if="previewExam && previewExam.instructions" class="preview-instructions">{{ previewExam.instructions }}</p><article v-for="(question, index) in (previewExam ?         questionsForExam(previewExam) : [])" :key="question.id" class="preview-question"><strong>{{ index + 1 }}. {{ question.text }}</strong><span v-for="(alternative, alternativeIndex) in question.alternatives" :key="alternativeIndex">{{ String.fromCharCode(65 + alternativeIndex) }}) {{ alternative }}</span></article><p v-if="previewExam && !previewExam.questionIds.length" class="preview-empty">As questões selecionadas aparecerão aqui.</p></div></section><section class="document-preview answer-sheet"><div class="preview-paper"><div class="answer-sheet-heading"><span class="qr-placeholder">QR</span><div><h2>Folha de respostas</h2><p>{{ previewExam && previewExam.name || "Nome da avaliação" }}</p></div></div><label>Aluno: ____________________________________</label><label>RA: _______________________________________</label><div class="answer-grid"><div v-for="number in (previewExam ? previewExam.questionIds.length : 5)" :key="number"><strong>{{ number }}</strong><span v-for="letter in ['A', 'B', 'C', 'D', 'E']" :key="letter">{{ letter }} ○</span></div></div><p class="preview-note">Prévia visual da folha de respostas. O QR Code e a leitura serão implementados posteriormente.</p></div></section></div></template>
         <template v-if="screen === 'statistics'"><div class="page-heading row"><div><span class="eyebrow">ANÁLISE PEDAGÓGICA</span><h1>Estatísticas da avaliação</h1></div><button class="outline-button" @click="navigate('dashboard')">Voltar</button></div><section class="empty-card"><span>▥</span><h2>Estatísticas indisponíveis</h2><p>Os resultados só serão exibidos quando as respostas corrigidas estiverem persistidas no sistema.</p></section></template>
         <template v-if="screen === 'scan'">
-          <div class="page-heading"><span class="eyebrow">CORREÇÃO</span><h1>Correção de provas</h1><p>Esse recurso ainda não está integrado ao banco de dados.</p></div>
-          <section class="empty-card"><span>⌗</span><h2>Correção indisponível</h2><p>O sistema ainda não persiste respostas, notas ou leituras de câmera. Nenhum resultado será simulado.</p></section>
+        <div v-if="scanStep === 'list'"><div class="page-heading"><span class="eyebrow">CORREÇÃO</span><h1>Corrigir Provas</h1><p>Lance a nota de cada aluno por RA. Só aparecem aqui avaliações já aplicadas a uma turma.</p></div><div v-if="scanLoading" class="empty-card"><span>⌗</span><h2>Carregando…</h2><p>Buscando o andamento da correção de cada avaliação.</p></div><div v-else-if="!examsForScan.length" class="empty-card"><span>⌗</span><h2>Nenhuma avaliação para corrigir</h2><p>Aplique uma avaliação a uma turma em "Montar Prova" para liberar a correção.</p></div><div v-else class="question-list"><article v-for="exam in examsForScan" :key="exam.id" class="question-item"><span class="question-number">⌗</span><div><strong>{{ exam.name }}</strong><small>{{ scanTurmaName(exam) }} · {{ scanStatusLabel(exam.id) }}<template v-if="scanSummaries[exam.id]"> · {{ scanSummaries[exam.id].corrigidos }}/{{ scanSummaries[exam.id].totalMatriculados }} corrigidas</template></small></div><div class="question-actions"><button class="edit-button" @click="openScanExam(exam)" aria-label="Corrigir avaliação" title="Corrigir avaliação">▶</button></div></article></div></div>
+        <div v-else-if="scanActiveExam"><div class="page-heading row"><div><span class="eyebrow">CORREÇÃO</span><h1>{{ scanActiveExam.name }}</h1><p>{{ scanTurmaName(scanActiveExam) }} · {{ scanStatusLabel(scanActiveExam.id) }}</p></div><button class="outline-button" @click="backToScanList">Voltar</button></div><form class="form-card" @submit.prevent="submitScanResult"><h2 class="form-section-title">Lançar nota</h2><div class="form-grid"><label>RA do aluno<input v-model="scanForm.ra" placeholder="Registro acadêmico"></label><label>Nota<input v-model.number="scanForm.score" type="number" min="0" max="10" step="0.1" placeholder="0 a 10"></label></div><p v-if="error" class="auth-error">{{ error }}</p><div class="form-actions"><button class="primary-button compact">Registrar nota</button></div></form><h2 class="dashboard-section-title">Alunos já corrigidos</h2><div v-if="!scanSummaries[scanActiveExam.id] || !scanSummaries[scanActiveExam.id].resultados.length" class="empty-card compact"><span>⌗</span><h2>Nenhum aluno corrigido ainda</h2><p>Lance a primeira nota pelo formulário acima.</p></div><div v-else class="question-list"><article v-for="resultado in scanSummaries[scanActiveExam.id].resultados" :key="resultado.studentId" class="question-item"><span class="question-number">✓</span><div><strong>{{ resultado.studentName }}</strong><small>RA: {{ resultado.ra }} · Nota: {{ resultado.score }}</small></div><div class="question-actions"><button class="remove-button" @click="removeScanResult(resultado)" aria-label="Remover nota">×</button></div></article></div></div>
         </template>
       </section></main><div v-if="toast" class="toast">{{ toast }}</div>
     </div>

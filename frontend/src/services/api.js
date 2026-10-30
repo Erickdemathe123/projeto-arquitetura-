@@ -122,6 +122,17 @@ export const avaliacoesApi = {
   consultarCodigo: (code) => request(`/avaliacoes/codigo/${encodeURIComponent(code)}`, { method: 'GET' })
 };
 
+export const resultadosApi = {
+  listar: (avaliacaoId) => request(`/avaliacoes/${avaliacaoId}/resultados`, { method: 'GET' }),
+
+  registrar: (avaliacaoId, { ra, score }) => request(`/avaliacoes/${avaliacaoId}/resultados`, {
+    method: 'POST',
+    body: JSON.stringify({ ra, score })
+  }),
+
+  remover: (avaliacaoId, alunoId) => request(`/avaliacoes/${avaliacaoId}/resultados/${alunoId}`, { method: 'DELETE' })
+};
+
 export const turmasApi = {
   listar(arquivadas = false) {
     return request(`/turmas${arquivadas ? '?arquivadas=true' : ''}`, { method: 'GET' });
@@ -181,5 +192,6 @@ export default {
   auth: authApi,
   questoes: questoesApi,
   turmas: turmasApi,
-  avaliacoes: avaliacoesApi
+  avaliacoes: avaliacoesApi,
+  resultados: resultadosApi
 };

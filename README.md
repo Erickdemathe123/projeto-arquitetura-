@@ -6,7 +6,7 @@
 
 🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
 
-> **Estado da N2:** login/cadastro, turmas e alunos, banco de questões e avaliações são persistidos pela API Express no MySQL. A geração de arquivos, leitura/correção de respostas e estatísticas ainda não estão implementadas; a interface informa essa indisponibilidade e não apresenta notas simuladas.
+> **Estado da N2:** login/cadastro, turmas e alunos, banco de questões, avaliações e correção de provas (lançamento de notas) são persistidos pela API Express no MySQL. A geração de arquivos, a leitura automática de respostas (câmera/QR) e as estatísticas ainda não estão implementadas; a interface informa essa indisponibilidade.
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -576,8 +576,10 @@ Na N1, os dados ficavam no `localStorage` do navegador. Na N2, a API passa a per
 |---|---|
 | Cadastro e login de professor (RF01) | Integrado à API e ao MySQL (T11 e T18), com senha criptografada (bcrypt) e token JWT |
 | Turmas, matrículas e importação de alunos por CSV (RF05) | API pronta (T13 e T14) e tela "Minhas Turmas" ligada aos endpoints (T19), com rotas protegidas por login |
-| Banco de questões (RF02) | Tela pronta para usar `/api/questoes` (T18); enquanto a API de questões (T12) não estiver no servidor, os dados ficam no navegador |
-| Avaliações, correção e estatísticas (RF03 a RF12) | Ainda no `localStorage`; as tabelas `exams`, `exam_questions` e `applications` já existem no banco |
+| Banco de questões (RF02) | Integrado à API e ao MySQL (`/api/questoes`, T12 e T18) |
+| Avaliações e montagem de prova (RF03) | Integrada à API e ao MySQL (`/api/avaliacoes`); tabelas `exams`, `exam_questions` e `applications` |
+| Correção de provas (RF09) | Integrada à API e ao MySQL (`/api/avaliacoes/:id/resultados`, T20): o professor lança a nota de cada aluno por RA e o sistema calcula o andamento da correção (pendente/em correção/corrigida) |
+| Estatísticas (RF11, RF12) | Ainda não implementadas |
 | Verificação de saúde (`/health`) | Consulta o MySQL e informa se o banco está conectado |
 
 ## 11. Especificação da API
@@ -603,8 +605,19 @@ Todas as rotas respondem em JSON. Nas rotas marcadas como **Professor** ou **Log
 | POST | `/api/turmas/:id/alunos` | Professor | Matricula um aluno (`ra` e `nome`); reaproveita o cadastro se o RA já existir |
 | DELETE | `/api/turmas/:id/alunos/:alunoId` | Professor | Remove o aluno da turma |
 | POST | `/api/turmas/:id/alunos/importar` | Professor | Importa alunos de um CSV (RF05) enviado como texto (`Content-Type: text/csv`), com as colunas `nome` e `RA` separadas por `;` ou `,` e até 1000 linhas; devolve as listas `matriculados`, `jaMatriculados` e `erros` (por linha) |
-
-As rotas de questões (`/api/questoes`) serão documentadas aqui quando a T12 for entregue.
+| GET | `/api/questoes` | Professor | Lista as questões do professor |
+| POST | `/api/questoes` | Professor | Cria uma questão (`text`, `subject`, `topic`, `alternatives` com 2 a 5 itens e `correctAlternative`) |
+| PUT | `/api/questoes/:id` | Professor | Edita uma questão |
+| DELETE | `/api/questoes/:id` | Professor | Remove uma questão (erro 409 se estiver vinculada a uma avaliação) |
+| GET | `/api/avaliacoes` | Professor | Lista as avaliações do professor |
+| POST | `/api/avaliacoes` | Professor | Cria uma avaliação (`name`, `questionIds` e, opcionalmente, `applicationClassId` para já aplicá-la a uma turma) |
+| PUT | `/api/avaliacoes/:id` | Professor | Edita uma avaliação |
+| PATCH | `/api/avaliacoes/:id/gabarito` | Professor | Libera ou bloqueia o gabarito (`{ "released": true }`) |
+| DELETE | `/api/avaliacoes/:id` | Professor | Remove uma avaliação |
+| GET | `/api/avaliacoes/codigo/:code` | Público | Consulta se uma avaliação existe e se o gabarito está liberado, pelo código público |
+| GET | `/api/avaliacoes/:id/resultados` | Professor | Lista as notas já corrigidas da avaliação e o andamento (`pendente`/`em_andamento`/`concluida`), comparando com o total de alunos matriculados na turma aplicada |
+| POST | `/api/avaliacoes/:id/resultados` | Professor | Lança/atualiza a nota de um aluno (`ra` e `score`, de 0 a 10); exige que o aluno esteja matriculado na turma da avaliação |
+| DELETE | `/api/avaliacoes/:id/resultados/:alunoId` | Professor | Remove a nota lançada para um aluno |
 
 ## 12. Testes e Validações
 
@@ -626,7 +639,7 @@ Guia rápido de como usar o sistema, do ponto de vista de quem vai operá-lo (o 
 
 Nome: principais contribuições no projeto (ex.: telas de cadastro, integração com banco, documentação). Serve para deixar claro quem fez o quê na entrega da equipe; não substitui o diário de organização de tarefas individual de cada pessoa.
 
-- **Erick Andrei Demathé**: criação do repositório, revisão e merge dos Pull Requests da equipe, fluxo mock de correção de provas.
+- **Erick Andrei Demathé**: criação do repositório; diagramas UML de classes e de atividades e extensão inicial do schema do banco (N2); correção de provas integrada ao MySQL — tabela `results`, API `/api/avaliacoes/:id/resultados` e tela "Corrigir Provas" (T20).
 - **Gabriel Hoeft Tissi**: principais contribuições.
 - **Henrique Cezar da Silveira**: setup inicial do repositório e da estrutura de pastas, telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas, organização da estrutura Vue do front-end.
 - **Renan Gabriel Piechontcoski**: documentação das telas do sistema (capturas de tela de todas as telas principais em `docs/telas/`) e atualização do README v1 com as imagens e legendas da seção 4.

@@ -111,3 +111,19 @@ CREATE TABLE IF NOT EXISTS applications (
   CONSTRAINT fk_application_exam FOREIGN KEY (exam_id, teacher_id) REFERENCES exams(id, teacher_id),
   CONSTRAINT fk_application_class FOREIGN KEY (class_id, teacher_id) REFERENCES classes(id, teacher_id)
 );
+
+-- Nota de cada aluno em cada avaliação, registrada na tela "Corrigir Provas" (T20).
+CREATE TABLE IF NOT EXISTS results (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  exam_id BIGINT UNSIGNED NOT NULL,
+  teacher_id BIGINT UNSIGNED NOT NULL,
+  student_id BIGINT UNSIGNED NOT NULL,
+  student_role VARCHAR(9) NOT NULL DEFAULT 'aluno',
+  score DECIMAL(5,2) NOT NULL,
+  corrected_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT ck_result_student CHECK (student_role = 'aluno'),
+  CONSTRAINT ck_result_score CHECK (score BETWEEN 0 AND 10),
+  CONSTRAINT uq_result_exam_student UNIQUE (exam_id, student_id),
+  CONSTRAINT fk_result_exam FOREIGN KEY (exam_id, teacher_id) REFERENCES exams(id, teacher_id) ON DELETE CASCADE,
+  CONSTRAINT fk_result_student FOREIGN KEY (student_id, student_role) REFERENCES users(id, role)
+);
