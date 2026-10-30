@@ -154,7 +154,11 @@ Descreve o fluxo de atividades da correção de provas, incluindo o desvio de de
 
 ### Diagrama de Casos de Uso
 
-*(pendente — adicionar quando o levantamento de atores/casos de uso do sistema for finalizado)*
+![Diagrama de Casos de Uso](docs/uml/casodeuso.png)
+
+Mostra os dois atores externos do SGP e o que cada um faz no sistema. O **Professor** importa a lista de alunos, cria e edita provas, gera as provas e o gabarito, corrige as provas, consulta as avaliações, gera as estatísticas das respostas e o relatório de notas e edita o layout da prova. O **Aluno** se identifica na prova e consulta o seu resultado.
+
+A análise do cenário, a lista de atores e casos de uso e o passo a passo da criação estão em [N2-P1.md](N2-P1.md). A versão revisada na T05, que inclui autenticação, turmas e matrícula, está em [docs/uml/gabriel](docs/uml/gabriel/README.md).
 
 ## 4. Telas do Sistema
 
