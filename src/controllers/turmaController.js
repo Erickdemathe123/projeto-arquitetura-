@@ -2,18 +2,13 @@
 const turmaService = require('../services/turmaService');
 const { ErroDeNegocio } = turmaService;
 
-// PROVISÓRIO: enquanto o login com JWT não existe, o professor é identificado
-// pelo cabeçalho "x-professor-id". Quando a autenticação ficar pronta,
-// basta trocar esta função para ler o id do token (ex.: req.usuario.id).
+// O professor é identificado pelo token JWT, validado pelo middleware
+// autenticar (ver turmaRoutes.js), que preenche req.usuario.
 function obterProfessorId(req) {
-  if (req.usuario && req.usuario.id) {
-    return req.usuario.id;
-  }
-  const id = Number(req.header('x-professor-id'));
-  if (!Number.isInteger(id) || id <= 0) {
+  if (!req.usuario || !req.usuario.id) {
     throw new ErroDeNegocio(401, 'Professor não identificado.');
   }
-  return id;
+  return req.usuario.id;
 }
 
 function lerId(valor, nomeCampo) {

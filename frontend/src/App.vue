@@ -2,7 +2,7 @@
 import { createEmptyWorkspace, loadWorkspace, saveWorkspace } from "./services/storage";
 import { SCREEN_TITLES } from "./constants/screens";
 import { dateKey } from "./utils/date";
-import { authApi, questoesApi, isAuthenticated } from "./services/api";
+import { authApi, questoesApi, turmasApi, isAuthenticated } from "./services/api";
 
 const SCAN_MOCK_STUDENTS = ["João Silva", "Maria Souza", "Pedro Santos", "Ana Oliveira", "Lucas Pereira", "Beatriz Lima", "Gabriel Costa", "Larissa Almeida"];
 
@@ -258,10 +258,7 @@ export default {
       }
 
       this.exams = saved.exams || [];
-      this.turmas = (saved.turmas || []).map((turma) => ({
-        ...turma,
-        students: [...(turma.students || [])].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
-      }));
+      await this.carregarTurmas();
       this.screen = "dashboard";
     },
     persist() {
@@ -286,12 +283,46 @@ export default {
       this.confirmation = "";
       this.message = "";
     },
-    saveTurma() {
-      if (!this.turmaForm.name.trim()) return (this.error = "Informe o nome da turma.");
-      this.turmas.push({ id: Date.now(), name: this.turmaForm.name.trim(), students: [] });
-      this.persist();
-      this.turmaForm = { name: "" };
-      this.notify("Turma criada com sucesso.");
+    mapearAluno(aluno) {
+      return { id: aluno.id, name: aluno.nome, ra: aluno.ra };
+    },
+    mapearTurma(turma, alunos = []) {
+      return {
+        id: turma.id,
+        name: turma.nome,
+        description: turma.descricao,
+        inviteCode: turma.codigoConvite,
+        students: alunos.map((aluno) => this.mapearAluno(aluno))
+      };
+    },
+    async carregarTurmas() {
+      try {
+        const turmas = await turmasApi.listar();
+        this.turmas = await Promise.all(
+          turmas.map(async (turma) => this.mapearTurma(turma, await turmasApi.listarAlunos(turma.id)))
+        );
+      } catch (erro) {
+        this.turmas = [];
+        this.error = `Não foi possível carregar as turmas: ${erro.message}`;
+      }
+    },
+    async recarregarAlunos(turma) {
+      const alunos = await turmasApi.listarAlunos(turma.id);
+      turma.students = alunos.map((aluno) => this.mapearAluno(aluno));
+    },
+    async saveTurma() {
+      const nome = this.turmaForm.name.trim();
+      if (!nome) return (this.error = "Informe o nome da turma.");
+      try {
+        const turma = await turmasApi.criar({ nome });
+        this.turmas.push(this.mapearTurma(turma));
+        this.turmas.sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
+        this.turmaForm = { name: "" };
+        this.error = "";
+        this.notify("Turma criada com sucesso.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
     openTurma(turma) {
       this.selectedTurmaId = turma.id;
@@ -303,26 +334,45 @@ export default {
       this.alunoForm = { name: "", ra: "" };
       this.error = "";
     },
-    removeTurma(turma) {
-      this.turmas = this.turmas.filter((item) => item.id !== turma.id);
-      if (this.selectedTurmaId === turma.id) this.closeTurma();
-      this.persist();
-      this.notify("Turma removida.");
+    // A API não apaga turmas: arquiva, para preservar o histórico de provas aplicadas
+    async removeTurma(turma) {
+      if (!window.confirm(`Arquivar a turma "${turma.name}"? Ela deixará de aparecer na lista.`)) return;
+      try {
+        await turmasApi.arquivar(turma.id);
+        this.turmas = this.turmas.filter((item) => item.id !== turma.id);
+        if (this.selectedTurmaId === turma.id) this.closeTurma();
+        this.notify("Turma arquivada.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
-    saveAluno() {
-      if (!this.selectedTurma) return;
-      if (!this.alunoForm.name.trim() || !this.alunoForm.ra.trim()) return (this.error = "Informe o nome e o RA do aluno.");
-      this.selectedTurma.students.push({ id: Date.now(), name: this.alunoForm.name.trim(), ra: this.alunoForm.ra.trim() });
-      this.selectedTurma.students.sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
-      this.persist();
-      this.alunoForm = { name: "", ra: "" };
-      this.notify("Aluno cadastrado com sucesso.");
+    async saveAluno() {
+      const turma = this.selectedTurma;
+      if (!turma) return;
+      const nome = this.alunoForm.name.trim();
+      const ra = this.alunoForm.ra.trim();
+      if (!nome || !ra) return (this.error = "Informe o nome e o RA do aluno.");
+      try {
+        await turmasApi.matricular(turma.id, { nome, ra });
+        await this.recarregarAlunos(turma);
+        this.alunoForm = { name: "", ra: "" };
+        this.error = "";
+        this.notify("Aluno cadastrado com sucesso.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
-    removeAluno(aluno) {
-      if (!this.selectedTurma) return;
-      this.selectedTurma.students = this.selectedTurma.students.filter((item) => item.id !== aluno.id);
-      this.persist();
-      this.notify("Aluno removido.");
+    async removeAluno(aluno) {
+      const turma = this.selectedTurma;
+      if (!turma) return;
+      try {
+        await turmasApi.removerAluno(turma.id, aluno.id);
+        turma.students = turma.students.filter((item) => item.id !== aluno.id);
+        this.error = "";
+        this.notify("Aluno removido.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
     async saveQuestion() {
       const form = this.questionForm;
@@ -577,24 +627,23 @@ export default {
       this.statisticsExam = exam;
       this.navigate("statistics");
     },
-    importStudents(event) {
+    async importStudents(event) {
       const [file] = event.target.files;
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const rows = String(reader.result).split(/\r?\n/).map((row) => row.trim()).filter(Boolean);
-        const imported = rows.slice(1).map((row) => {
-          const [name, ra] = row.split(/[;,]/).map((value) => value.trim());
-          return name && ra ? { id: Date.now() + Math.random(), name, ra } : null;
-        }).filter(Boolean);
-        if (!this.selectedTurma || !imported.length) return (this.error = "Use um arquivo CSV com as colunas nome e RA.");
-        this.selectedTurma.students = [...this.selectedTurma.students, ...imported]
-          .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
-        this.persist();
-        this.notify(`${imported.length} aluno(s) importado(s) com sucesso.`);
-      };
-      reader.readAsText(file);
       event.target.value = "";
+      const turma = this.selectedTurma;
+      if (!file || !turma) return;
+      try {
+        const conteudo = await file.text();
+        const resultado = await turmasApi.importarCsv(turma.id, conteudo);
+        await this.recarregarAlunos(turma);
+        const partes = [`${resultado.matriculados.length} aluno(s) importado(s)`];
+        if (resultado.jaMatriculados.length) partes.push(`${resultado.jaMatriculados.length} já estava(m) na turma`);
+        if (resultado.erros.length) partes.push(`${resultado.erros.length} linha(s) com erro`);
+        this.notify(`${partes.join(", ")}.`);
+        this.error = resultado.erros.map((item) => `Linha ${item.linha}: ${item.motivo}`).join(" ");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
     notify(text) {
       this.toast = text;
