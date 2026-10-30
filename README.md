@@ -1,12 +1,10 @@
 <div align="center">
 
-# 🚀 SGP — Sistema de Geração de Provas
+# SGP — Sistema de Geração de Provas
 
 **Plataforma web em desenvolvimento para professores organizarem turmas, criarem questões e montarem avaliações.**
 
 🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
-
-> **Estado da N2:** login/cadastro, turmas e alunos, banco de questões, avaliações e correção de provas (lançamento de notas) são persistidos pela API Express no MySQL. A geração de arquivos, a leitura automática de respostas (câmera/QR) e as estatísticas ainda não estão implementadas; a interface informa essa indisponibilidade.
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -25,10 +23,10 @@
 
 | Nome completo | Papel / principais frentes no projeto |
 |---|---|
-| Erick Andrei Demathé | |
-| Gabriel Hoeft Tissi | |
-| Henrique Cezar da Silveira | Setup inicial, Front-end, Versionamento, Documentação |
-| Renan Gabriel Piechontcoski | |
+| Erick Andrei Demathé | Diagramas UML (classes), Modelagem MER/DER (MySQL), API de provas e de aplicação |
+| Gabriel Hoeft Tissi | Revisa/Entrega UML, Script SQL (DDL/Seed), API de questões, Testes e-2-e no ambiente hospedado, Empacotamento de entrega |
+| Henrique Cezar da Silveira | Setup inicial, Front-end, Versionamento, Documentação, API (autenticação JWT e validações/tratamento de erros), Desição Arquitetural, Diagrama UML (sequência), Hospedagem (front-end, back-end e banco na nuvem), Revisão e merge de PRs |
+| Renan Gabriel Piechontcoski | Diagramas UML (atividades), Dicionário de dados, Integração front-end (provas e aplicações), Remoção de mocks |
 | Tasciane Negelski Broca | Diagramas UML (casos de uso), API de turmas e importação de alunos por CSV, integração das turmas no front-end, README v2 |
 
 ## 📑 Sumário
@@ -56,26 +54,11 @@
 
 📌 **N1**
 
-🎯 **Objetivo:**
-
 Professores com carga horária alta enfrentam um volume grande de provas para corrigir manualmente a cada avaliação (200 a 400 provas por semana de provas), o que consome tempo e atrasa a devolutiva da nota ao aluno. O **SGP (Sistema de Geração de Provas)** resolve esse problema automatizando a criação, a geração e a correção de provas: o professor monta um banco de questões, gera variações embaralhadas da prova em PDF e corrige as folhas de resposta escaneando-as pela câmera do celular direto no navegador, com a nota calculada automaticamente. O sistema é feito para professores e alunos de instituições de ensino que precisam agilizar a correção de avaliações objetivas em turmas grandes.
-
-📌 **Escopo Definido:**
-O sistema permite que o professor:
-- Monte um banco de questões (enunciado, alternativas e resposta correta);
-- Gere avaliações a partir desse banco, separando o caderno de questões da folha de respostas;
-- Gere múltiplas variações da mesma prova, com embaralhamento automático de questões e alternativas;
-- Gere a folha de respostas em PDF, com marcações de calibração e QR Code identificando a variação;
-- Corrija as provas escaneando as folhas de resposta pela câmera do celular, direto no navegador (sem app nativo);
-- Consulte relatórios estatísticos por questão e exporte notas e resultados individuais em Excel;
-- Exporte o caderno de provas em formato editável (.doc);
-- Importe listas de alunos e gere provas individualizadas com o nome impresso na folha de resposta.
-
-**Fora do escopo (por enquanto):** aplicativo mobile nativo — o escaneamento é feito pela interface web responsiva, direto no navegador do celular.
 
 ## 2. Requisitos
 
-📌 **N1** (podem ser ajustados nas entregas seguintes, se o escopo mudar)
+📌 **N1**
 
 ### 2.1 Funcionais (RF)
 
@@ -96,8 +79,6 @@ O sistema permite que o professor:
 
 ### 2.2 Não Funcionais (RNF)
 
-Restrições e qualidades do sistema (desempenho, segurança, usabilidade, compatibilidade), não é uma funcionalidade que o usuário aciona diretamente. Exemplo:
-
 | Código | Requisito |
 |---|---|
 | RNF01 | O back-end deve ser desenvolvido em Node.js com o framework Express. |
@@ -109,16 +90,7 @@ Restrições e qualidades do sistema (desempenho, segurança, usabilidade, compa
 
 ## 3. Modelagem (UML)
 
-Os diagramas UML e o passo a passo de análise estão documentados em
-[N2-P1.md](N2-P1.md). Os arquivos disponíveis em `docs/uml/` incluem
-[casos de uso](docs/uml/casodeuso.png), [classes](docs/uml/diagrama-classes.png),
-[atividades do SGP](docs/uml/diagrama-atividades-sgp.png),
-[atividades de correção](docs/uml/diagrama-atividades-corrigir-provas.png) e
-[sequência](docs/uml/sequencia.png). O banco da T07 segue o modelo de oito entidades.
-
 📌 **N2**
-
-Diagrama de casos de uso, diagrama de classes e diagrama de atividades do sistema (e demais diagramas que forem necessários). Os diagramas são escritos em PlantUML (fonte em `docs/uml/*.puml`) e exportados como PNG para a mesma pasta.
 
 ### Diagrama de Classes
 
@@ -130,11 +102,11 @@ Representa as principais entidades do domínio do SGP: `Professor`, `Turma`, `Al
 
 ![Diagrama de Atividades](docs/uml/diagrama-atividades-corrigir-provas.png)
 
-Descreve o fluxo de atividades da correção de provas, incluindo o desvio de decisão quando não há avaliação pendente, o laço de captura de alunos (repetido a cada "Capturar") e o ponto de decisão entre "Escanear próxima prova" e "Finalizar turma", que encerra o laço e atualiza o status da avaliação para "concluída".
+Descreve o fluxo de atividades da correção de provas, incluindo o desvio de decisão quando não há avaliação pendente, o laço de captura de alunos (repetido a cada `Capturar`) e o ponto de decisão entre `Escanear próxima prova` e `Finalizar turma`, que encerra o laço e atualiza o status da avaliação para `concluída`.
 
 **Sequência lógica extraída do fluxo:**
 
-1. Professor acessa a tela "Corrigir Provas".
+1. Professor acessa a tela **Corrigir Provas** .
 2. O sistema carrega as avaliações cadastradas no armazenamento local.
 3. **Decisão:** existe avaliação pendente de correção?
    - **[Não]** → Sistema exibe o aviso "Não há provas pendentes para corrigir" (fim).
@@ -164,11 +136,17 @@ Mostra os dois atores externos do SGP e o que cada um faz no sistema. O **Profes
 
 A análise do cenário, a lista de atores e casos de uso e o passo a passo da criação estão em [N2-P1.md](N2-P1.md).
 
+### Diagrama de Sequencia
+
+![Diagrama de Sequencia](docs/uml/sequencia.png)
+
+O diagrama representa o fluxo de criação e persistência de uma avaliação. O professor preenche os dados e seleciona as questões no front-end, que envia a solicitação à rota da API. A requisição passa pelo controller e pelo service, responsável por validar as informações e as questões selecionadas.
+
+Se os dados forem inválidos, a API retorna HTTP 400 e o front-end apresenta mensagens para correção. Se forem válidos, o repository prepara a avaliação e suas associações com as questões e inicia uma transação no MySQL. A avaliação é inserida e cada questão selecionada é associada à prova com sua ordem e peso. Após a confirmação da transação, os dados da avaliação criada retornam pelas camadas até o front-end, que confirma o sucesso ao professor.
+
 ## 4. Telas do Sistema
 
 📌 **N1**
-
-Prints das telas principais, na ordem do fluxo de navegação (a tela A leva à tela B):
 
 ![Tela de login](docs/telas/tela-login.png)
 *Tela de login: autenticação do usuário por e-mail e senha, com opção de criar conta.*
@@ -211,219 +189,181 @@ Insira aqui o **desenho da arquitetura** (diagrama de componentes/camadas), expo
 
 ## 6. Decisões Arquiteturais (ADRs)
 
-📌 **N2** (primeiras decisões, como a escolha do banco e da estrutura de camadas) e **N3** (registro completo)
+📌 **N2**
 
-Um ADR (*Architecture Decision Record*) documenta uma decisão técnica importante: o que foi decidido, por quê, e quais as consequências. Crie um arquivo por decisão em `docs/adr/`, numerado (`ADR-001-nome-da-decisao.md`, `ADR-002-...`), seguindo este modelo mínimo dentro de cada arquivo:
+Um ADR (*Architecture Decision Record*) registra uma decisão técnica relevante,
+incluindo o contexto que a motivou, a escolha adotada e suas consequências.
+Os registros abaixo documentam as decisões que orientam a arquitetura e a
+integração atual do SGP. A arquitetura em camadas e a stack Node.js, Express,
+MySQL e Vue.js são restrições da disciplina; os ADRs registram como o projeto
+as aplica e as decisões complementares tomadas pela equipe.
 
-```
-# ADR-001: Título curto da decisão
-
-## Contexto
-Qual problema ou dúvida técnica motivou essa decisão.
-
-## Decisão
-O que a equipe decidiu fazer.
-
-## Consequências
-O que essa escolha facilita, o que ela custa ou limita.
-```
-
-Aqui no README, liste os ADRs (Registros de Decisão Arquitetural) criados (se necessário e houver), com link para cada arquivo:
-
-- [ADR-001: Título da decisão](docs/adr/ADR-001-titulo-da-decisao.md)
-- [ADR-002: Título da decisão](docs/adr/ADR-002-titulo-da-decisao.md)
+| ADR | Decisão | Situação |
+|---|---|---|
+| [ADR-001](docs/adr/ADR-001-arquitetura-em-camadas.md) | Organizar o back-end em camadas com responsabilidades separadas | Adotada |
+| [ADR-002](docs/adr/ADR-002-mysql-relacional.md) | Usar MySQL como persistência relacional do sistema | Adotada |
+| [ADR-003](docs/adr/ADR-003-autenticacao-jwt-bcrypt.md) | Autenticar usuários com JWT e armazenar senhas com bcrypt | Adotada |
+| [ADR-004](docs/adr/ADR-004-hospedagem-em-nuvem.md) | Hospedar front-end, API e banco em serviços separados, com TLS no banco | Adotada |
+| [ADR-005](docs/adr/ADR-005-dados-de-prototipo.md) | Não migrar dados de domínio do protótipo local para o banco | Adotada |
 
 ## 7. Modelo de Dados
 
 📌 **N2**
 
-O banco MySQL (`sgp`) segue as oito entidades do diagrama de classes: `User`, `Class`,
-`Enrollment`, `Question`, `Alternative`, `Exam`, `ExamQuestion` e `Application`. O script
-de criação está em [`database/schema.sql`](database/schema.sql) e as regras de migração e
-integridade em [`database/README.md`](database/README.md).
-
-### Diagrama Entidade-Relacionamento
-
-Gerado a partir do `schema.sql` (o GitHub renderiza o diagrama abaixo):
-
-```mermaid
-erDiagram
-    users ||--o{ classes : "professor cria"
-    users ||--o{ enrollments : "aluno se matricula"
-    classes ||--o{ enrollments : "possui"
-    users ||--o{ questions : "professor cria"
-    questions ||--|{ alternatives : "tem 2 a 5"
-    users ||--o{ exams : "professor cria"
-    exams ||--o{ exam_questions : "compõe"
-    questions ||--o{ exam_questions : "usada em"
-    exams ||--o{ applications : "aplicada em"
-    classes ||--o{ applications : "recebe"
-
-    users {
-        BIGINT id PK
-        VARCHAR name
-        VARCHAR email UK
-        VARCHAR password_hash
-        VARCHAR role
-        VARCHAR ra UK
-    }
-    classes {
-        BIGINT id PK
-        VARCHAR name
-        CHAR invite_code UK
-        BIGINT teacher_id FK
-        BOOLEAN archived
-    }
-    enrollments {
-        BIGINT id PK
-        BIGINT class_id FK
-        BIGINT student_id FK
-    }
-    questions {
-        BIGINT id PK
-        TEXT statement
-        BIGINT teacher_id FK
-        VARCHAR subject
-        VARCHAR topic
-    }
-    alternatives {
-        BIGINT id PK
-        BIGINT question_id FK
-        VARCHAR text
-        BOOLEAN is_correct
-        TINYINT position
-    }
-    exams {
-        BIGINT id PK
-        VARCHAR title
-        ENUM status
-        BIGINT teacher_id FK
-        VARCHAR public_code UK
-    }
-    exam_questions {
-        BIGINT id PK
-        BIGINT exam_id FK
-        BIGINT question_id FK
-        DECIMAL points
-        INT position
-    }
-    applications {
-        BIGINT id PK
-        BIGINT exam_id FK
-        BIGINT class_id FK
-        DATETIME applied_at
-    }
-```
+![Diagrama Entidade-Relacionamento](docs/modelo-dados/mer-der.png)
 
 ### Dicionário de Dados
-
-Convenções: PK = chave primária, FK = chave estrangeira, UK = valor único. Todos os IDs são
-`BIGINT UNSIGNED AUTO_INCREMENT`. As colunas técnicas `teacher_role` e `student_role` têm valor
-fixo e existem só para que as FKs compostas `(id, role)` impeçam, por exemplo, um aluno de ser
-dono de uma turma.
 
 #### `users`: professores e alunos
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| id | BIGINT UNSIGNED (PK) | Identificador do usuário |
-| name | VARCHAR(120) | Nome completo (obrigatório) |
-| email | VARCHAR(160) (UK) | E-mail de login, único em todo o sistema; obrigatório para professor |
-| password_hash | VARCHAR(255) | Hash bcrypt da senha; obrigatório para professor |
-| role | VARCHAR(9) | Papel: `professor` ou `aluno` |
-| ra | VARCHAR(30) (UK) | Registro acadêmico do aluno (usado na importação por CSV) |
-| created_at | TIMESTAMP | Data de criação do registro |
+| id | BIGINT UNSIGNED (PK) | Identificador único, gerado automaticamente |
+| name | VARCHAR(120) NOT NULL | Nome do usuário |
+| email | VARCHAR(160) (UK), NULL | E-mail; único quando informado e obrigatório para professores |
+| password_hash | VARCHAR(255), NULL | Hash bcrypt da senha; obrigatório para professores |
+| role | VARCHAR(9) NOT NULL | Papel do usuário: `professor` ou `aluno` |
+| ra | VARCHAR(30) (UK), NULL | Registro acadêmico do aluno; único quando informado |
+| created_at | TIMESTAMP, DEFAULT CURRENT_TIMESTAMP | Data e hora de criação do registro |
+
+A restrição `CHECK` limita `role` a `professor` ou `aluno`. Outra restrição exige
+`email` e `password_hash` quando o papel é `professor`. A chave única composta
+`(id, role)` permite que outras tabelas referenciem simultaneamente o usuário e seu papel.
 
 #### `classes`: turmas
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| id | BIGINT UNSIGNED (PK) | Identificador da turma |
-| name | VARCHAR(120) | Nome da turma |
-| invite_code | CHAR(8) (UK) | Código de convite para o aluno entrar na turma |
-| teacher_id | BIGINT UNSIGNED (FK → users) | Professor dono da turma |
-| teacher_role | VARCHAR(9) | Técnico, sempre `professor` |
-| description | VARCHAR(255) | Descrição opcional |
-| archived | BOOLEAN | Indica se a turma foi arquivada (padrão `FALSE`) |
-| created_at | TIMESTAMP | Data de criação |
-| updated_at | TIMESTAMP | Data da última alteração |
+| id | BIGINT UNSIGNED (PK) | Identificador único, gerado automaticamente |
+| name | VARCHAR(120) NOT NULL | Nome da turma |
+| invite_code | CHAR(8) (UK) NOT NULL | Código único de convite para ingresso na turma |
+| teacher_id | BIGINT UNSIGNED (FK composta → `users.id`) NOT NULL | Identificador do professor responsável |
+| teacher_role | VARCHAR(9) NOT NULL, DEFAULT `professor` | Campo técnico da FK composta; o `CHECK` exige o papel `professor` |
+| description | VARCHAR(255), NULL | Descrição opcional da turma |
+| archived | BOOLEAN NOT NULL, DEFAULT `FALSE` | Indica se a turma está arquivada |
+| created_at | TIMESTAMP, DEFAULT CURRENT_TIMESTAMP | Data e hora de criação |
+| updated_at | TIMESTAMP, DEFAULT CURRENT_TIMESTAMP, ON UPDATE CURRENT_TIMESTAMP | Data e hora da última atualização; atualizada automaticamente pelo MySQL |
+
+A FK composta `(teacher_id, teacher_role)` referencia `(users.id, users.role)`,
+impedindo que um aluno seja definido como professor responsável. A chave única
+`(id, teacher_id)` é usada por outras tabelas para validar o professor proprietário.
 
 #### `enrollments`: matrículas (aluno × turma)
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| id | BIGINT UNSIGNED (PK) | Identificador da matrícula |
-| class_id | BIGINT UNSIGNED (FK → classes) | Turma; apagar a turma remove as matrículas (cascade) |
-| student_id | BIGINT UNSIGNED (FK → users) | Aluno matriculado |
-| student_role | VARCHAR(9) | Técnico, sempre `aluno` |
-| enrolled_at | DATETIME | Data da matrícula |
+| id | BIGINT UNSIGNED (PK) | Identificador único, gerado automaticamente |
+| class_id | BIGINT UNSIGNED (FK → `classes.id`) NOT NULL | Turma da matrícula; ao excluir a turma, a matrícula também é excluída |
+| student_id | BIGINT UNSIGNED (FK composta → `users.id`) NOT NULL | Aluno matriculado |
+| student_role | VARCHAR(9) NOT NULL, DEFAULT `aluno` | Campo técnico da FK composta; o `CHECK` exige o papel `aluno` |
+| enrolled_at | DATETIME NOT NULL, DEFAULT CURRENT_TIMESTAMP | Data e hora da matrícula |
 
-Um aluno só pode estar uma vez em cada turma (`UNIQUE (class_id, student_id)`).
+As FKs `(student_id, student_role)` → `(users.id, users.role)` asseguram que a matrícula
+seja de um aluno. A restrição `UNIQUE (class_id, student_id)` impede que o mesmo aluno
+se matricule mais de uma vez na mesma turma.
 
 #### `questions`: banco de questões
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| id | BIGINT UNSIGNED (PK) | Identificador da questão |
-| statement | TEXT | Enunciado |
-| teacher_id | BIGINT UNSIGNED (FK → users) | Professor autor; cada professor vê só as suas questões |
-| teacher_role | VARCHAR(9) | Técnico, sempre `professor` |
-| subject | VARCHAR(120) | Disciplina |
-| topic | VARCHAR(120) | Assunto |
-| created_at | TIMESTAMP | Data de criação |
-| updated_at | TIMESTAMP | Data da última alteração |
+| id | BIGINT UNSIGNED (PK) | Identificador único, gerado automaticamente |
+| statement | TEXT NOT NULL | Enunciado da questão |
+| teacher_id | BIGINT UNSIGNED (FK composta → `users.id`) NOT NULL | Professor autor da questão |
+| teacher_role | VARCHAR(9) NOT NULL, DEFAULT `professor` | Campo técnico da FK composta; o `CHECK` exige o papel `professor` |
+| subject | VARCHAR(120), NULL | Disciplina relacionada à questão |
+| topic | VARCHAR(120), NULL | Assunto ou tópico relacionado à questão |
+| created_at | TIMESTAMP, DEFAULT CURRENT_TIMESTAMP | Data e hora de criação |
+| updated_at | TIMESTAMP, DEFAULT CURRENT_TIMESTAMP, ON UPDATE CURRENT_TIMESTAMP | Data e hora da última atualização; atualizada automaticamente pelo MySQL |
+
+A FK composta `(teacher_id, teacher_role)` → `(users.id, users.role)` assegura que o
+autor seja um professor. A chave única `(id, teacher_id)` permite verificar a propriedade
+da questão em `exam_questions`.
 
 #### `alternatives`: alternativas de cada questão
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| id | BIGINT UNSIGNED (PK) | Identificador da alternativa |
-| question_id | BIGINT UNSIGNED (FK → questions) | Questão; apagar a questão remove as alternativas (cascade) |
-| text | VARCHAR(255) | Texto da alternativa |
-| is_correct | BOOLEAN | Indica a alternativa correta |
-| position | TINYINT UNSIGNED | Ordem de 0 a 4 (A a E), única por questão |
-| correct_marker | TINYINT (gerado) | Coluna calculada que garante no máximo uma correta por questão |
+| id | BIGINT UNSIGNED (PK) | Identificador único, gerado automaticamente |
+| question_id | BIGINT UNSIGNED (FK → `questions.id`) NOT NULL | Questão à qual a alternativa pertence; a exclusão da questão remove suas alternativas |
+| text | VARCHAR(255) NOT NULL | Texto da alternativa |
+| is_correct | BOOLEAN NOT NULL | Indica se a alternativa é a resposta correta (`TRUE`/`1`) |
+| position | TINYINT UNSIGNED NOT NULL | Posição da alternativa, de `0` a `4` (A a E), única por questão |
+| correct_marker | TINYINT gerado | Coluna calculada: recebe `1` para alternativas corretas e `NULL` para as demais; índice único permite no máximo uma correta por questão |
+
+O banco valida que `position` esteja entre `0` e `4` e que `is_correct` seja `0` ou `1`.
+O limite de duas a cinco alternativas e a exigência de exatamente uma correta são
+validados pela API; o índice técnico no banco impede duas respostas corretas na mesma questão.
 
 #### `exams`: provas
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| id | BIGINT UNSIGNED (PK) | Identificador da prova |
-| title | VARCHAR(120) | Título da prova |
-| status | ENUM | `draft` (rascunho), `ready` (aplicada) ou `closed` (encerrada) |
-| teacher_id | BIGINT UNSIGNED (FK → users) | Professor autor |
-| teacher_role | VARCHAR(9) | Técnico, sempre `professor` |
-| public_code | VARCHAR(20) (UK) | Código público da prova, para consulta do aluno |
-| legacy_details | JSON | Metadados da avaliação herdados da versão N1 |
-| created_at | TIMESTAMP | Data de criação |
+| id | BIGINT UNSIGNED (PK) | Identificador único, gerado automaticamente |
+| title | VARCHAR(120) NOT NULL | Título da prova |
+| status | ENUM(`draft`, `ready`, `closed`) NOT NULL, DEFAULT `draft` | Estado: rascunho, pronta/aplicada ou encerrada |
+| teacher_id | BIGINT UNSIGNED (FK composta → `users.id`) NOT NULL | Professor responsável pela prova |
+| teacher_role | VARCHAR(9) NOT NULL, DEFAULT `professor` | Campo técnico da FK composta; o `CHECK` exige o papel `professor` |
+| public_code | VARCHAR(20) (UK), NULL | Código público opcional e único para consulta da prova |
+| legacy_details | JSON, NULL | Metadados da avaliação herdados da versão N1 |
+| created_at | TIMESTAMP, DEFAULT CURRENT_TIMESTAMP | Data e hora de criação |
+
+A FK composta `(teacher_id, teacher_role)` → `(users.id, users.role)` assegura que o
+responsável seja um professor. A chave única `(id, teacher_id)` é usada para validar
+a propriedade da prova nas tabelas relacionadas.
 
 #### `exam_questions`: questões de cada prova
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| id | BIGINT UNSIGNED (PK) | Identificador do item |
-| exam_id | BIGINT UNSIGNED (FK → exams) | Prova; apagar a prova remove os itens (cascade) |
-| question_id | BIGINT UNSIGNED (FK → questions) | Questão usada |
-| teacher_id | BIGINT UNSIGNED | Professor; garante que prova e questão são do mesmo dono |
-| points | DECIMAL(6,2) | Pontuação da questão (maior que zero, padrão 1.00) |
-| position | INT UNSIGNED | Ordem da questão na prova, única por prova |
+| id | BIGINT UNSIGNED (PK) | Identificador único do item, gerado automaticamente |
+| exam_id | BIGINT UNSIGNED (FK composta → `exams.id`) NOT NULL | Prova que contém a questão; ao excluir a prova, o item também é excluído |
+| question_id | BIGINT UNSIGNED (FK composta → `questions.id`) NOT NULL | Questão incluída na prova |
+| teacher_id | BIGINT UNSIGNED (FK composta) NOT NULL | Identificador técnico usado nas FKs para validar a propriedade comum |
+| points | DECIMAL(6,2) NOT NULL, DEFAULT `1.00` | Pontuação atribuída à questão; deve ser maior que zero |
+| position | INT UNSIGNED NOT NULL | Ordem da questão na prova; única dentro da mesma prova |
+
+As FKs `(exam_id, teacher_id)` → `(exams.id, exams.teacher_id)` e
+`(question_id, teacher_id)` → `(questions.id, questions.teacher_id)` garantem que a
+prova e a questão pertençam ao mesmo professor. Cada questão pode aparecer uma só vez
+na prova (`UNIQUE (exam_id, question_id)`), e cada posição também é única por prova
+(`UNIQUE (exam_id, position)`).
 
 #### `applications`: aplicação de uma prova a uma turma
 
 | Campo | Tipo | Descrição |
 |---|---|---|
-| id | BIGINT UNSIGNED (PK) | Identificador da aplicação |
-| exam_id | BIGINT UNSIGNED (FK → exams) | Prova aplicada |
-| class_id | BIGINT UNSIGNED (FK → classes) | Turma que recebe a prova |
-| teacher_id | BIGINT UNSIGNED | Professor; garante que prova e turma são do mesmo dono |
-| applied_at | DATETIME | Data em que a prova foi aplicada |
-| created_at | TIMESTAMP | Data de criação |
+| id | BIGINT UNSIGNED (PK) | Identificador único da aplicação, gerado automaticamente |
+| exam_id | BIGINT UNSIGNED (FK composta → `exams.id`) NOT NULL | Prova aplicada |
+| class_id | BIGINT UNSIGNED (FK composta → `classes.id`) NOT NULL | Turma que recebe a prova |
+| teacher_id | BIGINT UNSIGNED (FK composta) NOT NULL | Identificador técnico usado nas FKs para validar a propriedade comum |
+| applied_at | DATETIME, NULL | Data e hora em que a prova foi aplicada |
+| created_at | TIMESTAMP, DEFAULT CURRENT_TIMESTAMP | Data e hora de criação do registro |
 
-Cada prova só pode ser aplicada uma vez à mesma turma (`UNIQUE (exam_id, class_id)`).
+As FKs `(exam_id, teacher_id)` → `(exams.id, exams.teacher_id)` e
+`(class_id, teacher_id)` → `(classes.id, classes.teacher_id)` garantem que a prova e a
+turma pertençam ao mesmo professor. Cada prova pode ser aplicada no máximo uma vez à
+mesma turma (`UNIQUE (exam_id, class_id)`).
+
+#### `results`: resultados dos alunos nas provas
+
+| Campo | Tipo | Descrição |
+|---|---|---|
+| id | BIGINT UNSIGNED (PK) | Identificador único do resultado, gerado automaticamente |
+| exam_id | BIGINT UNSIGNED (FK composta → `exams.id`) NOT NULL | Prova corrigida; ao excluir a prova, o resultado também é excluído |
+| teacher_id | BIGINT UNSIGNED (FK composta) NOT NULL | Identificador técnico que associa o resultado ao professor responsável pela prova |
+| student_id | BIGINT UNSIGNED (FK composta → `users.id`) NOT NULL | Aluno que recebeu a nota |
+| student_role | VARCHAR(9) NOT NULL, DEFAULT `aluno` | Campo técnico da FK composta; o `CHECK` exige o papel `aluno` |
+| score | DECIMAL(5,2) NOT NULL | Nota do aluno, limitada pelo banco ao intervalo de `0` a `10` |
+| corrected_at | TIMESTAMP, DEFAULT CURRENT_TIMESTAMP | Data e hora em que o resultado foi registrado |
+
+A FK `(exam_id, teacher_id)` → `(exams.id, exams.teacher_id)` vincula o resultado à
+prova e ao professor responsável. A FK `(student_id, student_role)` → `(users.id, users.role)`
+assegura que o destinatário seja um aluno. Cada aluno pode ter um único resultado por
+prova (`UNIQUE (exam_id, student_id)`).
 
 ## 8. Stack Tecnológica
 
-📌 **N1** (lista inicial, pode crescer nas entregas seguintes)
+📌 **N1**
 
 Tecnologias usadas no projeto e por que cada uma foi escolhida. A stack obrigatória da disciplina é:
 
@@ -445,179 +385,216 @@ Tecnologias usadas no projeto e por que cada uma foi escolhida. A stack obrigat�
 
 ## 9. Estrutura de Pastas
 
-📌 **N1**, atualizada conforme o projeto cresce
+📌 **N1**
 
 ```
+.github/
+  workflows/
+    database.yml               # validação do schema MySQL no GitHub Actions
+.vercel/
+  project.json                 # metadados de vínculo do projeto com a Vercel
+.gitignore                     # arquivos e diretórios ignorados pelo Git
+LICENSE                        # licença do projeto
+N2-P1.md                       # material/documentação da entrega N2-P1
+database/
+  schema.sql                   # estrutura e restrições do banco
+  seed.sql                     # dados iniciais/de desenvolvimento
+  test-schema.cjs              # validação automatizada do schema
+docs/
+  adr/                         # registros de decisões arquiteturais
+  api/                         # documentação da API
+  arquitetura/                 # documentação da arquitetura
+  modelo-dados/                # diagrama MER/DER
+  telas/                       # imagens das telas
+  uml/                         # diagramas UML e fontes PlantUML
 frontend/
   index.html
+  public/
+    manifest.webmanifest       # metadados da aplicação web
   src/
-    App.vue       # composição atual das telas N1
-    constants/    # valores compartilhados da interface
-    services/     # chamadas HTTP à API e utilitários da interface
-    utils/        # funções reutilizáveis
+    App.vue                    # composição das telas
+    constants/                 # constantes compartilhadas da interface
+    services/                  # comunicação com a API
+    utils/                     # funções utilitárias
     main.js
     styles.css
   package.json
+  package-lock.json
+  vercel.json                  # configuração de publicação/roteamento na Vercel
   vite.config.js
 src/
-  config/         # configuração do back-end
-  routes/         # rotas HTTP
-  controllers/    # validação e orquestração
-  services/       # regras de negócio
-  repositories/   # acesso ao MySQL
-  models/         # entidades e estruturas de dados
-server.js         # servidor Express e entrega do build
-docs/
-  uml/            # diagramas UML
-  telas/          # prints das telas
-  arquitetura/    # documentação da arquitetura
-  adr/            # decisões de arquitetura
-  modelo-dados/   # modelo de dados
-  api/            # documentação da API
+  config/                      # configuração do banco e do back-end
+  controllers/                 # validação de entrada e orquestração
+  errors/                      # erros da aplicação
+  middlewares/                 # autenticação, validação e tratamento de erros
+  models/                      # estruturas das entidades
+  repositories/                # acesso e consultas ao MySQL
+  routes/                      # definição dos endpoints HTTP
+  services/                    # regras de negócio
+  app.js                       # configuração da aplicação Express
+test/
+  fixtures/                    # schemas usados como dados de teste
+  *.test.js                    # testes automatizados da API
+.env.example                   # exemplo das variáveis de ambiente
+docker-compose.yml             # MySQL local para desenvolvimento
+package.json                   # dependências e comandos do back-end
+package-lock.json
+server.js                      # inicialização do servidor Express
 ```
 
 ## 10. Como Executar o Projeto
 
-📌 **N1**, revisado a cada entrega (atualizado na N2: API conectada ao MySQL)
+📌 **N1**
 
-### Pré-requisitos
+### Acessar a versão publicada
 
-| Ferramenta | Versão usada |
+A versão web está disponível em [projeto-arquitetura-iota.vercel.app](https://projeto-arquitetura-iota.vercel.app/).
+Na versão publicada, o front-end é servido pela Vercel, que encaminha as chamadas
+`/api` para a API no Render. A API acessa o MySQL gerenciado no Aiven. Não é necessário
+instalar Node.js, MySQL ou Docker para acessar o sistema.
+
+### Executar localmente para desenvolvimento
+
+Para desenvolver ou executar o projeto na própria máquina, são necessários:
+
+| Ferramenta | Versão |
 |---|---|
+| Git | versão recente |
 | Node.js | 22.x (LTS) |
-| npm | 10 ou superior (vem com o Node) |
-| MySQL | 8.4 ou superior, instalado localmente **ou** via Docker |
-| Git | qualquer versão recente |
+| npm | 10 ou superior |
+| Docker Desktop com Docker Compose | versão recente |
 
-### 1. Clonar e instalar as dependências
+#### 1. Clonar o repositório e instalar as dependências
 
-```
+No PowerShell:
+
+```powershell
 git clone https://github.com/Erickdemathe123/projeto-arquitetura-.git
 cd projeto-arquitetura-
 npm ci
 ```
 
-### 2. Subir o banco MySQL
+#### 2. Iniciar o MySQL local
 
-**Opção A: MySQL instalado na máquina.** Crie o banco e as tabelas com o script
-de criação e, se quiser dados de teste, rode também o seed (apenas em desenvolvimento):
+O Docker Compose inicia um MySQL 8.4 na porta `3306`. Na primeira inicialização,
+o container aplica `database/schema.sql` e `database/seed.sql`:
 
-```
-mysql -u root -p -e "CREATE DATABASE sgp CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-mysql -u root -p sgp < database/schema.sql
-mysql -u root -p sgp < database/seed.sql
-```
-
-**Opção B: Docker.** O arquivo `docker-compose.yml` sobe um MySQL 8.4 na porta 3306
-e, na primeira inicialização, aplica `schema.sql` e `seed.sql` automaticamente:
-
-```
+```powershell
 docker compose up -d
 ```
 
-A senha do usuário `root` desse container é `sgp_dev_local` (somente para uso local).
-Para recriar o banco do zero, rode `docker compose down -v` e suba de novo.
+A configuração local do container é `root` / `sgp_dev_local`, somente para
+desenvolvimento. Para apagar o banco local e recriá-lo do zero, use
+`docker compose down -v` e depois `docker compose up -d`. **Esse procedimento apaga
+os dados armazenados no volume local.**
 
-### 3. Configurar as variáveis de ambiente
+#### 3. Configurar as variáveis de ambiente
 
-Copie o modelo e preencha com os dados do seu MySQL (`cp` no Linux/macOS, `copy` no Windows):
+Crie o arquivo `.env` a partir do modelo:
 
+```powershell
+Copy-Item .env.example .env
 ```
-cp .env.example .env
-```
+
+Edite o `.env` com os dados do banco local. Para o Docker Compose, use
+`DB_HOST=localhost`, `DB_PORT=3306`, `DB_USER=root`, `DB_PASSWORD=sgp_dev_local`
+e `DB_NAME=sgp`. Mantenha `DB_SSL=false` no ambiente local.
 
 | Variável | Para que serve |
 |---|---|
-| `PORT` | Porta da API (padrão 3000) |
-| `DB_HOST`, `DB_PORT` | Endereço do MySQL (`localhost` e `3306`) |
-| `DB_USER`, `DB_PASSWORD` | Usuário e senha do MySQL (no Docker: `root` / `sgp_dev_local`) |
-| `DB_NAME` | Nome do banco (`sgp`) |
-| `DB_SSL` | Ativa TLS quando `true` (necessário para o Aiven) |
-| `DB_SSL_CA_PATH` | Caminho para o CA certificate quando TLS estiver ativo |
-| `JWT_SECRET`, `JWT_EXPIRES_IN` | Segredo e validade do token de login |
+| `PORT` | Porta da API; padrão `3000` |
+| `DB_HOST`, `DB_PORT` | Endereço e porta do MySQL |
+| `DB_USER`, `DB_PASSWORD` | Usuário e senha do MySQL |
+| `DB_NAME` | Nome do banco; no Docker Compose, `sgp` |
+| `DB_SSL` | Ativa TLS; use `false` localmente |
+| `DB_SSL_CA_PATH` | Caminho do certificado CA, quando TLS estiver ativo |
+| `JWT_SECRET`, `JWT_EXPIRES_IN` | Segredo e duração dos tokens de autenticação |
 
-O `.env` está no `.gitignore` e nunca deve ser enviado ao GitHub.
-Para usar o Aiven, configure as variáveis de banco no Render com `DB_NAME=defaultdb`,
-`DB_SSL=true` e o caminho do CA certificate instalado como Secret File. Cadastre
-a senha diretamente no painel do Render, nunca no repositório.
+O `.env` contém configurações locais e não deve ser enviado ao GitHub.
 
-### 4. Executar
+#### 4. Iniciar a aplicação
 
-```
+Para executar a versão local compilada, gere o front-end e inicie o servidor:
+
+```powershell
 npm run build
 npm start
 ```
 
-O `npm run build` instala as dependências do front-end e gera `frontend/dist/`, que é
-servido pelo Express em http://localhost:3000. Para desenvolver, use dois terminais:
-`npm run dev:api` (API com reinício automático) e `npm run dev` (front-end no Vite).
+O front-end compilado em `frontend/dist/` será servido pelo Express em
+http://localhost:3000. Para desenvolvimento com atualização automática, abra dois
+terminais: execute `npm run dev:api` em um e `npm run dev` no outro. O Vite ficará
+disponível em http://localhost:5173 e encaminhará as chamadas `/api` para a API local.
 
-### 5. Validar a conexão com o banco
+#### 5. Verificar a conexão com o banco
 
 Com o servidor rodando, acesse http://localhost:3000/health:
 
-- `200 {"status":"ok","banco":"conectado"}`: API conectada ao MySQL.
-- `503 {"status":"indisponivel","banco":"desconectado"}`: confira o MySQL e o `.env`.
+- `200 {"status":"ok","banco":"conectado"}` indica que a API está conectada ao MySQL.
+- `503 {"status":"indisponivel","banco":"desconectado"}` indica que é necessário
+  verificar se o banco está ativo e se os valores no `.env` estão corretos.
 
-### 6. Testes automatizados
+#### 6. Executar os testes
 
+```powershell
+npm test
 ```
-npm test                          # API (não precisa de MySQL)
-node database/test-schema.cjs     # schema e seed (precisa de MySQL com permissão para criar bancos)
+
+Esse comando executa os testes da aplicação. Para validar também o schema e o seed
+contra um MySQL local, execute:
+
+```powershell
+node database/test-schema.cjs
 ```
 
-Mais detalhes da API e da autenticação em [Base do back-end](docs/backend.md) e do banco em [database/README.md](database/README.md).
-
-### 7. Estado atual da integração com o banco
-
-Na N1, os dados ficavam no `localStorage` do navegador. Na N2, a API passa a persistir no MySQL. Situação de cada parte do sistema:
-
-| Funcionalidade | Situação na N2 |
-|---|---|
-| Cadastro e login de professor (RF01) | Integrado à API e ao MySQL (T11 e T18), com senha criptografada (bcrypt) e token JWT |
-| Turmas, matrículas e importação de alunos por CSV (RF05) | API pronta (T13 e T14) e tela "Minhas Turmas" ligada aos endpoints (T19), com rotas protegidas por login |
-| Banco de questões (RF02) | Integrado à API e ao MySQL (`/api/questoes`, T12 e T18) |
-| Avaliações e montagem de prova (RF03) | Integrada à API e ao MySQL (`/api/avaliacoes`); tabelas `exams`, `exam_questions` e `applications` |
-| Correção de provas (RF09) | Integrada à API e ao MySQL (`/api/avaliacoes/:id/resultados`, T20): o professor lança a nota de cada aluno por RA e o sistema calcula o andamento da correção (pendente/em correção/corrigida) |
-| Estatísticas (RF11, RF12) | Ainda não implementadas |
-| Verificação de saúde (`/health`) | Consulta o MySQL e informa se o banco está conectado |
+Para consultar os endpoints disponíveis, veja [Especificação da API](#11-especificação-da-api).
 
 ## 11. Especificação da API
 
 📌 **N2**
 
-Todas as rotas respondem em JSON. Nas rotas marcadas como **Professor** ou **Logado**, é preciso enviar o token recebido no login no cabeçalho `Authorization: Bearer <token>`. Os erros seguem o formato `{ "erro": "mensagem" }`.
+As rotas da API usam o prefixo `/api`, exceto o endpoint de saúde `/health`.
+As requisições com corpo JSON devem usar `Content-Type: application/json`.
+Nas rotas protegidas, envie o token retornado pelo login no cabeçalho:
+
+```http
+Authorization: Bearer <token>
+```
+
+As rotas marcadas como **Professor** exigem autenticação e perfil de professor.
+As respostas de erro seguem o formato `{ "erro": "mensagem" }`; exclusões bem-sucedidas
+retornam `204 No Content`.
 
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
-| GET | `/health` | Público | Verifica se a API está no ar e conectada ao MySQL |
-| POST | `/api/auth/cadastro` | Público | Cadastra um usuário (professor ou aluno) |
-| POST | `/api/auth/login` | Público | Faz login com e-mail e senha e devolve o token JWT |
-| GET | `/api/auth/me` | Logado | Retorna os dados do usuário do token |
-| POST | `/api/turmas/entrar` | Público | Aluno entra numa turma com o código de convite (`codigo`, `ra` e `nome`) |
-| GET | `/api/turmas` | Professor | Lista as turmas do professor (`?arquivadas=true` lista as arquivadas) |
-| POST | `/api/turmas` | Professor | Cria uma turma (`nome` e `descricao`) e gera o código de convite |
-| GET | `/api/turmas/:id` | Professor | Detalha uma turma |
-| PUT | `/api/turmas/:id` | Professor | Edita o nome e a descrição da turma |
-| PATCH | `/api/turmas/:id/arquivar` | Professor | Arquiva a turma (com `{ "arquivada": false }`, desarquiva) |
-| POST | `/api/turmas/:id/codigo` | Professor | Gera um novo código de convite |
+| GET | `/health` | Público | Verifica a disponibilidade da API e a conexão com o MySQL; retorna `200` se conectado ou `503` se indisponível |
+| POST | `/api/auth/cadastro` | Público | Cadastra usuário com `nome`, `role` (`professor` ou `aluno`) e, conforme o perfil, `email`, `senha` e/ou `ra`; retorna os dados públicos do usuário e token quando houver senha |
+| POST | `/api/auth/login` | Público | Recebe `email` e `senha`; retorna os dados públicos do usuário e um token JWT |
+| GET | `/api/auth/me` | Logado | Retorna os dados públicos do usuário associado ao token |
+| POST | `/api/turmas/entrar` | Público | Matricula aluno usando `codigo`, `ra` e `nome` se o RA ainda não estiver cadastrado; se já existir, o nome não é necessário |
+| GET | `/api/turmas` | Professor | Lista as turmas do professor; `?arquivadas=true` lista as arquivadas |
+| POST | `/api/turmas` | Professor | Cria turma com `nome` e `descricao` opcional; gera o código de convite |
+| GET | `/api/turmas/:id` | Professor | Retorna os dados de uma turma do professor |
+| PUT | `/api/turmas/:id` | Professor | Atualiza `nome` e/ou `descricao` da turma |
+| PATCH | `/api/turmas/:id/arquivar` | Professor | Arquiva a turma; envie `{ "arquivada": false }` para desarquivá-la |
+| POST | `/api/turmas/:id/codigo` | Professor | Gera um novo código de convite para a turma |
 | GET | `/api/turmas/:id/alunos` | Professor | Lista os alunos matriculados na turma |
-| POST | `/api/turmas/:id/alunos` | Professor | Matricula um aluno (`ra` e `nome`); reaproveita o cadastro se o RA já existir |
+| POST | `/api/turmas/:id/alunos` | Professor | Matricula aluno com `ra` e `nome` quando ainda não cadastrado; `email` é opcional |
 | DELETE | `/api/turmas/:id/alunos/:alunoId` | Professor | Remove o aluno da turma |
-| POST | `/api/turmas/:id/alunos/importar` | Professor | Importa alunos de um CSV (RF05) enviado como texto (`Content-Type: text/csv`), com as colunas `nome` e `RA` separadas por `;` ou `,` e até 1000 linhas; devolve as listas `matriculados`, `jaMatriculados` e `erros` (por linha) |
-| GET | `/api/questoes` | Professor | Lista as questões do professor |
-| POST | `/api/questoes` | Professor | Cria uma questão (`text`, `subject`, `topic`, `alternatives` com 2 a 5 itens e `correctAlternative`) |
-| PUT | `/api/questoes/:id` | Professor | Edita uma questão |
-| DELETE | `/api/questoes/:id` | Professor | Remove uma questão (erro 409 se estiver vinculada a uma avaliação) |
-| GET | `/api/avaliacoes` | Professor | Lista as avaliações do professor |
-| POST | `/api/avaliacoes` | Professor | Cria uma avaliação (`name`, `questionIds` e, opcionalmente, `applicationClassId` para já aplicá-la a uma turma) |
-| PUT | `/api/avaliacoes/:id` | Professor | Edita uma avaliação |
-| PATCH | `/api/avaliacoes/:id/gabarito` | Professor | Libera ou bloqueia o gabarito (`{ "released": true }`) |
-| DELETE | `/api/avaliacoes/:id` | Professor | Remove uma avaliação |
-| GET | `/api/avaliacoes/codigo/:code` | Público | Consulta se uma avaliação existe e se o gabarito está liberado, pelo código público |
-| GET | `/api/avaliacoes/:id/resultados` | Professor | Lista as notas já corrigidas da avaliação e o andamento (`pendente`/`em_andamento`/`concluida`), comparando com o total de alunos matriculados na turma aplicada |
-| POST | `/api/avaliacoes/:id/resultados` | Professor | Lança/atualiza a nota de um aluno (`ra` e `score`, de 0 a 10); exige que o aluno esteja matriculado na turma da avaliação |
-| DELETE | `/api/avaliacoes/:id/resultados/:alunoId` | Professor | Remove a nota lançada para um aluno |
+| POST | `/api/turmas/:id/alunos/importar` | Professor | Importa CSV enviado como texto puro (`Content-Type: text/csv` ou `text/plain`), com colunas `nome` e `ra`, separadas por `;` ou `,`; aceita até 1000 alunos e retorna `total`, `matriculados`, `jaMatriculados` e `erros` por linha |
+| GET | `/api/questoes` | Professor | Lista as questões do professor autenticado |
+| POST | `/api/questoes` | Professor | Cria questão com `text`, `subject`, `topic`, `alternatives` (de 2 a 5 textos) e `correctAlternative` (índice começando em zero) |
+| PUT | `/api/questoes/:id` | Professor | Atualiza os dados da questão usando os mesmos campos da criação |
+| DELETE | `/api/questoes/:id` | Professor | Remove questão; retorna `409` se ela estiver vinculada a uma avaliação |
+| GET | `/api/avaliacoes` | Professor | Lista as avaliações do professor autenticado |
+| POST | `/api/avaliacoes` | Professor | Cria avaliação com `name` e `questionIds`; `applicationClassId` é opcional para aplicá-la a uma turma na criação |
+| PUT | `/api/avaliacoes/:id` | Professor | Atualiza a avaliação usando os mesmos campos da criação |
+| PATCH | `/api/avaliacoes/:id/gabarito` | Professor | Altera a liberação do gabarito com `{ "released": true }` ou `{ "released": false }` |
+| DELETE | `/api/avaliacoes/:id` | Professor | Remove avaliação |
+| GET | `/api/avaliacoes/codigo/:code` | Público | Consulta avaliação pelo código público e informa os dados públicos e a disponibilidade do gabarito |
+| GET | `/api/avaliacoes/:id/resultados` | Professor | Lista os resultados da avaliação e retorna `totalMatriculados`, `corrigidos` e `status` (`pendente`, `em_andamento` ou `concluida`) |
+| POST | `/api/avaliacoes/:id/resultados` | Professor | Registra ou atualiza nota com `ra` e `score` (de `0` a `10`); exige avaliação aplicada a uma turma e aluno matriculado nela |
+| DELETE | `/api/avaliacoes/:id/resultados/:alunoId` | Professor | Remove o resultado do aluno na avaliação |
 
 ## 12. Testes e Validações
 
@@ -635,13 +612,11 @@ Guia rápido de como usar o sistema, do ponto de vista de quem vai operá-lo (o 
 
 ## 14. Equipe e Contribuições
 
-📌 **N1**, mantido até a N3
-
-Nome: principais contribuições no projeto (ex.: telas de cadastro, integração com banco, documentação). Serve para deixar claro quem fez o quê na entrega da equipe; não substitui o diário de organização de tarefas individual de cada pessoa.
+📌 **N1**
 
 - **Erick Andrei Demathé**: criação do repositório; diagramas UML de classes e de atividades e extensão inicial do schema do banco (N2); correção de provas integrada ao MySQL — tabela `results`, API `/api/avaliacoes/:id/resultados` e tela "Corrigir Provas" (T20).
 - **Gabriel Hoeft Tissi**: principais contribuições.
-- **Henrique Cezar da Silveira**: setup inicial do repositório e da estrutura de pastas, telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas, organização da estrutura Vue do front-end.
+- **Henrique Cezar da Silveira**: setup inicial do repositório e da estrutura de pastas; desenvolvimento das telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas; organização e estruturação do front-end em Vue; configuração da publicação do front-end na Vercel, do back-end no Render e do banco MySQL no Aiven; integração entre os serviços, incluindo o encaminhamento das chamadas `/api` pela Vercel e a conexão segura da API com o banco.
 - **Renan Gabriel Piechontcoski**: documentação das telas do sistema (capturas de tela de todas as telas principais em `docs/telas/`) e atualização do README v1 com as imagens e legendas da seção 4.
 - **Tasciane Negelski Broca**: diagramas UML de casos de uso e de classes (N1) e passo a passo do diagrama de casos de uso; API de turmas e matrículas e de importação de alunos por CSV; integração da tela de turmas ao back-end, com rotas protegidas por login; README v2.
 
