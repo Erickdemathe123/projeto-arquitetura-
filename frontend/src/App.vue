@@ -1,10 +1,7 @@
 <script>
-import { createEmptyWorkspace, loadWorkspace, saveWorkspace } from "./services/storage";
 import { SCREEN_TITLES } from "./constants/screens";
 import { dateKey } from "./utils/date";
-import { authApi, questoesApi, isAuthenticated } from "./services/api";
-
-const SCAN_MOCK_STUDENTS = ["João Silva", "Maria Souza", "Pedro Santos", "Ana Oliveira", "Lucas Pereira", "Beatriz Lima", "Gabriel Costa", "Larissa Almeida"];
+import { authApi, questoesApi, turmasApi, avaliacoesApi, isAuthenticated } from "./services/api";
 
 export default {
   data() {
@@ -20,6 +17,7 @@ export default {
       message: "",
       toast: "",
       loadingAuth: false,
+      loadingWorkspace: false,
       currentUser: null,
       questions: [],
       exams: [],
@@ -52,13 +50,8 @@ export default {
       calendarMonth: new Date().getMonth(),
       calendarYear: new Date().getFullYear(),
       previewExam: null,
-      statisticsExam: null,
       studentCode: "",
       consultedExam: null,
-      scanStep: "list",
-      scanActiveExam: null,
-      scanResult: null,
-      scanStudentIndex: 0
     };
   },
   computed: {
@@ -135,56 +128,15 @@ export default {
           await this.loadWorkspace();
         }
       } catch (erro) {
-        console.warn("Sessão expirada ou inválida:", erro.message);
-        authApi.logout();
+        console.error("Não foi possível carregar a sessão:", erro.message);
+        if (erro.status === 401) authApi.logout();
+        this.error = "Não foi possível carregar seus dados do servidor. Tente novamente.";
       }
     }
   },
   methods: {
     examQuestionsCountLabel(exam) {
       return `${exam.questionIds.length} ${exam.questionIds.length === 1 ? "questão" : "questões"}`;
-    },
-    examCorrectionStatusLabel(exam) {
-      if (exam.correctionStatus === "concluida") return "Corrigida";
-      if (exam.correctionStatus === "em_andamento") return "Em correção";
-      return "Pendente";
-    },
-    startScan(exam = null) {
-      const target = exam || this.exams.find((item) => item.correctionStatus !== "concluida");
-      if (!target) return this.notify("Não há provas pendentes para corrigir.");
-      this.scanActiveExam = target;
-      this.scanResult = null;
-      this.scanStep = "camera";
-    },
-    backToScanList() {
-      this.scanStep = "list";
-      this.scanActiveExam = null;
-      this.scanResult = null;
-    },
-    captureScan() {
-      const name = SCAN_MOCK_STUDENTS[this.scanStudentIndex % SCAN_MOCK_STUDENTS.length];
-      this.scanStudentIndex += 1;
-      const score = Math.round((Math.random() * 4 + 6) * 10) / 10;
-      this.scanResult = { name, score };
-      if (this.scanActiveExam && this.scanActiveExam.correctionStatus !== "concluida") {
-        this.scanActiveExam.correctionStatus = "em_andamento";
-        this.persist();
-      }
-      this.scanStep = "result";
-    },
-    scanNextStudent() {
-      this.scanResult = null;
-      this.scanStep = "camera";
-    },
-    finishScanTurma() {
-      if (this.scanActiveExam) {
-        this.scanActiveExam.correctionStatus = "concluida";
-        this.persist();
-      }
-      this.notify("Correção da turma finalizada.");
-      this.scanStep = "list";
-      this.scanActiveExam = null;
-      this.scanResult = null;
     },
     switchMode() {
       this.mode = this.mode === "login" ? "register" : "login";
@@ -226,55 +178,51 @@ export default {
           this.error = erro.message;
           return;
         }
-        console.warn("API de autenticação indisponível, usando fallback local:", erro.message);
-        const saved = loadWorkspace(this.email);
-        if (this.mode === "register") {
-          if (saved) return (this.error = "Já existe uma conta para este e-mail.");
-          saveWorkspace(this.email, createEmptyWorkspace(this.name, this.password));
-          this.message = "Conta criada com sucesso!";
-        } else {
-          if (saved && saved.password !== this.password) return (this.error = "E-mail ou senha inválidos.");
-          if (!saved) saveWorkspace(this.email, createEmptyWorkspace(this.email.split("@")[0], this.password));
-          this.message = "Login realizado com sucesso.";
-        }
-        await this.loadWorkspace();
+        console.error("Falha na API de autenticação:", erro.message);
+        this.error = erro.status ? erro.message : "Não foi possível conectar ao servidor. Tente novamente.";
       } finally {
         this.loadingAuth = false;
       }
     },
     async loadWorkspace() {
-      const saved = loadWorkspace(this.email) || {};
-      this.name = this.currentUser?.name || saved.name || this.name || this.email.split("@")[0];
-
+      this.loadingWorkspace = true;
+      this.error = "";
       try {
-        const apiQuestions = await questoesApi.listar();
-        if (apiQuestions && Array.isArray(apiQuestions)) {
-          this.questions = apiQuestions;
-        } else {
-          this.questions = saved.questions || [];
-        }
-      } catch {
-        this.questions = saved.questions || [];
+        const [questions, turmas, exams] = await Promise.all([
+          questoesApi.listar(),
+          turmasApi.listar(),
+          avaliacoesApi.listar()
+        ]);
+        this.name = this.currentUser?.name || this.name;
+        this.questions = questions;
+        this.turmas = await Promise.all(turmas.map(async (turma) => {
+          const students = await turmasApi.listarAlunos(turma.id);
+          const mappedStudents = students.map((aluno) => ({
+            id: Number(aluno.id),
+            name: aluno.nome,
+            ra: aluno.ra
+          }));
+          return {
+            id: Number(turma.id),
+            name: turma.nome,
+            description: turma.descricao,
+            inviteCode: turma.codigoConvite,
+            archived: turma.arquivada,
+            studentCount: mappedStudents.length,
+            students: mappedStudents
+          };
+        }));
+        this.exams = exams;
+        this.screen = "dashboard";
+      } catch (erro) {
+        this.error = erro.status ? erro.message : "Não foi possível carregar os dados do servidor.";
+        throw erro;
+      } finally {
+        this.loadingWorkspace = false;
       }
-
-      this.exams = saved.exams || [];
-      this.turmas = (saved.turmas || []).map((turma) => ({
-        ...turma,
-        students: [...(turma.students || [])].sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
-      }));
-      this.screen = "dashboard";
-    },
-    persist() {
-      const saved = loadWorkspace(this.email) || {};
-      saveWorkspace(this.email, { ...saved, name: this.name, password: saved.password || this.password, questions: this.questions, exams: this.exams, turmas: this.turmas });
     },
     navigate(screen) {
       this.screen = screen;
-      if (screen === "scan") {
-        this.scanStep = "list";
-        this.scanActiveExam = null;
-        this.scanResult = null;
-      }
       this.error = "";
     },
     logout() {
@@ -285,44 +233,104 @@ export default {
       this.password = "";
       this.confirmation = "";
       this.message = "";
+      this.questions = [];
+      this.exams = [];
+      this.turmas = [];
     },
-    saveTurma() {
-      if (!this.turmaForm.name.trim()) return (this.error = "Informe o nome da turma.");
-      this.turmas.push({ id: Date.now(), name: this.turmaForm.name.trim(), students: [] });
-      this.persist();
-      this.turmaForm = { name: "" };
-      this.notify("Turma criada com sucesso.");
+    mapearAluno(aluno) {
+      return { id: aluno.id, name: aluno.nome, ra: aluno.ra };
     },
-    openTurma(turma) {
+    mapearTurma(turma, alunos = []) {
+      return {
+        id: turma.id,
+        name: turma.nome,
+        description: turma.descricao,
+        inviteCode: turma.codigoConvite,
+        archived: turma.arquivada,
+        studentCount: alunos.length,
+        students: alunos.map((aluno) => this.mapearAluno(aluno))
+      };
+    },
+    async recarregarAlunos(turma) {
+      const alunos = await turmasApi.listarAlunos(turma.id);
+      turma.students = alunos.map((aluno) => this.mapearAluno(aluno));
+      turma.studentCount = turma.students.length;
+    },
+    async saveTurma() {
+      const nome = this.turmaForm.name.trim();
+      if (!nome) return (this.error = "Informe o nome da turma.");
+      try {
+        const turma = await turmasApi.criar({ nome });
+        this.turmas.push(this.mapearTurma(turma));
+        this.turmas.sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
+        this.turmaForm = { name: "" };
+        this.error = "";
+        this.notify("Turma criada com sucesso.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
+    },
+    async openTurma(turma) {
       this.selectedTurmaId = turma.id;
       this.alunoForm = { name: "", ra: "" };
       this.error = "";
+      try {
+        const alunos = await turmasApi.listarAlunos(turma.id);
+        turma.students = alunos.map((aluno) => ({
+          ...this.mapearAluno(aluno)
+        }));
+        turma.studentCount = turma.students.length;
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
     closeTurma() {
       this.selectedTurmaId = null;
       this.alunoForm = { name: "", ra: "" };
       this.error = "";
     },
-    removeTurma(turma) {
-      this.turmas = this.turmas.filter((item) => item.id !== turma.id);
-      if (this.selectedTurmaId === turma.id) this.closeTurma();
-      this.persist();
-      this.notify("Turma removida.");
+    // A API não apaga turmas: arquiva, para preservar o histórico de provas aplicadas
+    async removeTurma(turma) {
+      if (!window.confirm(`Arquivar a turma "${turma.name}"? Ela deixará de aparecer na lista.`)) return;
+      try {
+        await turmasApi.arquivar(turma.id);
+        this.turmas = this.turmas.filter((item) => item.id !== turma.id);
+        if (this.selectedTurmaId === turma.id) this.closeTurma();
+        this.notify("Turma arquivada.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
-    saveAluno() {
-      if (!this.selectedTurma) return;
-      if (!this.alunoForm.name.trim() || !this.alunoForm.ra.trim()) return (this.error = "Informe o nome e o RA do aluno.");
-      this.selectedTurma.students.push({ id: Date.now(), name: this.alunoForm.name.trim(), ra: this.alunoForm.ra.trim() });
-      this.selectedTurma.students.sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
-      this.persist();
-      this.alunoForm = { name: "", ra: "" };
-      this.notify("Aluno cadastrado com sucesso.");
+    async saveAluno() {
+      const turma = this.selectedTurma;
+      if (!turma) return;
+      const nome = this.alunoForm.name.trim();
+      const ra = this.alunoForm.ra.trim();
+      if (!nome || !ra) return (this.error = "Informe o nome e o RA do aluno.");
+      try {
+        const aluno = await turmasApi.matricular(turma.id, { nome, ra });
+        turma.students.push(this.mapearAluno(aluno));
+        turma.students.sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
+        turma.studentCount = turma.students.length;
+        this.alunoForm = { name: "", ra: "" };
+        this.error = "";
+        this.notify("Aluno cadastrado com sucesso.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
-    removeAluno(aluno) {
-      if (!this.selectedTurma) return;
-      this.selectedTurma.students = this.selectedTurma.students.filter((item) => item.id !== aluno.id);
-      this.persist();
-      this.notify("Aluno removido.");
+    async removeAluno(aluno) {
+      const turma = this.selectedTurma;
+      if (!turma) return;
+      try {
+        await turmasApi.removerAluno(turma.id, aluno.id);
+        turma.students = turma.students.filter((item) => item.id !== aluno.id);
+        turma.studentCount = turma.students.length;
+        this.error = "";
+        this.notify("Aluno removido da turma.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
     async saveQuestion() {
       const form = this.questionForm;
@@ -330,33 +338,31 @@ export default {
       if (form.alternatives.some((alternative) => !alternative.trim())) return (this.error = "Preencha todas as alternativas.");
       const wasEditing = Boolean(this.editingQuestionId);
       const returnToExam = this.editingQuestionFromExam;
-      const question = { id: this.editingQuestionId || Date.now(), ...form, alternatives: [...form.alternatives] };
-
       try {
+        const payload = {
+          text: form.text.trim(),
+          subject: form.subject.trim(),
+          topic: form.topic.trim(),
+          alternatives: [...form.alternatives],
+          correctAlternative: form.correctAlternative
+        };
+        const question = this.editingQuestionId
+          ? await questoesApi.editar(this.editingQuestionId, payload)
+          : await questoesApi.criar(payload);
         if (this.editingQuestionId) {
-          await questoesApi.editar(this.editingQuestionId, question);
+          const questionIndex = this.questions.findIndex((item) => item.id === this.editingQuestionId);
+          this.questions.splice(questionIndex, 1, question);
         } else {
-          const criada = await questoesApi.criar(question);
-          if (criada && criada.id) {
-            question.id = criada.id;
-          }
+          this.questions.push(question);
         }
-      } catch (err) {
-        console.warn("API de questões indisponível ou com erro, mantendo local:", err.message);
+        this.questionForm = { text: "", subject: "", topic: "", type: "Múltipla escolha", alternatives: ["", "", "", "", ""], correctAlternative: 0 };
+        this.editingQuestionId = null;
+        this.editingQuestionFromExam = false;
+        this.notify(wasEditing ? "Questão atualizada com sucesso." : "Questão cadastrada com sucesso.");
+        this.navigate(returnToExam ? "newExam" : "questions");
+      } catch (erro) {
+        this.error = erro.message;
       }
-
-      if (this.editingQuestionId) {
-        const questionIndex = this.questions.findIndex((item) => item.id === this.editingQuestionId);
-        this.questions.splice(questionIndex, 1, question);
-      } else {
-        this.questions.push(question);
-      }
-      this.persist();
-      this.questionForm = { text: "", subject: "", topic: "", type: "Múltipla escolha", alternatives: ["", "", "", "", ""], correctAlternative: 0 };
-      this.editingQuestionId = null;
-      this.editingQuestionFromExam = false;
-      this.notify(wasEditing ? "Questão atualizada com sucesso." : "Questão cadastrada com sucesso.");
-      this.navigate(returnToExam ? "newExam" : "questions");
     },
     editQuestion(question) {
       this.editingQuestionId = question.id;
@@ -393,16 +399,14 @@ export default {
     async removeQuestion(question) {
       try {
         await questoesApi.remover(question.id);
-      } catch (err) {
-        console.warn("API de questões indisponível ao remover, mantendo local:", err.message);
+        this.questions = this.questions.filter((item) => item.id !== question.id);
+        this.notify("Questão removida.");
+      } catch (erro) {
+        this.error = erro.message;
       }
-      this.questions = this.questions.filter((item) => item.id !== question.id);
-      this.exams = this.exams.map((exam) => ({ ...exam, questionIds: exam.questionIds.filter((id) => id !== question.id) }));
-      this.persist();
-      this.notify("Questão removida.");
     },
     addAlternative() {
-      if (this.questionForm.alternatives.length >= 10) return;
+      if (this.questionForm.alternatives.length >= 5) return;
       this.questionForm.alternatives.push("");
     },
     removeAlternative() {
@@ -413,49 +417,50 @@ export default {
         this.questionForm.correctAlternative = 0;
       }
     },
-    saveExam() {
+    async saveExam() {
       if (!this.examForm.name.trim()) return (this.error = "Informe o nome da avaliação.");
       if (!this.examForm.selected.length) return (this.error = "Selecione ao menos uma questão.");
       const wasEditing = Boolean(this.editingExamId);
-      const existingExam = wasEditing ? this.exams.find((item) => item.id === this.editingExamId) : null;
-      const selectedQuestions = this.questions.filter((question) => this.examForm.selected.includes(question.id));
-      const exam = {
-        id: this.editingExamId || Date.now(),
+      const selectedClass = this.turmas.find((turma) => turma.name === this.examForm.className);
+      const payload = {
         ...this.examForm,
+        name: this.examForm.name.trim(),
         questionIds: [...this.examForm.selected],
-        questionSnapshots: existingExam && existingExam.questionSnapshots ? existingExam.questionSnapshots : selectedQuestions.map((question) => ({ ...question, alternatives: [...question.alternatives] })),
-        publicCode: existingExam && existingExam.publicCode ? existingExam.publicCode : `SGP-${Date.now().toString(36).toUpperCase()}`,
-        released: existingExam ? existingExam.released === true : false,
-        correctionStatus: existingExam ? existingExam.correctionStatus || "pendente" : "pendente",
-        createdAt: existingExam ? existingExam.createdAt || existingExam.date : new Date().toLocaleDateString("pt-BR")
+        applicationClassId: selectedClass ? selectedClass.id : null
       };
-      if (wasEditing) {
-        const examIndex = this.exams.findIndex((item) => item.id === this.editingExamId);
-        this.exams.splice(examIndex, 1, exam);
-      } else {
-        this.exams.push(exam);
+      try {
+        const exam = this.editingExamId
+          ? await avaliacoesApi.editar(this.editingExamId, payload)
+          : await avaliacoesApi.criar(payload);
+        if (wasEditing) {
+          const index = this.exams.findIndex((item) => item.id === this.editingExamId);
+          this.exams.splice(index, 1, exam);
+        } else {
+          this.exams.unshift(exam);
+        }
+        this.examForm = {
+          name: "",
+          selected: [],
+          institution: "",
+          course: "",
+          subject: "",
+          professor: "",
+          className: "",
+          date: "",
+          instructions: "",
+          logo: "",
+          layout: "Uma coluna",
+          shuffleQuestions: true,
+          shuffleAlternatives: true,
+          versions: 1,
+          addBlankPage: true
+        };
+        this.editingExamId = null;
+        this.notify(wasEditing ? "Avaliação atualizada com sucesso." : "Avaliação criada com sucesso.");
+        this.navigate("exams");
+      } catch (erro) {
+        this.error = erro.message;
       }
-      this.persist();
-      this.examForm = {
-        name: "",
-        selected: [],
-        institution: "",
-        course: "",
-        subject: "",
-        professor: "",
-        className: "",
-        date: "",
-        instructions: "",
-        logo: "",
-        layout: "Uma coluna",
-        shuffleQuestions: true,
-        shuffleAlternatives: true,
-        versions: 1,
-        addBlankPage: true
-      };
-      this.editingExamId = null;
-      this.notify(wasEditing ? "Avaliação atualizada com sucesso." : "Avaliação criada com sucesso.");
-      this.navigate("exams");
     },
     editExam(exam) {
       this.editingExamId = exam.id;
@@ -536,21 +541,39 @@ export default {
       this.examForm.date = formatted;
       this.calendarOpen = false;
     },
-    removeExam(exam) {
-      this.exams = this.exams.filter((item) => item.id !== exam.id);
-      this.persist();
-      this.notify("Avaliação removida.");
+    async removeExam(exam) {
+      try {
+        await avaliacoesApi.remover(exam.id);
+        this.exams = this.exams.filter((item) => item.id !== exam.id);
+        this.notify("Avaliação removida.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
-    releaseExam(exam) {
-      exam.released = exam.released !== true;
-      this.persist();
-      this.notify(exam.released ? "Gabarito liberado para consulta." : "Gabarito bloqueado para consulta.");
+    async releaseExam(exam) {
+      try {
+        const updated = await avaliacoesApi.liberarGabarito(exam.id, !exam.released);
+        Object.assign(exam, updated);
+        this.notify(exam.released ? "Gabarito liberado para consulta." : "Gabarito bloqueado para consulta.");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
-    consultStudentResult() {
+    async consultStudentResult() {
       const code = this.studentCode.trim().toUpperCase();
-      this.consultedExam = this.exams.find((exam) => exam.publicCode === code) || null;
-      if (!this.consultedExam) this.error = "Código de prova não encontrado.";
-      else this.error = "";
+      try {
+        const result = await avaliacoesApi.consultarCodigo(code);
+        if (!result.resultAvailable) {
+          this.consultedExam = null;
+          this.error = `A avaliação "${result.name}" foi encontrada, mas notas e respostas ainda não estão disponíveis porque a correção não está implementada.`;
+        } else {
+          this.consultedExam = result;
+          this.error = "";
+        }
+      } catch (erro) {
+        this.consultedExam = null;
+        this.error = erro.message;
+      }
     },
     openStudentPortal() {
       this.studentCode = "";
@@ -573,28 +596,26 @@ export default {
       this.previewExam = exam;
       this.navigate("preview");
     },
-    openStatistics(exam) {
-      this.statisticsExam = exam;
-      this.navigate("statistics");
+    openStatistics() {
+      this.notify("Estatísticas indisponíveis: ainda não há respostas de avaliações persistidas.");
     },
-    importStudents(event) {
+    async importStudents(event) {
       const [file] = event.target.files;
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = () => {
-        const rows = String(reader.result).split(/\r?\n/).map((row) => row.trim()).filter(Boolean);
-        const imported = rows.slice(1).map((row) => {
-          const [name, ra] = row.split(/[;,]/).map((value) => value.trim());
-          return name && ra ? { id: Date.now() + Math.random(), name, ra } : null;
-        }).filter(Boolean);
-        if (!this.selectedTurma || !imported.length) return (this.error = "Use um arquivo CSV com as colunas nome e RA.");
-        this.selectedTurma.students = [...this.selectedTurma.students, ...imported]
-          .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
-        this.persist();
-        this.notify(`${imported.length} aluno(s) importado(s) com sucesso.`);
-      };
-      reader.readAsText(file);
       event.target.value = "";
+      const turma = this.selectedTurma;
+      if (!file || !turma) return;
+      try {
+        const conteudo = await file.text();
+        const resultado = await turmasApi.importarCsv(turma.id, conteudo);
+        await this.recarregarAlunos(turma);
+        const partes = [`${resultado.matriculados.length} aluno(s) importado(s)`];
+        if (resultado.jaMatriculados.length) partes.push(`${resultado.jaMatriculados.length} já estava(m) na turma`);
+        if (resultado.erros.length) partes.push(`${resultado.erros.length} linha(s) com erro`);
+        this.notify(`${partes.join(", ")}.`);
+        this.error = resultado.erros.map((item) => `Linha ${item.linha}: ${item.motivo}`).join(" ");
+      } catch (erro) {
+        this.error = erro.message;
+      }
     },
     notify(text) {
       this.toast = text;
@@ -622,11 +643,10 @@ export default {
         <template v-if="screen === 'exams'"><div class="page-heading row"><div><span class="eyebrow">AVALIAÇÕES</span><h1>Minhas Avaliações</h1><p>{{ examsCountLabel }}</p></div><button class="primary-button compact" :disabled="!questions.length" @click="navigate('newExam')">＋ Nova avaliação</button></div><div v-if="!exams.length" class="empty-card"><span>▣</span><h2>Nenhuma avaliação criada</h2><p>Cadastre questões e monte sua primeira prova.</p></div><div v-else class="question-list"><article v-for="exam in exams" :key="exam.id" class="question-item"><span class="question-number">▣</span><div><strong>{{ exam.name }}</strong>        <small>{{ examQuestionsCountLabel(exam) }} · Código: {{ exam.publicCode }} ·         {{ exam.released === true ? "Gabarito liberado" : "Gabarito bloqueado" }}</small></div>                <div class="question-actions"><button class="edit-button" @click="releaseExam(exam)" :aria-label="exam.released ? 'Gabarito liberado' : 'Liberar gabarito'" :title="exam.released ? 'Gabarito liberado' : 'Liberar gabarito'">{{ exam.released ? "🔓" : "🔒" }}</button><button class="edit-button" @click="previewSavedExam(exam)" aria-label="Pré-visualizar prova" title="Pré-visualizar prova">◉</button><button class="edit-button" @click="openStatistics(exam)" aria-label="Ver estatísticas" title="Ver estatísticas">▥</button><button class="edit-button" @click="editExam(exam)" aria-label="Editar avaliação" title="Editar avaliação">✎</button><button class="remove-button" @click="removeExam(exam)" aria-label="Remover avaliação" title="Remover avaliação">×</button></div></article></div></template>
         <template v-if="screen === 'newExam'"><div class="page-heading"><span class="eyebrow">AVALIAÇÕES</span><h1>{{ editingExamId ? "Editar Avaliação" : "Montar Prova" }}</h1><p>Configure os dados da prova, selecione as questões e prepare o documento editável.</p></div><form class="form-card" @submit.prevent="saveExam"><h2 class="form-section-title">Dados da avaliação</h2><div class="form-grid"><label>Nome da avaliação<input v-model="examForm.name" placeholder="Nome da sua prova"></label>        <label>Data da aplicação<div class="date-field"><input class="date-text-input" v-model="examForm.date" @input="formatDateInput" type="text" inputmode="numeric" placeholder="dd/mm/yyyy" maxlength="10">        <button type="button" class="calendar-trigger" @click="toggleCalendar" aria-label="Abrir calendário"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M8 3v4M16 3v4M3 10h18"></path></svg></button><div v-if="calendarOpen" class="calendar-popover"><div class="calendar-header"><button type="button" @click="changeCalendarMonth(-1)" aria-label="Mês anterior">‹</button><strong>{{ calendarMonthLabel }}</strong><button type="button" @click="changeCalendarMonth(1)" aria-label="Próximo mês">›</button></div><div class="calendar-weekdays"><span v-for="weekday in ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb']" :key="weekday">{{ weekday }}</span></div><div class="calendar-days"><button v-for="(day, index) in calendarDays" :key="index" type="button" :class="{ empty: !day, today: calendarDayIsSelected(day) }" :disabled="!day" @click="day && selectCalendarDay(day)">{{ day }}</button></div></div></div></label><label>Instituição<input v-model="examForm.institution" placeholder="Nome da instituição"></label><label>Curso<input v-model="examForm.course" placeholder="Nome do curso"></label><label>Disciplina<select v-model="examForm.subject"><option value="">Selecione uma disciplina</option><option v-for="subject in availableSubjects" :key="subject" :value="subject">{{ subject }}</option></select></label><label>Professor<input v-model="examForm.professor" placeholder="Nome do professor"></label><label>Turma<select v-model="examForm.className"><option value="">Selecione uma turma</option><option v-for="className in availableClasses" :key="className" :value="className">{{ className }}</option></select></label></div><h2 class="form-section-title">Cabeçalho e instruções</h2><div class="header-config"><label>Logo da instituição<input type="file" accept="image/*" @change="handleLogoUpload"></label><img v-if="examForm.logo" class="logo-preview" :src="examForm.logo" alt="Logo da instituição"></div><label>Instruções da prova<textarea v-model="examForm.instructions" placeholder="Digite as orientações para os alunos"></textarea></label><h2 class="form-section-title">Configurações do documento</h2><div class="form-grid"><label>Layout da prova<select v-model="examForm.layout"><option>Uma coluna</option><option>Duas colunas</option></select></label><label>Número de versões<input v-model.number="examForm.versions" type="number" min="1"></label></div><div class="toggle-list"><label><input v-model="examForm.shuffleQuestions" type="checkbox"> Embaralhar questões</label><label><input v-model="examForm.shuffleAlternatives" type="checkbox"> Embaralhar alternativas</label><label><input v-model="examForm.addBlankPage" type="checkbox"> Adicionar página em branco se necessário para impressão frente e verso</label></div><h2 class="form-section-title">Questões da avaliação</h2><p class="selection-title">Selecione as questões:</p><div v-if="!questions.length" class="empty-card compact"><span>✎</span><h2>Sem questões disponíveis</h2><p>Cadastre a primeira questão para começar.</p></div><div v-else class="selection-list"><label v-for="question in filteredQuestionsForExam" :key="question.id"><input type="checkbox" v-model="examForm.selected" :value="question.id"><span><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }}</small></span><button v-if="editingExamId" type="button" class="edit-button selection-edit" @click.stop.prevent="editQuestionFromExam(question)" aria-label="Editar questão da avaliação">✎</button></label></div><p v-if="error" class="auth-error">{{ error }}</p><div class="form-actions"><button type="button" class="outline-button" @click="editingExamId = null; navigate('exams')">Cancelar</button>        <button type="button" class="outline-button" @click="previewExamForm">Pré-visualizar</button><button class="primary-button compact">{{ editingExamId ? "Salvar alterações" : "Salvar avaliação" }}</button></div></form></template>
         <template v-if="screen === 'preview'"><div class="page-heading row"><div><span class="eyebrow">VISUALIZAÇÃO</span><h1>Pré-visualização da prova</h1><p>Confira o caderno e a folha de respostas antes da geração do documento.</p></div><button class="outline-button" @click="navigate('newExam')">Voltar para montagem</button></div><div class="preview-grid"><section class="document-preview"><div class="preview-paper"><div class="preview-header"><img v-if="previewExam && previewExam.logo" :src="previewExam.logo" alt="Logo da instituição"><div><strong>{{ previewExam && previewExam.institution || "Instituição" }}</strong><span>{{ previewExam && previewExam.course || "Curso" }}</span><span>{{ previewExam && previewExam.subject || "Disciplina" }}</span></div></div><h2>{{ previewExam && previewExam.name || "Nome da avaliação" }}</h2><p class="preview-meta">{{ previewExam && previewExam.professor || "Professor" }} · {{ previewExam && previewExam.className || "Turma" }} · {{ previewExam && previewExam.date || "Data da aplicação" }}</p><p v-if="previewExam && previewExam.instructions" class="preview-instructions">{{ previewExam.instructions }}</p><article v-for="(question, index) in (previewExam ?         questionsForExam(previewExam) : [])" :key="question.id" class="preview-question"><strong>{{ index + 1 }}. {{ question.text }}</strong><span v-for="(alternative, alternativeIndex) in question.alternatives" :key="alternativeIndex">{{ String.fromCharCode(65 + alternativeIndex) }}) {{ alternative }}</span></article><p v-if="previewExam && !previewExam.questionIds.length" class="preview-empty">As questões selecionadas aparecerão aqui.</p></div></section><section class="document-preview answer-sheet"><div class="preview-paper"><div class="answer-sheet-heading"><span class="qr-placeholder">QR</span><div><h2>Folha de respostas</h2><p>{{ previewExam && previewExam.name || "Nome da avaliação" }}</p></div></div><label>Aluno: ____________________________________</label><label>RA: _______________________________________</label><div class="answer-grid"><div v-for="number in (previewExam ? previewExam.questionIds.length : 5)" :key="number"><strong>{{ number }}</strong><span v-for="letter in ['A', 'B', 'C', 'D', 'E']" :key="letter">{{ letter }} ○</span></div></div><p class="preview-note">Prévia visual da folha de respostas. O QR Code e a leitura serão implementados posteriormente.</p></div></section></div></template>
-        <template v-if="screen === 'statistics'"><div class="page-heading row"><div><span class="eyebrow">ANÁLISE PEDAGÓGICA</span><h1>Estatísticas da avaliação</h1><p>{{ statisticsExam && statisticsExam.name || "Selecione uma avaliação" }}</p></div><button class="outline-button" @click="navigate('dashboard')">Voltar</button></div><div class="stats-grid"><article class="stat-card"><span>Alunos corrigidos</span><strong>0</strong><small>Aguardando correção</small></article><article class="stat-card"><span>Média da turma</span><strong>—</strong><small>Disponível após a leitura</small></article><article class="stat-card"><span>Questões analisadas</span><strong>0</strong><small>Sem respostas processadas</small></article></div><section class="empty-card"><span>▥</span><h2>Estatísticas ainda não disponíveis</h2><p>Quando as provas forem corrigidas, a taxa de acertos e as alternativas mais marcadas aparecerão aqui.</p></section></template>
+        <template v-if="screen === 'statistics'"><div class="page-heading row"><div><span class="eyebrow">ANÁLISE PEDAGÓGICA</span><h1>Estatísticas da avaliação</h1></div><button class="outline-button" @click="navigate('dashboard')">Voltar</button></div><section class="empty-card"><span>▥</span><h2>Estatísticas indisponíveis</h2><p>Os resultados só serão exibidos quando as respostas corrigidas estiverem persistidas no sistema.</p></section></template>
         <template v-if="screen === 'scan'">
-        <div v-if="scanStep === 'list'"><div class="page-heading row"><div><span class="eyebrow">CORREÇÃO INTELIGENTE</span><h1>Corrigir Provas</h1><p>Selecione uma avaliação para corrigir ou escaneie a turma inteira.</p></div><button class="primary-button compact" :disabled="!exams.length" @click="startScan()">⌗ Escanear Turma</button></div><div v-if="!exams.length" class="empty-card"><span>⌗</span><h2>Nenhuma avaliação para corrigir</h2><p>Cadastre uma avaliação em "Montar Prova" para liberar a correção.</p></div><div v-else class="question-list"><article v-for="exam in exams" :key="exam.id" class="question-item"><span class="question-number">⌗</span><div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · {{ exam.className || "Turma não definida" }} · {{ examCorrectionStatusLabel(exam) }}</small></div><div class="question-actions"><button class="edit-button" @click="startScan(exam)" aria-label="Corrigir agora" title="Corrigir agora">▶</button></div></article></div></div>
-        <div v-else-if="scanStep === 'camera'" class="scan-page"><span class="eyebrow">CORREÇÃO INTELIGENTE</span><h1>{{ scanActiveExam ? scanActiveExam.name : "Escanear Turma" }}</h1><p>Aponte a câmera para o QR Code da folha de respostas.</p><div class="camera-mock"><div class="scan-frame">⌗</div><span>Aguardando captura...</span></div><div class="scan-actions"><button class="outline-button" @click="backToScanList">Cancelar</button><button class="primary-button compact" @click="captureScan">Capturar</button></div></div>
-        <div v-else class="scan-page"><span class="eyebrow">CORREÇÃO INTELIGENTE</span><h1>Prova corrigida</h1><div class="empty-card scan-result-card"><span>✅</span><h2>Aluno identificado: {{ scanResult.name }}</h2><p>Nota: {{ scanResult.score.toFixed(1) }} / 10.0</p></div><div class="scan-actions"><button class="outline-button" @click="scanNextStudent">Escanear próxima prova</button><button class="primary-button compact" @click="finishScanTurma">Finalizar turma</button></div></div>
+          <div class="page-heading"><span class="eyebrow">CORREÇÃO</span><h1>Correção de provas</h1><p>Esse recurso ainda não está integrado ao banco de dados.</p></div>
+          <section class="empty-card"><span>⌗</span><h2>Correção indisponível</h2><p>O sistema ainda não persiste respostas, notas ou leituras de câmera. Nenhum resultado será simulado.</p></section>
         </template>
       </section></main><div v-if="toast" class="toast">{{ toast }}</div>
     </div>

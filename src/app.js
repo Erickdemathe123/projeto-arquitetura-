@@ -4,6 +4,8 @@ const fs = require('node:fs');
 const turmaRoutes = require('./routes/turmaRoutes');
 const healthRoutes = require('./routes/healthRoutes');
 const authRoutes = require('./routes/authRoutes');
+const questionRoutes = require('./routes/questaoRoutes');
+const examRoutes = require('./routes/avaliacaoRoutes');
 const errorHandler = require('./middlewares/errorHandler');
 const notFoundHandler = require('./middlewares/notFoundHandler');
 const { sanitizarBody } = require('./middlewares/validator');
@@ -17,6 +19,8 @@ function criarApp({ configurarRotas } = {}) {
   app.use('/health', healthRoutes);
   app.use('/api/auth', authRoutes);
   app.use('/api/turmas', turmaRoutes);
+  app.use('/api/questoes', questionRoutes);
+  app.use('/api/avaliacoes', examRoutes);
 
   if (typeof configurarRotas === 'function') {
     configurarRotas(app);

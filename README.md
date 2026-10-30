@@ -2,9 +2,11 @@
 
 # 🚀 SGP — Sistema de Geração de Provas
 
-**Plataforma web para professores criarem, aplicarem e corrigirem provas de forma automatizada, com geração de PDF, embaralhamento de questões/alternativas e correção via câmera do smartphone.**
+**Plataforma web em desenvolvimento para professores organizarem turmas, criarem questões e montarem avaliações.**
 
 🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
+
+> **Estado da N2:** login/cadastro, turmas e alunos, banco de questões e avaliações são persistidos pela API Express no MySQL. A geração de arquivos, leitura/correção de respostas e estatísticas ainda não estão implementadas; a interface informa essa indisponibilidade e não apresenta notas simuladas.
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -449,7 +451,7 @@ frontend/
   src/
     App.vue       # composição atual das telas N1
     constants/    # valores compartilhados da interface
-    services/     # persistência local e futuras integrações HTTP
+    services/     # chamadas HTTP à API e utilitários da interface
     utils/        # funções reutilizáveis
     main.js
     styles.css
@@ -606,7 +608,7 @@ As rotas de questões (`/api/questoes`) serão documentadas aqui quando a T12 fo
 
 📌 **N3** (validações e tratamento de erros/casos de borda passam a ser cobrados nesta entrega)
 
-Como testar os endpoints principais: descreva o passo a passo ou aponte para a coleção do Postman/Insomnia salva em `docs/api/`. Descreva também as validações e o tratamento de erros e casos de borda implementados (ex.: campo obrigatório vazio, e-mail duplicado, item inexistente), e como o sistema responde em cada caso.
+Execute `npm test` na raiz para rodar os testes automatizados sem conectar ao MySQL. A suíte cobre autenticação, proteção por papel, validação de IDs, importação CSV, regras de validação de questões/avaliações e consulta pública sem exposição de respostas. A validação ponta a ponta com um banco MySQL de teste continua necessária para a entrega final.
 
 ## 13. Manual do Usuário
 

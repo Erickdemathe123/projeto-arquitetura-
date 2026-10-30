@@ -92,55 +92,94 @@ export const authApi = {
 };
 
 export const questoesApi = {
-  async listar() {
-    try {
-      return await request('/questoes', { method: 'GET' });
-    } catch (erro) {
-      // Caso a T12 ainda não esteja no servidor, retorna null para o front usar o fallback
-      if (erro.status === 404) return null;
-      throw erro;
-    }
-  },
-
-  async criar(questao) {
-    try {
-      return await request('/questoes', {
-        method: 'POST',
-        body: JSON.stringify(questao)
-      });
-    } catch (erro) {
-      if (erro.status === 404) return null;
-      throw erro;
-    }
-  },
-
-  async editar(id, questao) {
-    try {
-      return await request(`/questoes/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(questao)
-      });
-    } catch (erro) {
-      if (erro.status === 404) return null;
-      throw erro;
-    }
-  },
-
-  async remover(id) {
-    try {
-      return await request(`/questoes/${id}`, { method: 'DELETE' });
-    } catch (erro) {
-      if (erro.status === 404) return null;
-      throw erro;
-    }
-  }
+  listar: () => request('/questoes', { method: 'GET' }),
+  criar: (questao) => request('/questoes', {
+    method: 'POST',
+    body: JSON.stringify(questao)
+  }),
+  editar: (id, questao) => request(`/questoes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(questao)
+  }),
+  remover: (id) => request(`/questoes/${id}`, { method: 'DELETE' })
 };
 
+export const avaliacoesApi = {
+  listar: () => request('/avaliacoes', { method: 'GET' }),
+  criar: (avaliacao) => request('/avaliacoes', {
+    method: 'POST',
+    body: JSON.stringify(avaliacao)
+  }),
+  editar: (id, avaliacao) => request(`/avaliacoes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(avaliacao)
+  }),
+  liberarGabarito: (id, released) => request(`/avaliacoes/${id}/gabarito`, {
+    method: 'PATCH',
+    body: JSON.stringify({ released })
+  }),
+  remover: (id) => request(`/avaliacoes/${id}`, { method: 'DELETE' }),
+  consultarCodigo: (code) => request(`/avaliacoes/codigo/${encodeURIComponent(code)}`, { method: 'GET' })
+};
+
+export const turmasApi = {
+  listar(arquivadas = false) {
+    return request(`/turmas${arquivadas ? '?arquivadas=true' : ''}`, { method: 'GET' });
+  },
+
+  criar({ nome, descricao }) {
+    return request('/turmas', {
+      method: 'POST',
+      body: JSON.stringify({ nome, descricao })
+    });
+  },
+
+  editar(id, { nome, descricao }) {
+    return request(`/turmas/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ nome, descricao })
+    });
+  },
+
+  arquivar(id, arquivada = true) {
+    return request(`/turmas/${id}/arquivar`, {
+      method: 'PATCH',
+      body: JSON.stringify({ arquivada })
+    });
+  },
+
+  listarAlunos(id) {
+    return request(`/turmas/${id}/alunos`, { method: 'GET' });
+  },
+
+  matricular(id, { nome, ra }) {
+    return request(`/turmas/${id}/alunos`, {
+      method: 'POST',
+      body: JSON.stringify({ nome, ra })
+    });
+  },
+
+  removerAluno(id, alunoId) {
+    return request(`/turmas/${id}/alunos/${alunoId}`, { method: 'DELETE' });
+  },
+
+  // Envia o conteúdo do arquivo CSV como texto puro (RF05)
+  importarCsv(id, conteudoCsv) {
+    return request(`/turmas/${id}/alunos/importar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/csv' },
+      body: conteudoCsv
+    });
+  }
+};
+  
 export default {
   getToken,
   setToken,
   removeToken,
   isAuthenticated,
   auth: authApi,
-  questoes: questoesApi
+  questoes: questoesApi,
+  turmas: turmasApi,
+  avaliacoes: avaliacoesApi
 };
