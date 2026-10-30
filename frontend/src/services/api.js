@@ -92,48 +92,34 @@ export const authApi = {
 };
 
 export const questoesApi = {
-  async listar() {
-    try {
-      return await request('/questoes', { method: 'GET' });
-    } catch (erro) {
-      // Caso a T12 ainda não esteja no servidor, retorna null para o front usar o fallback
-      if (erro.status === 404) return null;
-      throw erro;
-    }
-  },
+  listar: () => request('/questoes', { method: 'GET' }),
+  criar: (questao) => request('/questoes', {
+    method: 'POST',
+    body: JSON.stringify(questao)
+  }),
+  editar: (id, questao) => request(`/questoes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(questao)
+  }),
+  remover: (id) => request(`/questoes/${id}`, { method: 'DELETE' })
+};
 
-  async criar(questao) {
-    try {
-      return await request('/questoes', {
-        method: 'POST',
-        body: JSON.stringify(questao)
-      });
-    } catch (erro) {
-      if (erro.status === 404) return null;
-      throw erro;
-    }
-  },
-
-  async editar(id, questao) {
-    try {
-      return await request(`/questoes/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify(questao)
-      });
-    } catch (erro) {
-      if (erro.status === 404) return null;
-      throw erro;
-    }
-  },
-
-  async remover(id) {
-    try {
-      return await request(`/questoes/${id}`, { method: 'DELETE' });
-    } catch (erro) {
-      if (erro.status === 404) return null;
-      throw erro;
-    }
-  }
+export const avaliacoesApi = {
+  listar: () => request('/avaliacoes', { method: 'GET' }),
+  criar: (avaliacao) => request('/avaliacoes', {
+    method: 'POST',
+    body: JSON.stringify(avaliacao)
+  }),
+  editar: (id, avaliacao) => request(`/avaliacoes/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify(avaliacao)
+  }),
+  liberarGabarito: (id, released) => request(`/avaliacoes/${id}/gabarito`, {
+    method: 'PATCH',
+    body: JSON.stringify({ released })
+  }),
+  remover: (id) => request(`/avaliacoes/${id}`, { method: 'DELETE' }),
+  consultarCodigo: (code) => request(`/avaliacoes/codigo/${encodeURIComponent(code)}`, { method: 'GET' })
 };
 
 export const turmasApi = {
@@ -193,5 +179,7 @@ export default {
   removeToken,
   isAuthenticated,
   auth: authApi,
-  questoes: questoesApi
+  questoes: questoesApi,
+  turmas: turmasApi,
+  avaliacoes: avaliacoesApi
 };

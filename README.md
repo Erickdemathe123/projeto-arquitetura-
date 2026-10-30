@@ -17,9 +17,11 @@
 
 # 🚀 SGP — Sistema de Geração de Provas
 
-**Plataforma web para professores criarem, aplicarem e corrigirem provas de forma automatizada, com geração de PDF, embaralhamento de questões/alternativas e correção via câmera do smartphone.**
+**Plataforma web em desenvolvimento para professores organizarem turmas, criarem questões e montarem avaliações.**
 
 🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
+
+> **Estado da N2:** login/cadastro, turmas e alunos, banco de questões e avaliações são persistidos pela API Express no MySQL. A geração de arquivos, leitura/correção de respostas e estatísticas ainda não estão implementadas; a interface informa essa indisponibilidade e não apresenta notas simuladas.
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -443,6 +445,10 @@ Tecnologias usadas no projeto e por que cada uma foi escolhida. A stack obrigat�
 - **Node.js**: ambiente de execução do back-end.
 - **Express**: framework para as rotas e a API REST.
 - **MySQL**: banco de dados relacional.
+- **Vue.js e Vite**: interface web reativa e ferramenta de desenvolvimento/build do front-end.
+- **JWT**: autenticação das rotas administrativas.
+- **bcrypt**: hash seguro das senhas.
+- **dotenv**: carregamento das configurações locais por variáveis de ambiente.
 
 Se a equipe usar outras bibliotecas relevantes (ex.: JWT para autenticação, bcrypt para senhas, dotenv para variáveis de ambiente), liste aqui também, com uma linha dizendo para que serve cada uma.
 
@@ -456,7 +462,7 @@ frontend/
   src/
     App.vue       # composição atual das telas N1
     constants/    # valores compartilhados da interface
-    services/     # persistência local e futuras integrações HTTP
+    services/     # chamadas HTTP à API e utilitários da interface
     utils/        # funções reutilizáveis
     main.js
     styles.css
@@ -569,30 +575,38 @@ npm test                          # API (não precisa de MySQL)
 node database/test-schema.cjs     # schema e seed (precisa de MySQL com permissão para criar bancos)
 ```
 
-Mais detalhes da API e da autenticação em [Base do back-end](docs/backend.md) e do
-banco em [database/README.md](database/README.md).
+Mais detalhes do banco em [database/README.md](database/README.md).
 
-> Na N1, os dados ficavam no `localStorage` do navegador. Na N2, a API passa a
-> persistir no MySQL, e as telas estão sendo ligadas aos endpoints (tarefas T18 a T21).
+> Na N1, os dados de domínio ficavam no `localStorage` do navegador. Na N2, as telas de turmas/alunos, questões e avaliações usam a API e o MySQL; não há migração dos dados locais antigos. O `localStorage` permanece apenas para armazenar o token de autenticação.
 
 ## 11. Especificação da API
 
 📌 **N2**
 
-Tabela com os principais endpoints da API. Se a lista crescer muito, mova para um arquivo separado (ex.: `docs/api/especificacao.md`) ou uma coleção do Postman/Insomnia exportada em `docs/api/`, e deixe aqui só o link.
+As rotas administrativas exigem JWT de usuário com papel `professor`. A consulta por código é pública e informa apenas se o gabarito foi liberado; não retorna nota nem respostas.
 
 | Método | Rota | Descrição |
 |---|---|---|
-| GET | /api/recurso | Lista os recursos |
-| POST | /api/recurso | Cria um novo recurso |
-| PUT | /api/recurso/:id | Atualiza um recurso existente |
-| DELETE | /api/recurso/:id | Remove um recurso |
+| POST | `/api/auth/cadastro` | Cadastra professor e inicia sessão |
+| POST | `/api/auth/login` | Autentica professor |
+| GET | `/api/auth/me` | Retorna o usuário autenticado |
+| GET, POST | `/api/turmas` | Lista e cria turmas do professor |
+| PATCH | `/api/turmas/:id/arquivar` | Arquiva turma |
+| GET, POST | `/api/turmas/:id/alunos` | Lista e matricula alunos |
+| DELETE | `/api/turmas/:id/alunos/:alunoId` | Remove matrícula |
+| POST | `/api/turmas/:id/alunos/importar` | Importa alunos de CSV (`text/csv`) |
+| GET, POST | `/api/questoes` | Lista e cria questões |
+| PUT, DELETE | `/api/questoes/:id` | Atualiza ou remove questão |
+| GET, POST | `/api/avaliacoes` | Lista e cria avaliações |
+| PUT, DELETE | `/api/avaliacoes/:id` | Atualiza ou remove avaliação |
+| PATCH | `/api/avaliacoes/:id/gabarito` | Libera ou bloqueia consulta do gabarito |
+| GET | `/api/avaliacoes/codigo/:code` | Consulta pública de disponibilidade pelo código |
 
 ## 12. Testes e Validações
 
 📌 **N3** (validações e tratamento de erros/casos de borda passam a ser cobrados nesta entrega)
 
-Como testar os endpoints principais: descreva o passo a passo ou aponte para a coleção do Postman/Insomnia salva em `docs/api/`. Descreva também as validações e o tratamento de erros e casos de borda implementados (ex.: campo obrigatório vazio, e-mail duplicado, item inexistente), e como o sistema responde em cada caso.
+Execute `npm test` na raiz para rodar os testes automatizados sem conectar ao MySQL. A suíte cobre autenticação, proteção por papel, validação de IDs, importação CSV, regras de validação de questões/avaliações e consulta pública sem exposição de respostas. A validação ponta a ponta com um banco MySQL de teste continua necessária para a entrega final.
 
 ## 13. Manual do Usuário
 
