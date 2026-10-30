@@ -11,7 +11,7 @@ function tratar(acao) {
 }
 
 const consultarCodigo = tratar(async (req, res) => {
-  res.json(await service.consultarCodigo(req.params.code));
+  res.json(await service.consultarCodigo(req.params.code, req.query.ra));
 });
 
 const listar = tratar(async (req, res) => {

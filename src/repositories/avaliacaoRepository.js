@@ -216,13 +216,29 @@ async function remover(professorId, id) {
   }
 }
 
-async function buscarPublicoPorCodigo(code) {
+async function buscarPublicoPorCodigo(code, ra) {
   const [rows] = await pool.query(
-    'SELECT title, status FROM exams WHERE public_code = ? LIMIT 1',
+    'SELECT id, title, status FROM exams WHERE public_code = ? LIMIT 1',
     [code]
   );
   if (!rows.length) return null;
-  return { name: rows[0].title, released: rows[0].status === 'closed', resultAvailable: false };
+  const exam = rows[0];
+  const released = exam.status === 'closed';
+
+  let score = null;
+  if (released && ra) {
+    const [resultRows] = await pool.query(
+      `SELECT r.score
+         FROM results r
+         JOIN users u ON u.id = r.student_id AND u.ra = ?
+        WHERE r.exam_id = ?
+        LIMIT 1`,
+      [ra, exam.id]
+    );
+    if (resultRows.length) score = Number(resultRows[0].score);
+  }
+
+  return { name: exam.title, released, resultAvailable: score !== null, score };
 }
 
 module.exports = { listarPorProfessor, buscarPorId, criar, atualizar, definirLiberada, remover, buscarPublicoPorCodigo };

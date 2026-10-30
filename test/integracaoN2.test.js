@@ -109,11 +109,11 @@ test('avaliações rejeitam questões repetidas e estado de gabarito não boolea
   );
 });
 
-test('consulta pública por código retorna disponibilidade sem expor respostas', async (t) => {
+test('consulta pública por código retorna disponibilidade sem expor respostas quando não há RA', async (t) => {
   const baseUrl = await iniciarServidor(t);
   t.mock.method(pool, 'query', async (_sql, params) => {
     assert.deepEqual(params, ['SGP-ABC123']);
-    return [[{ title: 'Avaliação de teste', status: 'closed' }]];
+    return [[{ id: 9, title: 'Avaliação de teste', status: 'closed' }]];
   });
 
   const response = await fetch(`${baseUrl}/api/avaliacoes/codigo/sgp-abc123`);
@@ -121,6 +121,29 @@ test('consulta pública por código retorna disponibilidade sem expor respostas'
   assert.deepEqual(await response.json(), {
     name: 'Avaliação de teste',
     released: true,
-    resultAvailable: false
+    resultAvailable: false,
+    score: null
   });
+});
+
+test('consulta pública por código + RA devolve a nota só quando o gabarito está liberado e o RA bate', async (t) => {
+  const baseUrl = await iniciarServidor(t);
+  const chamadas = [];
+  t.mock.method(pool, 'query', async (sql, params) => {
+    chamadas.push(params);
+    if (sql.startsWith('SELECT id, title, status')) {
+      return [[{ id: 9, title: 'Avaliação de teste', status: 'closed' }]];
+    }
+    return [[{ score: '8.50' }]];
+  });
+
+  const response = await fetch(`${baseUrl}/api/avaliacoes/codigo/sgp-abc123?ra=RA-1`);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), {
+    name: 'Avaliação de teste',
+    released: true,
+    resultAvailable: true,
+    score: 8.5
+  });
+  assert.deepEqual(chamadas, [['SGP-ABC123'], ['RA-1', 9]]);
 });
