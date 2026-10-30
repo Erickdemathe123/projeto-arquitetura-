@@ -1,18 +1,3 @@
-> **Este é o modelo (esqueleto) do README.md do projeto.** Ele mostra os títulos, subtítulos e o que escrever em cada um, com exemplos de como e onde inserir diagramas, prints e links. Copie a estrutura abaixo para o `README.md` do repositório da sua equipe e vá preenchendo e expandindo ao longo do semestre. Não é para entregar este arquivo preenchido com estes textos de exemplo, ele existe só para te mostrar o padrão esperado.
->
-> O README evolui em 3 versões, uma por entrega: **v1 na N1**, **v2 na N2** e **final na N3**. Cada seção abaixo tem uma marca (📌 **N1** / 📌 **N2** / 📌 **N3**) indicando a partir de qual entrega ela passa a ser obrigatória. O conteúdo de uma entrega anterior continua no README, só é ajustado se necessário, nunca apagado.
-
----
-
-## Como usar este modelo
-
-1. Crie a pasta `docs/` na raiz do repositório, com as subpastas `docs/uml/`, `docs/telas/`, `docs/arquitetura/`, `docs/adr/`, `docs/modelo-dados/` e `docs/api/`.
-2. Salve cada diagrama, print ou arquivo de apoio na subpasta correspondente.
-3. No README, referencie a imagem com a sintaxe `![Descrição da imagem](docs/pasta/arquivo.png)`, assim ela aparece direto na página do repositório, sem precisar abrir outro arquivo.
-4. Mantenha o Sumário atualizado conforme for preenchendo as seções.
-
----
-
 <div align="center">
 
 # 🚀 SGP — Sistema de Geração de Provas
@@ -34,8 +19,6 @@
 
 </div>
 
-> 💡 Troque os links dos badges acima se quiser (ex.: apontar a badge de status para "N2" ou "N3" conforme a fase). Eles são só visuais, não afetam o código.
-
 ## 👥 Equipe
 
 | Nome completo | Papel / principais frentes no projeto |
@@ -44,7 +27,7 @@
 | Gabriel Hoeft Tissi | |
 | Henrique Cezar da Silveira | Setup inicial, Front-end, Versionamento, Documentação |
 | Renan Gabriel Piechontcoski | |
-| Tasciane Negelski Broca | |
+| Tasciane Negelski Broca | Diagramas UML (casos de uso), API de turmas e importação de alunos por CSV, integração das turmas no front-end, README v2 |
 
 ## 📑 Sumário
 
