@@ -626,7 +626,7 @@ Nome: principais contribuições no projeto (ex.: telas de cadastro, integraçã
 - **Gabriel Hoeft Tissi**: principais contribuições.
 - **Henrique Cezar da Silveira**: setup inicial do repositório e da estrutura de pastas, telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas, organização da estrutura Vue do front-end.
 - **Renan Gabriel Piechontcoski**: documentação das telas do sistema (capturas de tela de todas as telas principais em `docs/telas/`) e atualização do README v1 com as imagens e legendas da seção 4.
-- **Tasciane Negelski Broca**: diagramas UML (casos de uso e classes).
+- **Tasciane Negelski Broca**: diagramas UML de casos de uso e de classes (N1) e passo a passo do diagrama de casos de uso; API de turmas e matrículas e de importação de alunos por CSV; integração da tela de turmas ao back-end, com rotas protegidas por login; README v2.
 
 ---
 
