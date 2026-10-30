@@ -562,11 +562,19 @@ npm test                          # API (não precisa de MySQL)
 node database/test-schema.cjs     # schema e seed (precisa de MySQL com permissão para criar bancos)
 ```
 
-Mais detalhes da API e da autenticação em [Base do back-end](docs/backend.md) e do
-banco em [database/README.md](database/README.md).
+Mais detalhes da API e da autenticação em [Base do back-end](docs/backend.md) e do banco em [database/README.md](database/README.md).
 
-> Na N1, os dados ficavam no `localStorage` do navegador. Na N2, a API passa a
-> persistir no MySQL, e as telas estão sendo ligadas aos endpoints (tarefas T18 a T21).
+### 7. Estado atual da integração com o banco
+
+Na N1, os dados ficavam no `localStorage` do navegador. Na N2, a API passa a persistir no MySQL. Situação de cada parte do sistema:
+
+| Funcionalidade | Situação na N2 |
+|---|---|
+| Cadastro e login de professor (RF01) | Integrado à API e ao MySQL (T11 e T18), com senha criptografada (bcrypt) e token JWT |
+| Turmas, matrículas e importação de alunos por CSV (RF05) | API pronta (T13 e T14) e tela "Minhas Turmas" ligada aos endpoints (T19), com rotas protegidas por login |
+| Banco de questões (RF02) | Tela pronta para usar `/api/questoes` (T18); enquanto a API de questões (T12) não estiver no servidor, os dados ficam no navegador |
+| Avaliações, correção e estatísticas (RF03 a RF12) | Ainda no `localStorage`; as tabelas `exams`, `exam_questions` e `applications` já existem no banco |
+| Verificação de saúde (`/health`) | Consulta o MySQL e informa se o banco está conectado |
 
 ## 11. Especificação da API
 
