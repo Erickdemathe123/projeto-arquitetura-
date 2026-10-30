@@ -580,14 +580,27 @@ Na N1, os dados ficavam no `localStorage` do navegador. Na N2, a API passa a per
 
 📌 **N2**
 
-Tabela com os principais endpoints da API. Se a lista crescer muito, mova para um arquivo separado (ex.: `docs/api/especificacao.md`) ou uma coleção do Postman/Insomnia exportada em `docs/api/`, e deixe aqui só o link.
+Todas as rotas respondem em JSON. Nas rotas marcadas como **Professor** ou **Logado**, é preciso enviar o token recebido no login no cabeçalho `Authorization: Bearer <token>`. Os erros seguem o formato `{ "erro": "mensagem" }`.
 
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | /api/recurso | Lista os recursos |
-| POST | /api/recurso | Cria um novo recurso |
-| PUT | /api/recurso/:id | Atualiza um recurso existente |
-| DELETE | /api/recurso/:id | Remove um recurso |
+| Método | Rota | Acesso | Descrição |
+|---|---|---|---|
+| GET | `/health` | Público | Verifica se a API está no ar e conectada ao MySQL |
+| POST | `/api/auth/cadastro` | Público | Cadastra um usuário (professor ou aluno) |
+| POST | `/api/auth/login` | Público | Faz login com e-mail e senha e devolve o token JWT |
+| GET | `/api/auth/me` | Logado | Retorna os dados do usuário do token |
+| POST | `/api/turmas/entrar` | Público | Aluno entra numa turma com o código de convite (`codigo`, `ra` e `nome`) |
+| GET | `/api/turmas` | Professor | Lista as turmas do professor (`?arquivadas=true` lista as arquivadas) |
+| POST | `/api/turmas` | Professor | Cria uma turma (`nome` e `descricao`) e gera o código de convite |
+| GET | `/api/turmas/:id` | Professor | Detalha uma turma |
+| PUT | `/api/turmas/:id` | Professor | Edita o nome e a descrição da turma |
+| PATCH | `/api/turmas/:id/arquivar` | Professor | Arquiva a turma (com `{ "arquivada": false }`, desarquiva) |
+| POST | `/api/turmas/:id/codigo` | Professor | Gera um novo código de convite |
+| GET | `/api/turmas/:id/alunos` | Professor | Lista os alunos matriculados na turma |
+| POST | `/api/turmas/:id/alunos` | Professor | Matricula um aluno (`ra` e `nome`); reaproveita o cadastro se o RA já existir |
+| DELETE | `/api/turmas/:id/alunos/:alunoId` | Professor | Remove o aluno da turma |
+| POST | `/api/turmas/:id/alunos/importar` | Professor | Importa alunos de um CSV (RF05) enviado como texto (`Content-Type: text/csv`), com as colunas `nome` e `RA` separadas por `;` ou `,` e até 1000 linhas; devolve as listas `matriculados`, `jaMatriculados` e `erros` (por linha) |
+
+As rotas de questões (`/api/questoes`) serão documentadas aqui quando a T12 for entregue.
 
 ## 12. Testes e Validações
 
