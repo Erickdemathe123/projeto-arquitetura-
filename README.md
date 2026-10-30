@@ -109,10 +109,12 @@ Restrições e qualidades do sistema (desempenho, segurança, usabilidade, compa
 
 ## 3. Modelagem (UML)
 
-Revisão da T05 para 16/10, seguindo o documento de Gabriel:
-[quatro diagramas, fontes editáveis e passo a passo](docs/uml/gabriel/README.md).
-O banco da T07 segue esse modelo de oito entidades. Os diagramas abaixo
-preservam as versões anteriores do grupo.
+Os diagramas UML e o passo a passo de análise estão documentados em
+[N2-P1.md](N2-P1.md). Os arquivos disponíveis em `docs/uml/` incluem
+[casos de uso](docs/uml/casodeuso.png), [classes](docs/uml/diagrama-classes.png),
+[atividades do SGP](docs/uml/diagrama-atividades-sgp.png),
+[atividades de correção](docs/uml/diagrama-atividades-corrigir-provas.png) e
+[sequência](docs/uml/sequencia.png). O banco da T07 segue o modelo de oito entidades.
 
 📌 **N2**
 
@@ -160,7 +162,7 @@ Descreve o fluxo de atividades da correção de provas, incluindo o desvio de de
 
 Mostra os dois atores externos do SGP e o que cada um faz no sistema. O **Professor** importa a lista de alunos, cria e edita provas, gera as provas e o gabarito, corrige as provas, consulta as avaliações, gera as estatísticas das respostas e o relatório de notas e edita o layout da prova. O **Aluno** se identifica na prova e consulta o seu resultado.
 
-A análise do cenário, a lista de atores e casos de uso e o passo a passo da criação estão em [N2-P1.md](N2-P1.md). A versão revisada na T05, que inclui autenticação, turmas e matrícula, está em [docs/uml/gabriel](docs/uml/gabriel/README.md).
+A análise do cenário, a lista de atores e casos de uso e o passo a passo da criação estão em [N2-P1.md](N2-P1.md).
 
 ## 4. Telas do Sistema
 
