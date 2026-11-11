@@ -1,6 +1,6 @@
 <script>
 import { SCREEN_TITLES } from "./constants/screens";
-import { formatStoredDate } from "./utils/date";
+import { emptyExamForm, emptyQuestionForm, examFormFrom, questionFormFrom } from "./utils/forms";
 import { authApi, questoesApi, turmasApi, avaliacoesApi, resultadosApi, isAuthenticated } from "./services/api";
 import AuthScreen from "./components/AuthScreen.vue";
 import StudentPortal from "./components/StudentPortal.vue";
@@ -55,25 +55,8 @@ export default {
       editingQuestionId: null,
       editingExamId: null,
       editingQuestionFromExam: false,
-      questionForm: { text: "", subject: "", topic: "", type: "Múltipla escolha", alternatives: ["", "", "", "", ""], correctAlternative: 0 },
-      examForm: {
-        name: "",
-        selected: [],
-        points: {},
-        institution: "",
-        course: "",
-        subject: "",
-        professor: "",
-        className: "",
-        date: "",
-        instructions: "",
-        logo: "",
-        layout: "Uma coluna",
-        shuffleQuestions: true,
-        shuffleAlternatives: true,
-        versions: 1,
-        addBlankPage: true
-      },
+      questionForm: emptyQuestionForm(),
+      examForm: emptyExamForm(),
       previewExam: null,
       studentCode: "",
       studentRa: "",
@@ -372,7 +355,7 @@ export default {
         } else {
           this.questions.push(question);
         }
-        this.questionForm = { text: "", subject: "", topic: "", type: "Múltipla escolha", alternatives: ["", "", "", "", ""], correctAlternative: 0 };
+        this.questionForm = emptyQuestionForm();
         this.editingQuestionId = null;
         this.editingQuestionFromExam = false;
         this.notify(wasEditing ? "Questão atualizada com sucesso." : "Questão cadastrada com sucesso.");
@@ -384,27 +367,13 @@ export default {
     editQuestion(question) {
       this.editingQuestionId = question.id;
       this.editingQuestionFromExam = false;
-      this.questionForm = {
-        text: question.text,
-        subject: question.subject,
-        topic: question.topic,
-        type: "Múltipla escolha",
-        alternatives: [...question.alternatives],
-        correctAlternative: question.correctAlternative || 0
-      };
+      this.questionForm = questionFormFrom(question);
       this.navigate("newQuestion");
     },
     editQuestionFromExam(question) {
       this.editingQuestionId = question.id;
       this.editingQuestionFromExam = true;
-      this.questionForm = {
-        text: question.text,
-        subject: question.subject,
-        topic: question.topic,
-        type: "Múltipla escolha",
-        alternatives: [...question.alternatives],
-        correctAlternative: question.correctAlternative || 0
-      };
+      this.questionForm = questionFormFrom(question);
       this.navigate("newQuestion");
     },
     cancelQuestionEdit() {
@@ -447,24 +416,7 @@ export default {
         } else {
           this.exams.unshift(exam);
         }
-        this.examForm = {
-          name: "",
-          selected: [],
-          points: {},
-          institution: "",
-          course: "",
-          subject: "",
-          professor: "",
-          className: "",
-          date: "",
-          instructions: "",
-          logo: "",
-          layout: "Uma coluna",
-          shuffleQuestions: true,
-          shuffleAlternatives: true,
-          versions: 1,
-          addBlankPage: true
-        };
+        this.examForm = emptyExamForm();
         this.editingExamId = null;
         this.notify(wasEditing ? "Avaliação atualizada com sucesso." : "Avaliação criada com sucesso.");
         this.navigate("exams");
@@ -474,24 +426,7 @@ export default {
     },
     editExam(exam) {
       this.editingExamId = exam.id;
-      this.examForm = {
-        name: exam.name,
-        selected: [...exam.questionIds],
-        points: Object.fromEntries(exam.questionIds.map((questionId, index) => [questionId, exam.questionPoints?.[index] ?? 1])),
-        institution: exam.institution || "",
-        course: exam.course || "",
-        subject: exam.subject || "",
-        professor: exam.professor || "",
-        className: exam.className || "",
-        date: formatStoredDate(exam.date),
-        instructions: exam.instructions || "",
-        logo: exam.logo || "",
-        layout: exam.layout || "Uma coluna",
-        shuffleQuestions: exam.shuffleQuestions !== false,
-        shuffleAlternatives: exam.shuffleAlternatives !== false,
-        versions: exam.versions || 1,
-        addBlankPage: exam.addBlankPage !== false
-      };
+      this.examForm = examFormFrom(exam);
       this.navigate("newExam");
     },
     async removeExam(exam) {
