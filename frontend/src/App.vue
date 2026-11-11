@@ -16,6 +16,8 @@ import ExamPreview from "./components/ExamPreview.vue";
 import StatisticsScreen from "./components/StatisticsScreen.vue";
 import ScanScreen from "./components/ScanScreen.vue";
 import AppDialog from "./components/AppDialog.vue";
+import ThemeToggle from "./components/ThemeToggle.vue";
+import { applyTheme, getInitialTheme } from "./utils/theme";
 
 export default {
   components: {
@@ -32,7 +34,8 @@ export default {
     ExamPreview,
     StatisticsScreen,
     ScanScreen,
-    AppDialog
+    AppDialog,
+    ThemeToggle
   },
   data() {
     return {
@@ -64,6 +67,7 @@ export default {
       statisticsSummary: null,
       statisticsLoading: false,
       dialog: null,
+      theme: getInitialTheme(),
       studentCode: "",
       studentRa: "",
       consultedExam: null,
@@ -103,6 +107,9 @@ export default {
         return question && question.subject === newSubject;
       });
     }
+  },
+  created() {
+    applyTheme(this.theme, { save: false });
   },
   async mounted() {
     window.addEventListener("popstate", this.handleRouteChange);
@@ -553,6 +560,10 @@ export default {
         this.dialog = { options, resolve };
       });
     },
+    toggleTheme() {
+      this.theme = this.theme === "dark" ? "light" : "dark";
+      applyTheme(this.theme);
+    },
     closeDialog(result) {
       if (!this.dialog) return;
       this.dialog.resolve(result);
@@ -669,7 +680,7 @@ export default {
       @logout="logout"
     />
     <main class="main-content">
-      <AppTopbar :title="currentTitle" :name="name" @logout="logout" />
+      <AppTopbar :title="currentTitle" :name="name" :theme="theme" @logout="logout" @toggle-theme="toggleTheme" />
       <section class="content">
         <DashboardScreen
           v-if="screen === 'dashboard'"
@@ -775,5 +786,6 @@ export default {
     </main>
     <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
+  <ThemeToggle v-if="screen === 'login' || screen === 'register' || screen === 'studentPortal'" :theme="theme" floating @toggle="toggleTheme" />
   <AppDialog v-if="dialog" v-bind="dialog.options" @confirm="closeDialog" @cancel="closeDialog(null)" />
 </template>
