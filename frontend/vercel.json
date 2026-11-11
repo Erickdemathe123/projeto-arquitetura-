@@ -3,6 +3,10 @@
     {
       "source": "/api/:path*",
       "destination": "https://sgp-api-1enk.onrender.com/api/:path*"
+    },
+    {
+      "source": "/aluno",
+      "destination": "/index.html"
     }
   ]
 }
