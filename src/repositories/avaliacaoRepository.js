@@ -38,12 +38,12 @@ async function snapshotsDasQuestoes(connection, professorId, questionIds) {
 }
 
 function mapear(rows, links) {
-  const idsPorAvaliacao = new Map();
+  const questoesPorAvaliacao = new Map();
   for (const link of links) {
-    if (!idsPorAvaliacao.has(Number(link.exam_id))) idsPorAvaliacao.set(Number(link.exam_id), []);
-    idsPorAvaliacao.get(Number(link.exam_id)).push(Number(link.question_id));
+    if (!questoesPorAvaliacao.has(Number(link.exam_id))) questoesPorAvaliacao.set(Number(link.exam_id), []);
+    questoesPorAvaliacao.get(Number(link.exam_id)).push({ id: Number(link.question_id), points: Number(link.points ?? 1) });
   }
-  return rows.map((row) => new Avaliacao(row, idsPorAvaliacao.get(Number(row.id)) || []));
+  return rows.map((row) => new Avaliacao(row, questoesPorAvaliacao.get(Number(row.id)) || []));
 }
 
 async function listarPorProfessor(professorId) {
@@ -55,7 +55,7 @@ async function listarPorProfessor(professorId) {
   const ids = rows.map((row) => Number(row.id));
   const placeholders = ids.map(() => '?').join(', ');
   const [links] = await pool.query(
-    `SELECT exam_id, question_id FROM exam_questions WHERE exam_id IN (${placeholders}) ORDER BY exam_id, position`,
+    `SELECT exam_id, question_id, points FROM exam_questions WHERE exam_id IN (${placeholders}) ORDER BY exam_id, position`,
     ids
   );
   return mapear(rows, links);
@@ -65,7 +65,7 @@ async function buscarPorId(professorId, id) {
   const [rows] = await pool.query('SELECT * FROM exams WHERE id = ? AND teacher_id = ?', [id, professorId]);
   if (!rows.length) return null;
   const [links] = await pool.query(
-    'SELECT exam_id, question_id FROM exam_questions WHERE exam_id = ? ORDER BY position',
+    'SELECT exam_id, question_id, points FROM exam_questions WHERE exam_id = ? ORDER BY position',
     [id]
   );
   return mapear(rows, links)[0];
@@ -105,7 +105,7 @@ async function criar(professorId, dados) {
     for (let position = 0; position < dados.questionIds.length; position++) {
       await connection.query(
         'INSERT INTO exam_questions (exam_id, question_id, teacher_id, points, position) VALUES (?, ?, ?, ?, ?)',
-        [result.insertId, dados.questionIds[position], professorId, 1, position]
+        [result.insertId, dados.questionIds[position], professorId, dados.questionPoints[position], position]
       );
     }
     if (dados.applicationClassId) {
@@ -171,7 +171,7 @@ async function atualizar(professorId, id, dados) {
     for (let position = 0; position < dados.questionIds.length; position++) {
       await connection.query(
         'INSERT INTO exam_questions (exam_id, question_id, teacher_id, points, position) VALUES (?, ?, ?, ?, ?)',
-        [id, dados.questionIds[position], professorId, 1, position]
+        [id, dados.questionIds[position], professorId, dados.questionPoints[position], position]
       );
     }
     await connection.query('DELETE FROM applications WHERE exam_id = ?', [id]);
