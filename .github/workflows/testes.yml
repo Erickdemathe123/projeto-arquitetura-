@@ -1,0 +1,30 @@
+name: Testes e build
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - name: Instalar dependências da API
+        run: npm ci --ignore-scripts
+      - name: Testes da API
+        run: npm test
+      - name: Instalar dependências do front-end
+        run: npm --prefix frontend ci
+      - name: Testes do front-end
+        run: npm --prefix frontend test
+      - name: Build do front-end
+        run: npm --prefix frontend run build
