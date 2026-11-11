@@ -1,5 +1,5 @@
 <script>
-import { examQuestionsCountLabel } from "../utils/exam";
+import { examQuestionsCountLabel, formatPoints } from "../utils/exam";
 
 export default {
   props: {
@@ -7,9 +7,20 @@ export default {
     exams: { type: Array, required: true },
     questions: { type: Array, required: true }
   },
-  emits: ["navigate", "open-classes", "open-scan", "release", "preview", "statistics", "edit", "remove"],
+  emits: ["new-question", "new-exam", "open-classes", "open-scan", "release", "preview", "statistics", "edit", "remove"],
+  computed: {
+    questionsHint() {
+      const total = this.questions.length;
+      if (!total) return "Cadastre sua primeira questão";
+      return `${total} ${total === 1 ? "questão" : "questões"} no banco`;
+    },
+    examHint() {
+      return this.questions.length ? "Selecione questões e monte a prova" : "Disponível após cadastrar questões";
+    }
+  },
   methods: {
-    examQuestionsCountLabel
+    examQuestionsCountLabel,
+    formatPoints
   }
 }
 </script>
@@ -17,8 +28,8 @@ export default {
 <template>
   <div class="page-heading"><span class="eyebrow">VISÃO GERAL</span><h1>Olá, {{ name }}!</h1></div>
   <div class="quick-actions">
-    <button @click="$emit('navigate', 'newQuestion')"><b>✎</b><strong>Criar Questão</strong><small>Cadastre sua primeira questão</small></button>
-    <button :disabled="!questions.length" @click="$emit('navigate', 'newExam')"><b>▣</b><strong>Montar Prova</strong><small>Disponível após cadastrar questões</small></button>
+    <button @click="$emit('new-question')"><b>✎</b><strong>Criar Questão</strong><small>{{ questionsHint }}</small></button>
+    <button :disabled="!questions.length" @click="$emit('new-exam')"><b>▣</b><strong>Montar Prova</strong><small>{{ examHint }}</small></button>
     <button @click="$emit('open-classes')"><b>♙</b><strong>Minhas Turmas</strong><small>Organize seus alunos</small></button>
     <button @click="$emit('open-scan')"><b>⌗</b><strong>Corrigir Provas</strong><small>Correção pelo navegador</small></button>
   </div>
@@ -27,7 +38,7 @@ export default {
   <div v-else class="question-list">
     <article v-for="exam in exams" :key="exam.id" class="question-item">
       <span class="question-number">▣</span>
-      <div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · Código: {{ exam.publicCode || "Código pendente" }} · {{ exam.released === true ? "Gabarito liberado" : "Gabarito bloqueado" }}</small></div>
+      <div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · {{ formatPoints(exam.totalPoints) }} · Código: {{ exam.publicCode || "Código pendente" }} · {{ exam.released === true ? "Gabarito liberado" : "Gabarito bloqueado" }}</small></div>
       <div class="question-actions">
         <button class="edit-button" @click="$emit('release', exam)" :aria-label="exam.released === true ? 'Bloquear gabarito' : 'Liberar gabarito'" :title="exam.released === true ? 'Bloquear gabarito' : 'Liberar gabarito'">{{ exam.released === true ? "🔓" : "🔒" }}</button>
         <button class="edit-button" @click="$emit('preview', exam)" aria-label="Pré-visualizar prova" title="Pré-visualizar prova">◉</button>

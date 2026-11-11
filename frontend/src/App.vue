@@ -15,6 +15,7 @@ import ExamForm from "./components/ExamForm.vue";
 import ExamPreview from "./components/ExamPreview.vue";
 import StatisticsScreen from "./components/StatisticsScreen.vue";
 import ScanScreen from "./components/ScanScreen.vue";
+import AppDialog from "./components/AppDialog.vue";
 
 export default {
   components: {
@@ -30,7 +31,8 @@ export default {
     ExamForm,
     ExamPreview,
     StatisticsScreen,
-    ScanScreen
+    ScanScreen,
+    AppDialog
   },
   data() {
     return {
@@ -58,6 +60,10 @@ export default {
       questionForm: emptyQuestionForm(),
       examForm: emptyExamForm(),
       previewExam: null,
+      statisticsExam: null,
+      statisticsSummary: null,
+      statisticsLoading: false,
+      dialog: null,
       studentCode: "",
       studentRa: "",
       consultedExam: null,
@@ -273,8 +279,8 @@ export default {
       this.alunoForm = { name: "", ra: "" };
       this.error = "";
     },
-        async editTurma(turma) {
-      const novoNome = window.prompt("Novo nome da turma:", turma.name);
+    async editTurma(turma) {
+      const novoNome = await this.askDialog({ title: "Editar turma", withInput: true, inputLabel: "Nome da turma", initialValue: turma.name, confirmLabel: "Salvar" });
       if (novoNome === null) return;
       const nome = novoNome.trim();
       if (!nome) return (this.error = "Informe o nome da turma.");
@@ -291,7 +297,8 @@ export default {
     },
     // A API não apaga turmas: arquiva, para preservar o histórico de provas aplicadas
     async removeTurma(turma) {
-      if (!window.confirm(`Arquivar a turma "${turma.name}"? Ela deixará de aparecer na lista.`)) return;
+      const confirmado = await this.askDialog({ title: "Arquivar turma", message: `Arquivar a turma "${turma.name}"? Ela deixará de aparecer na lista.`, confirmLabel: "Arquivar", danger: true });
+      if (!confirmado) return;
       try {
         await turmasApi.arquivar(turma.id);
         this.turmas = this.turmas.filter((item) => item.id !== turma.id);
@@ -383,6 +390,8 @@ export default {
       this.navigate(returnToExam ? "newExam" : "questions");
     },
     async removeQuestion(question) {
+      const confirmado = await this.askDialog({ title: "Remover questão", message: `Remover a questão "${question.text}"? Essa ação não pode ser desfeita.`, confirmLabel: "Remover", danger: true });
+      if (!confirmado) return;
       try {
         await questoesApi.remover(question.id);
         this.questions = this.questions.filter((item) => item.id !== question.id);
@@ -430,6 +439,8 @@ export default {
       this.navigate("newExam");
     },
     async removeExam(exam) {
+      const confirmado = await this.askDialog({ title: "Remover avaliação", message: `Remover a avaliação "${exam.name}"? Essa ação não pode ser desfeita.`, confirmLabel: "Remover", danger: true });
+      if (!confirmado) return;
       try {
         await avaliacoesApi.remover(exam.id);
         this.exams = this.exams.filter((item) => item.id !== exam.id);
@@ -510,8 +521,42 @@ export default {
       this.previewExam = exam;
       this.navigate("preview");
     },
-    openStatistics() {
-      this.notify("Estatísticas indisponíveis: ainda não há respostas de avaliações persistidas.");
+    async openStatistics(exam) {
+      this.statisticsExam = exam;
+      this.statisticsSummary = null;
+      this.statisticsLoading = true;
+      this.error = "";
+      this.navigate("statistics");
+      try {
+        this.statisticsSummary = await resultadosApi.listar(exam.id);
+      } catch (erro) {
+        this.error = erro.message;
+      } finally {
+        this.statisticsLoading = false;
+      }
+    },
+    newQuestion() {
+      this.editingQuestionId = null;
+      this.editingQuestionFromExam = false;
+      this.questionForm = emptyQuestionForm();
+      this.navigate("newQuestion");
+    },
+    newExam() {
+      this.editingExamId = null;
+      this.examForm = emptyExamForm();
+      this.navigate("newExam");
+    },
+    // Abre o AppDialog e devolve uma Promise com o texto digitado,
+    // true (confirmado) ou null (cancelado)
+    askDialog(options) {
+      return new Promise((resolve) => {
+        this.dialog = { options, resolve };
+      });
+    },
+    closeDialog(result) {
+      if (!this.dialog) return;
+      this.dialog.resolve(result);
+      this.dialog = null;
     },
     async openScan() {
       this.scanStep = "list";
@@ -631,7 +676,8 @@ export default {
           :name="name"
           :exams="exams"
           :questions="questions"
-          @navigate="navigate"
+          @new-question="newQuestion"
+          @new-exam="newExam"
           @open-classes="navigate('classes'); selectedTurmaId = null"
           @open-scan="openScan"
           @release="releaseExam"
@@ -659,7 +705,7 @@ export default {
         <QuestionsScreen
           v-if="screen === 'questions'"
           :questions="questions"
-          @new="navigate('newQuestion')"
+          @new="newQuestion"
           @edit="editQuestion"
           @remove="removeQuestion"
         />
@@ -675,7 +721,7 @@ export default {
           v-if="screen === 'exams'"
           :exams="exams"
           :questions="questions"
-          @new="navigate('newExam')"
+          @new="newExam"
           @release="releaseExam"
           @preview="previewSavedExam"
           @statistics="openStatistics"
@@ -702,7 +748,14 @@ export default {
           :questions="questions"
           @back="navigate('newExam')"
         />
-        <StatisticsScreen v-if="screen === 'statistics'" @back="navigate('dashboard')" />
+        <StatisticsScreen
+          v-if="screen === 'statistics'"
+          :exam="statisticsExam"
+          :summary="statisticsSummary"
+          :loading="statisticsLoading"
+          :error="error"
+          @back="navigate('exams')"
+        />
         <ScanScreen
           v-if="screen === 'scan'"
           :step="scanStep"
@@ -722,4 +775,5 @@ export default {
     </main>
     <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
+  <AppDialog v-if="dialog" v-bind="dialog.options" @confirm="closeDialog" @cancel="closeDialog(null)" />
 </template>
