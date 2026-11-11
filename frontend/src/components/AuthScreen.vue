@@ -10,7 +10,7 @@ export default {
     message: { type: String, default: "" },
     loading: { type: Boolean, default: false }
   },
-  emits: ["update:name", "update:email", "update:password", "update:confirmation", "submit", "switch-mode"],
+  emits: ["update:name", "update:email", "update:password", "update:confirmation", "submit", "switch-mode", "open-student-portal"],
   data() {
     return {
       showPassword: false
@@ -40,6 +40,7 @@ export default {
           <button class="primary-button" type="submit" :disabled="loading">{{ loading ? "Processando..." : (mode === "login" ? "Entrar" : "Cadastrar") }}</button>
         </form>
         <button class="text-button" @click="$emit('switch-mode')">{{ mode === "login" ? "Ainda não tenho uma conta" : "Já possuo uma conta" }} <strong>{{ mode === "login" ? "Criar conta" : "Entrar" }}</strong></button>
+        <button type="button" class="text-button student-link" @click="$emit('open-student-portal')">Sou aluno — <strong>consultar resultado</strong></button>
       </div>
     </section>
   </main>

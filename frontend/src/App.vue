@@ -115,6 +115,8 @@ export default {
     }
   },
   async mounted() {
+    window.addEventListener("popstate", this.handleRouteChange);
+    const studentRoute = this.isStudentPortalRoute();
     if (isAuthenticated()) {
       try {
         const user = await authApi.me();
@@ -130,6 +132,10 @@ export default {
         this.error = "Não foi possível carregar seus dados do servidor. Tente novamente.";
       }
     }
+    if (studentRoute) this.openStudentPortal({ updateUrl: false });
+  },
+  beforeUnmount() {
+    window.removeEventListener("popstate", this.handleRouteChange);
   },
   methods: {
     switchMode() {
@@ -515,12 +521,40 @@ export default {
         this.error = erro.message;
       }
     },
-    openStudentPortal() {
+    isStudentPortalRoute() {
+      const { pathname, hash } = window.location;
+      return /^\/aluno\/?$/.test(pathname) || /^#\/?aluno\/?$/.test(hash);
+    },
+    handleRouteChange() {
+      if (this.isStudentPortalRoute()) {
+        this.openStudentPortal({ updateUrl: false });
+      } else if (this.screen === "studentPortal") {
+        this.leaveStudentPortal({ updateUrl: false });
+      }
+    },
+    openStudentPortal({ updateUrl = true } = {}) {
+      // O código pode vir na URL (ex.: /aluno?codigo=SGP-ABC123), para uso futuro no QR/impressão
+      const codeFromUrl = new URLSearchParams(window.location.search).get("codigo");
+      this.studentCode = codeFromUrl ? codeFromUrl.trim().toUpperCase() : "";
+      this.studentRa = "";
+      this.consultedExam = null;
+      this.error = "";
+      this.message = "";
+      this.screen = "studentPortal";
+      if (updateUrl && !this.isStudentPortalRoute()) window.history.pushState(null, "", "/aluno");
+    },
+    leaveStudentPortal({ updateUrl = true } = {}) {
       this.studentCode = "";
       this.studentRa = "";
       this.consultedExam = null;
       this.error = "";
-      this.screen = "studentPortal";
+      if (updateUrl && this.isStudentPortalRoute()) window.history.pushState(null, "", "/");
+      if (this.currentUser) {
+        this.screen = "dashboard";
+      } else {
+        this.mode = "login";
+        this.screen = "login";
+      }
     },
     previewExamForm() {
       this.previewExam = {
@@ -628,6 +662,7 @@ export default {
     :loading="loadingAuth"
     @submit="submitAuth"
     @switch-mode="switchMode"
+    @open-student-portal="openStudentPortal()"
   />
   <StudentPortal
     v-else-if="screen === 'studentPortal'"
@@ -636,7 +671,7 @@ export default {
     :result="consultedExam"
     :error="error"
     @consult="consultStudentResult"
-    @back="screen = 'login'"
+    @back="leaveStudentPortal()"
   />
   <div v-else class="app-shell">
     <AppSidebar

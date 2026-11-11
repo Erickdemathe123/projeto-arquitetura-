@@ -27,7 +27,7 @@ export default {
         <div v-else-if="!result.resultAvailable" class="empty-card"><span>⌗</span><h2>Nota ainda não lançada</h2><p>O professor ainda não corrigiu a sua prova, ou o RA informado não confere com o desta avaliação.</p></div>
         <div v-else class="released-result"><span class="eyebrow">RESULTADO LIBERADO</span><h2>{{ result.name }}</h2><p>Nota: <strong>{{ result.score }}</strong> / 10.0</p></div>
       </div>
-      <button class="text-button" @click="$emit('back')">Acesso do professor</button>
+      <button type="button" class="text-button" @click="$emit('back')">Acesso do professor</button>
     </div>
   </main>
 </template>

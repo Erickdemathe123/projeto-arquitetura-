@@ -29,6 +29,8 @@ function criarApp({ configurarRotas } = {}) {
   const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
   if (fs.existsSync(frontendDist)) {
     app.use(express.static(frontendDist));
+    // Rota direta do portal do aluno (RF10): devolve a SPA, que abre a consulta de resultado
+    app.get('/aluno', (req, res) => res.sendFile(path.join(frontendDist, 'index.html')));
   }
 
   // Intercepta rotas não encontradas (404)
