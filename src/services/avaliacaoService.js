@@ -7,6 +7,22 @@ function validarId(id, nome) {
   return value;
 }
 
+function validarPontos(questionPoints, total) {
+  if (questionPoints === undefined || questionPoints === null) return Array(total).fill(1);
+  if (!Array.isArray(questionPoints) || questionPoints.length !== total) {
+    throw new ErroDeNegocio(400, 'Informe os pontos de cada questão selecionada.');
+  }
+  return questionPoints.map((pontos) => {
+    const value = typeof pontos === 'string' && pontos.trim() !== '' ? Number(pontos) : pontos;
+    const rounded = typeof value === 'number' ? Math.round(value * 100) / 100 : NaN;
+    if (!Number.isFinite(rounded) || rounded <= 0) {
+      throw new ErroDeNegocio(400, 'Os pontos de cada questão devem ser um número maior que zero.');
+    }
+    if (rounded > 9999.99) throw new ErroDeNegocio(400, 'Os pontos de cada questão devem ser no máximo 9999,99.');
+    return rounded;
+  });
+}
+
 function validarDados(body = {}) {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (!name) throw new ErroDeNegocio(400, 'Informe o nome da avaliação.');
@@ -18,6 +34,7 @@ function validarDados(body = {}) {
   if (new Set(questionIds).size !== questionIds.length) {
     throw new ErroDeNegocio(400, 'A mesma questão não pode ser adicionada mais de uma vez.');
   }
+  const questionPoints = validarPontos(body.questionPoints, questionIds.length);
   const applicationClassId = body.applicationClassId ? validarId(body.applicationClassId, 'Id da turma') : null;
   const details = {};
   for (const field of [
@@ -27,7 +44,7 @@ function validarDados(body = {}) {
   ]) {
     if (body[field] !== undefined) details[field] = body[field];
   }
-  return { name, questionIds, applicationClassId, details };
+  return { name, questionIds, questionPoints, applicationClassId, details };
 }
 
 function traduzirErroPersistencia(error) {
