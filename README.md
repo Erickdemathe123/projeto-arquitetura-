@@ -604,6 +604,8 @@ retornam `204 No Content`.
 
 Execute `npm test` na raiz para rodar os testes automatizados sem conectar ao MySQL. A suíte cobre autenticação, proteção por papel, validação de IDs, importação CSV, regras de validação de questões/avaliações e consulta pública sem exposição de respostas. A validação ponta a ponta com um banco MySQL de teste continua necessária para a entrega final.
 
+Os componentes do front-end têm testes próprios (Vitest + Vue Test Utils), executados com `npm --prefix frontend test`. O workflow `.github/workflows/testes.yml` roda os testes da API, os testes do front-end e o build a cada pull request e a cada push na `main`.
+
 ## 13. Manual do Usuário
 
 📌 **N3**
