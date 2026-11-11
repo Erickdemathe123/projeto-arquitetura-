@@ -59,6 +59,7 @@ export default {
       examForm: {
         name: "",
         selected: [],
+        points: {},
         institution: "",
         course: "",
         subject: "",
@@ -424,12 +425,16 @@ export default {
     async saveExam() {
       if (!this.examForm.name.trim()) return (this.error = "Informe o nome da avaliação.");
       if (!this.examForm.selected.length) return (this.error = "Selecione ao menos uma questão.");
+      const questionPoints = this.examForm.selected.map((questionId) => Number(this.examForm.points[questionId]));
+      if (questionPoints.some((points) => !(points > 0))) return (this.error = "Informe uma pontuação maior que zero para cada questão selecionada.");
       const wasEditing = Boolean(this.editingExamId);
       const selectedClass = this.turmas.find((turma) => turma.name === this.examForm.className);
+      const { points, ...examFields } = this.examForm;
       const payload = {
-        ...this.examForm,
+        ...examFields,
         name: this.examForm.name.trim(),
         questionIds: [...this.examForm.selected],
+        questionPoints,
         applicationClassId: selectedClass ? selectedClass.id : null
       };
       try {
@@ -445,6 +450,7 @@ export default {
         this.examForm = {
           name: "",
           selected: [],
+          points: {},
           institution: "",
           course: "",
           subject: "",
@@ -471,6 +477,7 @@ export default {
       this.examForm = {
         name: exam.name,
         selected: [...exam.questionIds],
+        points: Object.fromEntries(exam.questionIds.map((questionId, index) => [questionId, exam.questionPoints?.[index] ?? 1])),
         institution: exam.institution || "",
         course: exam.course || "",
         subject: exam.subject || "",

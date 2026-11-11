@@ -1,5 +1,5 @@
 <script>
-import { examQuestionsCountLabel } from "../utils/exam";
+import { examQuestionsCountLabel, formatPoints } from "../utils/exam";
 
 export default {
   props: {
@@ -14,7 +14,8 @@ export default {
     }
   },
   methods: {
-    examQuestionsCountLabel
+    examQuestionsCountLabel,
+    formatPoints
   }
 }
 </script>
@@ -28,7 +29,7 @@ export default {
   <div v-else class="question-list">
     <article v-for="exam in exams" :key="exam.id" class="question-item">
       <span class="question-number">▣</span>
-      <div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · Código: {{ exam.publicCode }} · {{ exam.released === true ? "Gabarito liberado" : "Gabarito bloqueado" }}</small></div>
+      <div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · {{ formatPoints(exam.totalPoints) }} · Código: {{ exam.publicCode }} · {{ exam.released === true ? "Gabarito liberado" : "Gabarito bloqueado" }}</small></div>
       <div class="question-actions">
         <button class="edit-button" @click="$emit('release', exam)" :aria-label="exam.released ? 'Gabarito liberado' : 'Liberar gabarito'" :title="exam.released ? 'Gabarito liberado' : 'Liberar gabarito'">{{ exam.released ? "🔓" : "🔒" }}</button>
         <button class="edit-button" @click="$emit('preview', exam)" aria-label="Pré-visualizar prova" title="Pré-visualizar prova">◉</button>

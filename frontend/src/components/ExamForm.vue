@@ -1,5 +1,6 @@
 <script>
 import { dateKey, formatStoredDate, toIsoDate } from "../utils/date";
+import { formatPoints } from "../utils/exam";
 
 export default {
   props: {
@@ -23,6 +24,13 @@ export default {
       if (!this.form.subject) return this.questions;
       return this.questions.filter((question) => question.subject === this.form.subject);
     },
+    selectedPointsTotal() {
+      const total = this.form.selected.reduce((sum, questionId) => {
+        const points = Number(this.form.points[questionId]);
+        return sum + (points > 0 ? points : 0);
+      }, 0);
+      return Math.round(total * 100) / 100;
+    },
     calendarMonthLabel() {
       return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(this.calendarYear, this.calendarMonth, 1));
     },
@@ -41,6 +49,15 @@ export default {
     }
   },
   watch: {
+    "form.selected": {
+      immediate: true,
+      handler(selected) {
+        // Toda questão selecionada começa com 1 ponto (RF03)
+        for (const questionId of selected) {
+          if (this.form.points[questionId] === undefined) this.form.points[questionId] = 1;
+        }
+      }
+    },
     "form.date"(date) {
       const isoDate = toIsoDate(date);
       if (!isoDate) return;
@@ -50,6 +67,7 @@ export default {
     }
   },
   methods: {
+    formatPoints,
     handleLogoUpload(event) {
       const [file] = event.target.files;
       if (!file) return;
@@ -143,8 +161,9 @@ export default {
     <p class="selection-title">Selecione as questões:</p>
     <div v-if="!questions.length" class="empty-card compact"><span>✎</span><h2>Sem questões disponíveis</h2><p>Cadastre a primeira questão para começar.</p></div>
     <div v-else class="selection-list">
-      <label v-for="question in filteredQuestionsForExam" :key="question.id"><input type="checkbox" v-model="form.selected" :value="question.id"><span><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }}</small></span><button v-if="editingExamId" type="button" class="edit-button selection-edit" @click.stop.prevent="$emit('edit-question', question)" aria-label="Editar questão da avaliação">✎</button></label>
+      <label v-for="question in filteredQuestionsForExam" :key="question.id"><input type="checkbox" v-model="form.selected" :value="question.id"><span><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }}</small></span><span v-if="form.selected.includes(question.id)" class="selection-points" @click.stop.prevent>Pontos<input v-model.number="form.points[question.id]" type="number" min="0.01" step="any" inputmode="decimal" :aria-label="`Pontos da questão: ${question.text}`"></span><button v-if="editingExamId" type="button" class="edit-button selection-edit" @click.stop.prevent="$emit('edit-question', question)" aria-label="Editar questão da avaliação">✎</button></label>
     </div>
+    <p v-if="form.selected.length" class="selection-total">Total da prova: <strong>{{ formatPoints(selectedPointsTotal) }}</strong> em {{ form.selected.length }} {{ form.selected.length === 1 ? "questão" : "questões" }}</p>
     <p v-if="error" class="auth-error">{{ error }}</p>
     <div class="form-actions">
       <button type="button" class="outline-button" @click="$emit('cancel')">Cancelar</button>
