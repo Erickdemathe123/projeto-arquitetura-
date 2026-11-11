@@ -1329,3 +1329,152 @@ button[aria-label]:hover::after {
   border-color: #268e99;
   box-shadow: 0 0 0 3px #268e9920;
 }
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: #0f1d2a80;
+}
+.dialog-card {
+  width: min(100%, 440px);
+  padding: 28px;
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 20px 45px #0f1d2a40;
+}
+.dialog-card h2 {
+  margin: 0 0 10px;
+  color: #17394e;
+  font-size: 20px;
+}
+.dialog-card p {
+  margin: 0 0 18px;
+  color: #536475;
+  line-height: 1.5;
+}
+.dialog-card label {
+  display: block;
+  color: #324052;
+  font-size: 13px;
+  font-weight: 600;
+}
+.dialog-card input {
+  display: block;
+  width: 100%;
+  height: 48px;
+  margin-top: 7px;
+  padding: 0 14px;
+  border: 1px solid #d2d8df;
+  border-radius: 7px;
+  background: #fff;
+  color: #172235;
+  outline: 0;
+}
+.dialog-card input:focus {
+  border-color: #268e99;
+  box-shadow: 0 0 0 3px #268e9920;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
+}
+.dialog-actions .outline-button,
+.dialog-actions .primary-button {
+  height: 44px;
+}
+.primary-button.danger {
+  background: #b33d46;
+}
+.primary-button.danger:hover {
+  background: #962f37;
+}
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.stat-card {
+  padding: 20px;
+  border: 1px solid #e0e6eb;
+  border-radius: 12px;
+  background: #fff;
+}
+.stat-card span,
+.stat-card small {
+  display: block;
+  color: #718094;
+  font-size: 12px;
+}
+.stat-card strong {
+  display: block;
+  margin: 8px 0 4px;
+  color: #152235;
+  font-size: 28px;
+  font-variant-numeric: tabular-nums;
+}
+.stats-section {
+  margin-bottom: 22px;
+}
+.distribution-chart {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  height: 220px;
+}
+.distribution-column {
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  gap: 6px;
+}
+.distribution-count {
+  color: #324052;
+  font-size: 13px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.distribution-track {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  width: min(100%, 64px);
+  border-bottom: 1px solid #d2d8df;
+}
+.distribution-bar {
+  width: 100%;
+  border-radius: 4px 4px 0 0;
+  background: var(--chart-bar, #0b8fa0);
+}
+.distribution-label {
+  color: #718094;
+  font-size: 12px;
+}
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.stats-table th,
+.stats-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #e0e6eb;
+  text-align: left;
+}
+.stats-table th {
+  color: #718094;
+  font-size: 12px;
+  font-weight: 600;
+}
+.stats-table td:last-child,
+.stats-table th:last-child {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
