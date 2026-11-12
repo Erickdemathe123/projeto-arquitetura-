@@ -50,6 +50,7 @@ function validarDados(body = {}) {
 function traduzirErroPersistencia(error) {
   if (error.code === 'QUESTION_NOT_OWNED') throw new ErroDeNegocio(400, error.message);
   if (error.code === 'CLASS_NOT_OWNED') throw new ErroDeNegocio(400, error.message);
+  if (error.code === 'ER_ROW_IS_REFERENCED_2') throw new ErroDeNegocio(409, 'A avaliação já tem respostas registradas. Preserve as questões, a ordem e os pesos.');
   if (error.code === 'ER_DUP_ENTRY') throw new ErroDeNegocio(409, 'Já existe uma avaliação com esse código.');
   throw error;
 }

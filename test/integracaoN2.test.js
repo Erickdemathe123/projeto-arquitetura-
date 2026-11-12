@@ -169,7 +169,7 @@ test('consulta pública por código retorna disponibilidade sem expor respostas 
   const baseUrl = await iniciarServidor(t);
   t.mock.method(pool, 'query', async (_sql, params) => {
     assert.deepEqual(params, ['SGP-ABC123']);
-    return [[{ id: 9, title: 'Avaliação de teste', status: 'closed' }]];
+    return [[{ id: 9, title: 'Avaliação de teste', answer_key_released: 1 }]];
   });
 
   const response = await fetch(`${baseUrl}/api/avaliacoes/codigo/sgp-abc123`);
@@ -187,8 +187,8 @@ test('consulta pública por código + RA devolve a nota só quando o gabarito es
   const chamadas = [];
   t.mock.method(pool, 'query', async (sql, params) => {
     chamadas.push(params);
-    if (sql.startsWith('SELECT id, title, status')) {
-      return [[{ id: 9, title: 'Avaliação de teste', status: 'closed' }]];
+    if (sql.startsWith('SELECT id, title, answer_key_released')) {
+      return [[{ id: 9, title: 'Avaliação de teste', answer_key_released: 1 }]];
     }
     return [[{ score: '8.50' }]];
   });
