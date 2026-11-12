@@ -1,6 +1,7 @@
 const { Router } = require('express');
 const controller = require('../controllers/avaliacaoController');
 const resultadoController = require('../controllers/resultadoController');
+const versaoController = require('../controllers/versaoController');
 const { autenticar, exigirRole } = require('../middlewares/authMiddleware');
 const { validarParamId } = require('../middlewares/validator');
 
@@ -18,5 +19,9 @@ router.delete('/:id', validarParamId('id'), controller.remover);
 router.get('/:id/resultados', validarParamId('id'), resultadoController.listar);
 router.post('/:id/resultados', validarParamId('id'), resultadoController.registrar);
 router.delete('/:id/resultados/:alunoId', validarParamId('id'), validarParamId('alunoId'), resultadoController.remover);
+
+// Versões da prova (T42): embaralhamento com semente, ordem impressa e gabarito por caderno
+router.get('/:id/versoes', validarParamId('id'), versaoController.listar);
+router.post('/:id/versoes', validarParamId('id'), versaoController.gerar);
 
 module.exports = router;
