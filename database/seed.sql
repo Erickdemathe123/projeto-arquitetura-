@@ -36,4 +36,32 @@ INSERT INTO exam_questions (exam_id,question_id,teacher_id,points,position) VALU
 ON DUPLICATE KEY UPDATE id=id;
 INSERT INTO applications (exam_id,class_id,teacher_id) VALUES (@exam,@class_a,@teacher_a)
 ON DUPLICATE KEY UPDATE id=id;
+-- Segunda questão do mesmo professor para demonstrar a inversão do caderno.
+INSERT INTO questions (teacher_id,statement,subject,topic)
+SELECT @teacher_a,'[T39] Quanto é 3 + 3?','Matemática','Adição'
+WHERE NOT EXISTS (SELECT 1 FROM questions WHERE teacher_id=@teacher_a AND statement='[T39] Quanto é 3 + 3?');
+SET @question_c = (SELECT MIN(id) FROM questions WHERE teacher_id=@teacher_a AND statement='[T39] Quanto é 3 + 3?');
+INSERT INTO alternatives (question_id,position,text,is_correct) VALUES
+(@question_c,0,'6',TRUE),(@question_c,1,'9',FALSE)
+ON DUPLICATE KEY UPDATE id=id;
+INSERT INTO exam_questions (exam_id,question_id,teacher_id,points,position)
+VALUES (@exam,@question_c,@teacher_a,1.00,1) ON DUPLICATE KEY UPDATE id=id;
+-- Na questão de 2 + 2, na origem a resposta certa é o índice 1 ("4"). Na versão B ela aparece como A.
+INSERT INTO exam_versions (exam_id,label,printed_items) VALUES
+(@exam,'A',JSON_ARRAY(
+  JSON_OBJECT('question_id',CAST(@question_a AS UNSIGNED),'alternative_order',JSON_ARRAY(0,1,2),'correct_index',1),
+  JSON_OBJECT('question_id',CAST(@question_c AS UNSIGNED),'alternative_order',JSON_ARRAY(0,1),'correct_index',0))),
+(@exam,'B',JSON_ARRAY(
+  JSON_OBJECT('question_id',CAST(@question_c AS UNSIGNED),'alternative_order',JSON_ARRAY(1,0),'correct_index',1),
+  JSON_OBJECT('question_id',CAST(@question_a AS UNSIGNED),'alternative_order',JSON_ARRAY(1,2,0),'correct_index',0)))
+ON DUPLICATE KEY UPDATE id=id;
+SET @version_b = (SELECT id FROM exam_versions WHERE exam_id=@exam AND label='B');
+INSERT INTO exam_assignments (exam_id,student_id,version_id,qr_code)
+VALUES (@exam,@student_a,@version_b,'T39-SEED-ALUNO-A')
+ON DUPLICATE KEY UPDATE qr_code=qr_code;
+INSERT INTO results (exam_id,teacher_id,student_id,score) VALUES (@exam,@teacher_a,@student_a,10)
+ON DUPLICATE KEY UPDATE id=id;
+INSERT INTO result_answers (exam_id,student_id,question_id,marked_index)
+VALUES (@exam,@student_a,@question_a,0),(@exam,@student_a,@question_c,1)
+ON DUPLICATE KEY UPDATE marked_index=marked_index;
 COMMIT;

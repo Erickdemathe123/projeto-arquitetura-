@@ -210,9 +210,11 @@ as aplica e as decisões complementares tomadas pela equipe.
 
 ## 7. Modelo de Dados
 
-📌 **N2**
+📌 **N2 e T39 da N3**
 
-![Diagrama Entidade-Relacionamento](docs/modelo-dados/mer-der.png)
+![Diagrama Entidade-Relacionamento atualizado para a T39](docs/modelo-dados/mer-der-t39.svg)
+
+O [dicionário e contrato da T39](docs/modelo-dados/t39.md) descreve as tabelas de versões, atribuições e respostas e a migração do banco N2. [Diagrama anterior da N2](docs/modelo-dados/mer-der.png).
 
 ### Dicionário de Dados
 
@@ -362,6 +364,10 @@ A FK `(exam_id, teacher_id)` → `(exams.id, exams.teacher_id)` vincula o result
 prova e ao professor responsável. A FK `(student_id, student_role)` → `(users.id, users.role)`
 assegura que o destinatário seja um aluno. Cada aluno pode ter um único resultado por
 prova (`UNIQUE (exam_id, student_id)`).
+
+#### Versões, atribuições e respostas (T39)
+
+O campo `exams.answer_key_released` controla a liberação do gabarito. Cada registro em `exam_versions` armazena a ordem impressa e o gabarito de uma versão. A tabela `exam_assignments` liga o caderno ao aluno e ao QR único. A tabela `result_answers` armazena a marcação por questão. Consulte os [campos, tipos, chaves e regras de integridade](docs/modelo-dados/t39.md#dicionário-de-dados).
 
 ## 8. Stack Tecnológica
 

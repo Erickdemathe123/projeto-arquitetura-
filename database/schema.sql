@@ -79,6 +79,8 @@ CREATE TABLE IF NOT EXISTS exams (
   teacher_id BIGINT UNSIGNED NOT NULL,
   teacher_role VARCHAR(9) NOT NULL DEFAULT 'professor',
   public_code VARCHAR(20) UNIQUE,
+  answer_key_released BOOLEAN NOT NULL DEFAULT FALSE,
+  CONSTRAINT ck_exam_released CHECK (answer_key_released IN (0, 1)),
   legacy_details JSON,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT ck_exam_teacher CHECK (teacher_role = 'professor'),
@@ -126,4 +128,49 @@ CREATE TABLE IF NOT EXISTS results (
   CONSTRAINT uq_result_exam_student UNIQUE (exam_id, student_id),
   CONSTRAINT fk_result_exam FOREIGN KEY (exam_id, teacher_id) REFERENCES exams(id, teacher_id) ON DELETE CASCADE,
   CONSTRAINT fk_result_student FOREIGN KEY (student_id, student_role) REFERENCES users(id, role)
+);
+
+-- Uma linha por caderno. O array segue a ordem impressa das questões.
+CREATE TABLE IF NOT EXISTS exam_versions (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  exam_id BIGINT UNSIGNED NOT NULL,
+  label VARCHAR(32) NOT NULL,
+  printed_items JSON NOT NULL,
+  CONSTRAINT uq_version_label UNIQUE (exam_id, label),
+  CONSTRAINT uq_version_exam UNIQUE (exam_id, id),
+  CONSTRAINT fk_version_exam FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE,
+  CONSTRAINT ck_version_items CHECK (JSON_SCHEMA_VALID(
+    '{"type":"array","minItems":1,"maxItems":20,"items":{"type":"object","required":["question_id","alternative_order","correct_index"],"properties":{"question_id":{"type":"integer","minimum":1},"alternative_order":{"type":"array","minItems":2,"maxItems":5,"uniqueItems":true,"items":{"type":"integer","minimum":0,"maximum":4}},"correct_index":{"type":"integer","minimum":0,"maximum":4}}}}',
+    printed_items
+  ))
+);
+
+CREATE TABLE IF NOT EXISTS exam_assignments (
+  exam_id BIGINT UNSIGNED NOT NULL,
+  student_id BIGINT UNSIGNED NOT NULL,
+  student_role VARCHAR(9) NOT NULL DEFAULT 'aluno',
+  version_id BIGINT UNSIGNED NOT NULL,
+  qr_code VARCHAR(96) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+  PRIMARY KEY (exam_id, student_id),
+  CONSTRAINT uq_assignment_qr UNIQUE (qr_code),
+  CONSTRAINT ck_assignment_qr CHECK (CHAR_LENGTH(TRIM(qr_code)) > 0),
+  CONSTRAINT ck_assignment_student CHECK (student_role = 'aluno'),
+  CONSTRAINT fk_assignment_version FOREIGN KEY (exam_id, version_id)
+    REFERENCES exam_versions(exam_id, id) ON DELETE CASCADE,
+  CONSTRAINT fk_assignment_student FOREIGN KEY (student_id, student_role) REFERENCES users(id, role)
+);
+
+CREATE TABLE IF NOT EXISTS result_answers (
+  exam_id BIGINT UNSIGNED NOT NULL,
+  student_id BIGINT UNSIGNED NOT NULL,
+  question_id BIGINT UNSIGNED NOT NULL,
+  marked_index TINYINT UNSIGNED,
+  PRIMARY KEY (exam_id, student_id, question_id),
+  CONSTRAINT ck_answer_index CHECK (marked_index BETWEEN 0 AND 4),
+  CONSTRAINT fk_answer_result FOREIGN KEY (exam_id, student_id)
+    REFERENCES results(exam_id, student_id) ON DELETE CASCADE,
+  CONSTRAINT fk_answer_assignment FOREIGN KEY (exam_id, student_id)
+    REFERENCES exam_assignments(exam_id, student_id),
+  CONSTRAINT fk_answer_question FOREIGN KEY (exam_id, question_id)
+    REFERENCES exam_questions(exam_id, question_id)
 );
