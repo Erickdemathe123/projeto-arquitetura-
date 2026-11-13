@@ -1,6 +1,11 @@
+const { randomBytes } = require('node:crypto');
 const avaliacaoRepository = require('../repositories/avaliacaoRepository');
 const atribuicaoRepository = require('../repositories/atribuicaoRepository');
 const { ErroDeNegocio } = require('../errors/appError');
+
+function gerarCodigoQrOpaco() {
+  return randomBytes(32).toString('hex');
+}
 
 function validarId(id, nome) {
   const value = Number(id);
@@ -27,4 +32,4 @@ async function validarQr(professorId, examIdRaw, body = {}) {
   return atribuicao;
 }
 
-module.exports = { validarQr };
+module.exports = { gerarCodigoQrOpaco, validarQr };

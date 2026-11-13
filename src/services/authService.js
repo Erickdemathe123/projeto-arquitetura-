@@ -44,14 +44,14 @@ function validarEmail(email) {
   return emailLimpo;
 }
 
-function validarSenha(senha, obrigatoria = true) {
+function validarSenha(senha, obrigatoria = true, tamanhoMinimo = 8) {
   const senhaLimpa = typeof senha === 'string' ? senha : '';
   if (!senhaLimpa) {
     if (obrigatoria) throw new ErroDeNegocio(400, 'Informe a senha.');
     return null;
   }
-  if (senhaLimpa.length < 6) {
-    throw new ErroDeNegocio(400, 'A senha deve ter no mínimo 6 caracteres.');
+  if (senhaLimpa.length < tamanhoMinimo) {
+    throw new ErroDeNegocio(400, `A senha deve ter no mínimo ${tamanhoMinimo} caracteres.`);
   }
   return senhaLimpa;
 }
@@ -139,7 +139,8 @@ async function cadastrar({ nome, email, senha, role = 'professor', ra }) {
 
 async function login({ email, senha }) {
   const emailLimpo = validarEmail(email);
-  const senhaLimpa = validarSenha(senha, true);
+  // Mantém a política anterior para permitir o login de contas já existentes.
+  const senhaLimpa = validarSenha(senha, true, 6);
 
   const usuario = await userRepository.buscarPorEmail(emailLimpo);
   if (!usuario || !usuario.passwordHash) {
