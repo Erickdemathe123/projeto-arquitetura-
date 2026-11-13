@@ -2,12 +2,12 @@ const assert = require('node:assert/strict');
 
 async function testarEstruturaT39(db) {
   const [[example]] = await db.query(`
-    SELECT v.printed_items, a.question_id, a.marked_index, alt.position AS original_correct
+    SELECT ea.qr_code, v.printed_items, a.question_id, a.marked_index, alt.position AS original_correct
     FROM exam_assignments ea
     JOIN exam_versions v ON v.id=ea.version_id
     JOIN result_answers a ON a.exam_id=ea.exam_id AND a.student_id=ea.student_id
     JOIN alternatives alt ON alt.question_id=a.question_id AND alt.is_correct
-    WHERE ea.qr_code='T39-SEED-ALUNO-A' AND a.question_id=@question_a`);
+    WHERE ea.exam_id=@exam AND ea.student_id=@student_a AND a.question_id=@question_a`);
   const [[standard]] = await db.query("SELECT printed_items FROM exam_versions WHERE exam_id=@exam AND label='A'");
   assert.deepEqual(example.printed_items.map(q => q.question_id), standard.printed_items.map(q => q.question_id).reverse());
   console.log('PASS ordem das duas questões invertida entre as versões A e B');
@@ -16,11 +16,11 @@ async function testarEstruturaT39(db) {
   assert.equal(item.alternative_order[item.correct_index], example.original_correct);
   assert.notEqual(item.correct_index, example.original_correct);
   console.log('PASS QR → versão B → resposta A impressa → alternativa correta B de origem');
-  async function bloqueia(nome, sql, code) {
-    await assert.rejects(db.query(sql), err => err.code === code, nome);
+  async function bloqueia(nome, sql, code, params = []) {
+    await assert.rejects(db.query(sql, params), err => err.code === code, nome);
     console.log('PASS', nome, code);
   }
-  await bloqueia('QR repetido entre alunos', "INSERT INTO exam_assignments (exam_id,student_id,version_id,qr_code) VALUES (@exam,@student_b,@version_b,'T39-SEED-ALUNO-A')", 'ER_DUP_ENTRY');
+  await bloqueia('QR repetido entre alunos', 'INSERT INTO exam_assignments (exam_id,student_id,version_id,qr_code) VALUES (@exam,@student_b,@version_b,?)', 'ER_DUP_ENTRY', [example.qr_code]);
   await bloqueia('segunda atribuição para o mesmo aluno e prova', "INSERT INTO exam_assignments (exam_id,student_id,version_id,qr_code) VALUES (@exam,@student_a,@version_b,'OUTRO')", 'ER_DUP_ENTRY');
   await bloqueia('versão vinculada a outra avaliação', "INSERT INTO exam_assignments (exam_id,student_id,version_id,qr_code) VALUES (@exam+100,@student_b,@version_b,'OUTRA-PROVA')", 'ER_NO_REFERENCED_ROW_2');
   await bloqueia('professor como destinatário', "INSERT INTO exam_assignments (exam_id,student_id,version_id,qr_code) VALUES (@exam,@teacher_a,@version_b,'DOCENTE')", 'ER_NO_REFERENCED_ROW_2');
