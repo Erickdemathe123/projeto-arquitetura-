@@ -640,35 +640,73 @@ h1 {
 .scan-page > p {
   color: var(--muted);
 }
-.camera-mock {
-  display: grid;
-  place-items: center;
-  gap: 20px;
-  width: min(100%, 620px);
-  height: 400px;
-  margin: 40px auto 0;
-  border-radius: 16px;
-  background: #243944;
-  color: #fff;
+.qr-scan-card {
+  margin-bottom: 24px;
+  padding: 26px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
 }
-.scan-frame {
-  display: grid;
-  place-items: center;
-  width: 220px;
-  height: 180px;
-  border: 3px solid #fff;
-  border-radius: 18px;
-  font-size: 80px;
+.qr-scan-description,
+.qr-scan-feedback {
+  color: var(--muted);
+  line-height: 1.5;
 }
-.scan-actions {
-  display: flex;
-  justify-content: center;
+.qr-scanner {
+  display: grid;
+  justify-items: center;
   gap: 12px;
-  margin-top: 28px;
 }
-.scan-result-card {
-  max-width: 420px;
-  margin: 32px auto 0;
+.qr-camera-preview {
+  position: relative;
+  width: min(100%, 560px);
+  overflow: hidden;
+  border-radius: 12px;
+  background: #172a35;
+}
+.qr-camera-preview video {
+  display: block;
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+}
+.qr-scan-frame {
+  position: absolute;
+  inset: 20% 20%;
+  border: 3px solid #fff;
+  border-radius: 16px;
+  box-shadow: 0 0 0 999px #0005;
+  pointer-events: none;
+}
+.qr-canvas {
+  display: none;
+}
+.qr-batch {
+  margin-top: 22px;
+}
+.qr-batch h3 {
+  margin: 0 0 10px;
+  color: var(--heading);
+  font-size: 16px;
+}
+.qr-batch ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.qr-batch li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.qr-batch li span {
+  color: var(--muted);
 }
 .toast {
   position: fixed;

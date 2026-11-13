@@ -136,6 +136,13 @@ export const resultadosApi = {
   remover: (avaliacaoId, alunoId) => request(`/avaliacoes/${avaliacaoId}/resultados/${alunoId}`, { method: 'DELETE' })
 };
 
+export const atribuicoesApi = {
+  validarQr: (avaliacaoId, qrCode) => request(`/avaliacoes/${avaliacaoId}/atribuicoes/validar-qr`, {
+    method: 'POST',
+    body: JSON.stringify({ qrCode })
+  })
+};
+
 export const turmasApi = {
   listar(arquivadas = false) {
     return request(`/turmas${arquivadas ? '?arquivadas=true' : ''}`, { method: 'GET' });
@@ -196,5 +203,6 @@ export default {
   questoes: questoesApi,
   turmas: turmasApi,
   avaliacoes: avaliacoesApi,
-  resultados: resultadosApi
+  resultados: resultadosApi,
+  atribuicoes: atribuicoesApi
 };

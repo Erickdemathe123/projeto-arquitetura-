@@ -1,5 +1,8 @@
 <script>
+import QrScanner from "./QrScanner.vue";
+
 export default {
+  components: { QrScanner },
   props: {
     step: { type: String, required: true },
     loading: { type: Boolean, default: false },
@@ -8,9 +11,13 @@ export default {
     activeExam: { type: Object, default: null },
     form: { type: Object, required: true },
     turmas: { type: Array, required: true },
-    error: { type: String, default: "" }
+    error: { type: String, default: "" },
+    qrBatch: { type: Array, default: () => [] },
+    qrLoading: { type: Boolean, default: false },
+    qrError: { type: String, default: "" },
+    qrFeedback: { type: String, default: "" }
   },
-  emits: ["open-exam", "back", "submit", "remove-result"],
+  emits: ["open-exam", "back", "submit", "remove-result", "qr-detected"],
   methods: {
     scanTurmaName(exam) {
       const turma = this.turmas.find((item) => item.id === exam.applicationClassId);
@@ -28,7 +35,7 @@ export default {
 
 <template>
   <div v-if="step === 'list'">
-    <div class="page-heading"><span class="eyebrow">CORREÇÃO</span><h1>Corrigir Provas</h1><p>Lance a nota de cada aluno por RA. Só aparecem aqui avaliações já aplicadas a uma turma.</p></div>
+    <div class="page-heading"><span class="eyebrow">CORREÇÃO</span><h1>Corrigir Provas</h1><p>Lance notas manualmente ou identifique folhas pelo QR Code. Só aparecem aqui avaliações aplicadas a uma turma.</p></div>
     <div v-if="loading" class="empty-card"><span>⌗</span><h2>Carregando…</h2><p>Buscando o andamento da correção de cada avaliação.</p></div>
     <div v-else-if="!exams.length" class="empty-card"><span>⌗</span><h2>Nenhuma avaliação para corrigir</h2><p>Aplique uma avaliação a uma turma em "Montar Prova" para liberar a correção.</p></div>
     <div v-else class="question-list">
@@ -44,8 +51,27 @@ export default {
       <div><span class="eyebrow">CORREÇÃO</span><h1>{{ activeExam.name }}</h1><p>{{ scanTurmaName(activeExam) }} · {{ scanStatusLabel(activeExam.id) }}</p></div>
       <button class="outline-button" @click="$emit('back')">Voltar</button>
     </div>
+    <section class="qr-scan-card" aria-labelledby="qr-scan-title">
+      <h2 id="qr-scan-title" class="form-section-title">Identificar folhas com QR Code</h2>
+      <p class="qr-scan-description">Escaneie cada folha para confirmar a qual aluno e versão ela pertence. A leitura das marcações e o cálculo da nota ainda não fazem parte deste fluxo.</p>
+      <QrScanner
+        :busy="qrLoading"
+        :error="qrError"
+        :feedback="qrFeedback"
+        @detected="$emit('qr-detected', $event)"
+      />
+      <div v-if="qrBatch.length" class="qr-batch">
+        <h3>Folhas identificadas ({{ qrBatch.length }})</h3>
+        <ul>
+          <li v-for="folha in qrBatch" :key="folha.studentId">
+            <strong>{{ folha.studentName }}</strong>
+            <span>Versão {{ folha.versionLabel }}</span>
+          </li>
+        </ul>
+      </div>
+    </section>
     <form class="form-card" @submit.prevent="$emit('submit')">
-      <h2 class="form-section-title">Lançar nota</h2>
+      <h2 class="form-section-title">Lançar nota manualmente</h2>
       <div class="form-grid">
         <label>RA do aluno<input v-model="form.ra" placeholder="Registro acadêmico"></label>
         <label>Nota<input v-model.number="form.score" type="number" min="0" max="10" step="0.1" placeholder="0 a 10"></label>

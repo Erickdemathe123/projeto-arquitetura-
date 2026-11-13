@@ -2,6 +2,7 @@ const { Router } = require('express');
 const controller = require('../controllers/avaliacaoController');
 const resultadoController = require('../controllers/resultadoController');
 const versaoController = require('../controllers/versaoController');
+const atribuicaoController = require('../controllers/atribuicaoController');
 const { autenticar, exigirRole } = require('../middlewares/authMiddleware');
 const { validarParamId } = require('../middlewares/validator');
 
@@ -23,5 +24,6 @@ router.delete('/:id/resultados/:alunoId', validarParamId('id'), validarParamId('
 // Versões da prova (T42): embaralhamento com semente, ordem impressa e gabarito por caderno
 router.get('/:id/versoes', validarParamId('id'), versaoController.listar);
 router.post('/:id/versoes', validarParamId('id'), versaoController.gerar);
+router.post('/:id/atribuicoes/validar-qr', validarParamId('id'), atribuicaoController.validarQr);
 
 module.exports = router;

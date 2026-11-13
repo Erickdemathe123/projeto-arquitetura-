@@ -1,7 +1,7 @@
 <script>
 import { SCREEN_TITLES } from "./constants/screens";
 import { emptyExamForm, emptyQuestionForm, examFormFrom, questionFormFrom } from "./utils/forms";
-import { authApi, questoesApi, turmasApi, avaliacoesApi, resultadosApi, isAuthenticated } from "./services/api";
+import { authApi, questoesApi, turmasApi, avaliacoesApi, resultadosApi, atribuicoesApi, isAuthenticated } from "./services/api";
 import AuthScreen from "./components/AuthScreen.vue";
 import StudentPortal from "./components/StudentPortal.vue";
 import AppSidebar from "./components/AppSidebar.vue";
@@ -76,6 +76,11 @@ export default {
       scanSummaries: {},
       scanActiveExam: null,
       scanForm: { ra: "", score: "" },
+      scanQrBatch: [],
+      scanQrBatchId: 0,
+      scanQrLoading: false,
+      scanQrError: "",
+      scanQrFeedback: "",
     };
   },
   computed: {
@@ -572,6 +577,7 @@ export default {
     async openScan() {
       this.scanStep = "list";
       this.scanActiveExam = null;
+      this.resetScanBatch();
       this.navigate("scan");
       await this.loadScanSummaries();
     },
@@ -592,11 +598,50 @@ export default {
       this.scanActiveExam = exam;
       this.scanForm = { ra: "", score: "" };
       this.error = "";
+      this.resetScanBatch();
       this.scanStep = "form";
     },
     backToScanList() {
       this.scanStep = "list";
       this.scanActiveExam = null;
+      this.resetScanBatch();
+    },
+    resetScanBatch() {
+      this.scanQrBatchId += 1;
+      this.scanQrBatch = [];
+      this.scanQrError = "";
+      this.scanQrFeedback = "";
+      this.scanQrLoading = false;
+    },
+    async validateScannedQr(qrCode) {
+      if (!this.scanActiveExam || this.scanQrLoading) return;
+      const examId = this.scanActiveExam.id;
+      const batchId = this.scanQrBatchId;
+      this.scanQrLoading = true;
+      this.scanQrError = "";
+      this.scanQrFeedback = "";
+      try {
+        const folha = await atribuicoesApi.validarQr(examId, qrCode);
+        if (batchId !== this.scanQrBatchId) return;
+        if (this.scanQrBatch.some((item) => item.studentId === folha.studentId)) {
+          this.scanQrError = "Esta folha já foi identificada nesta lista.";
+          return;
+        }
+        this.scanQrBatch.push(folha);
+        this.scanQrFeedback = `Folha de ${folha.studentName}, versão ${folha.versionLabel}, validada.`;
+      } catch (erro) {
+        if (batchId !== this.scanQrBatchId) return;
+        if (erro.status === 404) {
+          this.scanQrError = "Este QR Code não pertence à avaliação selecionada ou não está atribuído.";
+        } else if (erro.status) {
+          this.scanQrError = erro.message;
+        } else {
+          console.error("Falha ao validar QR Code:", erro.message);
+          this.scanQrError = "Não foi possível validar o QR Code. Verifique a conexão e tente novamente.";
+        }
+      } finally {
+        if (batchId === this.scanQrBatchId) this.scanQrLoading = false;
+      }
     },
     async submitScanResult() {
       if (!this.scanActiveExam) return;
@@ -777,10 +822,15 @@ export default {
           :form="scanForm"
           :turmas="turmas"
           :error="error"
+          :qr-batch="scanQrBatch"
+          :qr-loading="scanQrLoading"
+          :qr-error="scanQrError"
+          :qr-feedback="scanQrFeedback"
           @open-exam="openScanExam"
           @back="backToScanList"
           @submit="submitScanResult"
           @remove-result="removeScanResult"
+          @qr-detected="validateScannedQr"
         />
       </section>
     </main>
