@@ -6,7 +6,7 @@
 
 🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
 
-> **Estado da N2:** login/cadastro, turmas e alunos, banco de questões, avaliações, correção de provas (lançamento de notas) e consulta de resultado pelo aluno são persistidos pela API Express no MySQL. A geração de arquivos, a leitura automática de respostas (câmera/QR) e as estatísticas ainda não estão implementadas; a interface informa essa indisponibilidade.
+> **Estado do projeto:** login/cadastro, turmas e alunos, banco de questões, avaliações, correção manual e consulta de resultados são persistidos pela API Express no MySQL. A tela de correção também identifica folhas por câmera e QR Code; a leitura de marcações, o cálculo automático da nota, a geração de arquivos e as estatísticas ainda não estão implementados.
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -604,6 +604,7 @@ retornam `204 No Content`.
 | GET | `/api/avaliacoes/:id/resultados` | Professor | Lista os resultados da avaliação e retorna `totalMatriculados`, `corrigidos` e `status` (`pendente`, `em_andamento` ou `concluida`) |
 | POST | `/api/avaliacoes/:id/resultados` | Professor | Registra ou atualiza nota com `ra` e `score` (de `0` a `10`); exige avaliação aplicada a uma turma e aluno matriculado nela |
 | DELETE | `/api/avaliacoes/:id/resultados/:alunoId` | Professor | Remove o resultado do aluno na avaliação |
+| POST | `/api/avaliacoes/:id/atribuicoes/validar-qr` | Professor | Recebe `{ "qrCode": "..." }`; valida o código na avaliação autenticada e retorna `{ examId, studentId, studentName, versionId, versionLabel }`, sem expor o QR |
 
 ## 12. Testes e Validações
 
