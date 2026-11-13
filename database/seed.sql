@@ -57,7 +57,7 @@ INSERT INTO exam_versions (exam_id,label,printed_items) VALUES
 ON DUPLICATE KEY UPDATE id=id;
 SET @version_b = (SELECT id FROM exam_versions WHERE exam_id=@exam AND label='B');
 INSERT INTO exam_assignments (exam_id,student_id,version_id,qr_code)
-VALUES (@exam,@student_a,@version_b,'T39-SEED-ALUNO-A')
+VALUES (@exam,@student_a,@version_b,'2f97ac95317b62f66cf6e9a214bd3407b45a4b482eaac8d8c8e92138ebcd3375')
 ON DUPLICATE KEY UPDATE qr_code=qr_code;
 INSERT INTO results (exam_id,teacher_id,student_id,score) VALUES (@exam,@teacher_a,@student_a,10)
 ON DUPLICATE KEY UPDATE id=id;

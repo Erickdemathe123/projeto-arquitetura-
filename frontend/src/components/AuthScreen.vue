@@ -33,7 +33,7 @@ export default {
         <form novalidate @submit.prevent="$emit('submit')">
           <label v-if="mode === 'register'">Nome completo<input :value="name" @input="$emit('update:name', $event.target.value)" placeholder="Nome completo"></label>
           <label>E-mail<input :value="email" @input="$emit('update:email', $event.target.value)" type="email" placeholder="E-mail"></label>
-          <label>Senha<span class="password-field"><input :value="password" @input="$emit('update:password', $event.target.value)" :type="showPassword ? 'text' : 'password'" placeholder="Senha"><button type="button" @click="showPassword = !showPassword" :title="showPassword ? 'Ocultar senha' : 'Mostrar senha'">{{ showPassword ? "◉" : "◌" }}</button></span></label>
+          <label>Senha<span class="password-field"><input :value="password" @input="$emit('update:password', $event.target.value)" :type="showPassword ? 'text' : 'password'" :minlength="mode === 'register' ? 8 : 6" placeholder="Senha"><button type="button" @click="showPassword = !showPassword" :title="showPassword ? 'Ocultar senha' : 'Mostrar senha'">{{ showPassword ? "◉" : "◌" }}</button></span><small v-if="mode === 'register'">Mínimo de 8 caracteres.</small></label>
           <label v-if="mode === 'register'">Confirmar senha<input :value="confirmation" @input="$emit('update:confirmation', $event.target.value)" type="password" placeholder="Confirmar senha"></label>
           <p v-if="error" class="auth-error" role="alert">{{ error }}</p>
           <p v-if="message" class="auth-message" role="status">{{ message }}</p>

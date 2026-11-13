@@ -150,7 +150,10 @@ export default {
       this.message = "";
       if (this.mode === "register" && !this.name.trim()) return (this.error = "Informe seu nome completo.");
       if (!this.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) return (this.error = "Digite um e-mail válido.");
-      if (this.password.length < 6) return (this.error = "A senha deve ter pelo menos 6 caracteres.");
+      const tamanhoMinimoSenha = this.mode === "register" ? 8 : 6;
+      if (this.password.length < tamanhoMinimoSenha) {
+        return (this.error = `A senha deve ter pelo menos ${tamanhoMinimoSenha} caracteres.`);
+      }
       if (this.mode === "register" && this.password !== this.confirmation) return (this.error = "As senhas não coincidem.");
 
       try {

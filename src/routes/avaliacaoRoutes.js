@@ -5,10 +5,18 @@ const versaoController = require('../controllers/versaoController');
 const atribuicaoController = require('../controllers/atribuicaoController');
 const { autenticar, exigirRole } = require('../middlewares/authMiddleware');
 const { validarParamId } = require('../middlewares/validator');
+const { criarLimiteTentativas } = require('../middlewares/limiteTentativas');
 
 const router = Router();
 
-router.get('/codigo/:code', controller.consultarCodigo);
+const limiteConsultaPublica = criarLimiteTentativas({
+  maxTentativas: 5,
+  janelaMs: 15 * 60 * 1000,
+  obterIdentificador: (req) => req.query.ra,
+  contarSucessos: true
+});
+
+router.get('/codigo/:code', limiteConsultaPublica, controller.consultarCodigo);
 router.use(autenticar, exigirRole('professor'));
 router.get('/', controller.listar);
 router.post('/', controller.criar);

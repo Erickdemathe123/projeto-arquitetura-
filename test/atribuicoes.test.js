@@ -44,6 +44,14 @@ test('repository busca atribuição pelo QR e restringe a consulta à avaliaçã
   });
 });
 
+test('gera código QR opaco aleatório compatível com o limite do banco', () => {
+  const primeiro = atribuicaoService.gerarCodigoQrOpaco();
+  const segundo = atribuicaoService.gerarCodigoQrOpaco();
+
+  assert.match(primeiro, /^[a-f0-9]{64}$/);
+  assert.notEqual(primeiro, segundo);
+});
+
 test('validação de QR exige professor autenticado e id válido', async (t) => {
   const baseUrl = await iniciarServidor(t);
   const url = `${baseUrl}/api/avaliacoes/8/atribuicoes/validar-qr`;

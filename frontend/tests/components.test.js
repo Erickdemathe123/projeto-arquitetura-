@@ -32,6 +32,8 @@ describe("AuthScreen", () => {
     const wrapper = mount(AuthScreen, { props: { mode: "register" } });
     expect(wrapper.find("h1").text()).toBe("Crie sua conta");
     expect(wrapper.find('input[placeholder="Confirmar senha"]').exists()).toBe(true);
+    expect(wrapper.find('input[placeholder="Senha"]').attributes("minlength")).toBe("8");
+    expect(wrapper.text()).toContain("Mínimo de 8 caracteres.");
   });
 });
 

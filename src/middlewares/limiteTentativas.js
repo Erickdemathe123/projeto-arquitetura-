@@ -1,16 +1,17 @@
-// Middleware: limita tentativas de login/cadastro que deram errado, para
-// dificultar a descoberta de senhas por tentativa e erro.
-//
-// Conta só as respostas com erro do cliente (4xx). Bloqueia por IP + e-mail,
-// para que uma sala com o mesmo IP (laboratório) não bloqueie todos os
-// alunos por causa de um só. Os contadores ficam na memória do servidor.
-
-function criarLimiteTentativas({ maxTentativas = 5, janelaMs = 15 * 60 * 1000, agora = () => Date.now() } = {}) {
+// Os contadores ficam na memória do servidor e são separados por IP e identificador.
+function criarLimiteTentativas({
+  maxTentativas = 5,
+  janelaMs = 15 * 60 * 1000,
+  agora = () => Date.now(),
+  obterIdentificador = (req) => req.body?.email,
+  contarSucessos = false
+} = {}) {
   const tentativas = new Map();
 
   function chave(req) {
-    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-    return `${req.ip}|${email}`;
+    const identificador = obterIdentificador(req);
+    const normalizado = typeof identificador === 'string' ? identificador.trim().toLowerCase() : '';
+    return `${req.ip}|${normalizado}`;
   }
 
   function limparExpiradas(momento) {
@@ -29,12 +30,14 @@ function criarLimiteTentativas({ maxTentativas = 5, janelaMs = 15 * 60 * 1000, a
       const segundos = Math.ceil((registro.expiraEm - momento) / 1000);
       res.set('Retry-After', String(segundos));
       return res.status(429).json({
-        erro: `Muitas tentativas sem sucesso. Tente novamente em ${Math.ceil(segundos / 60)} minuto(s).`
+        erro: `Muitas tentativas. Tente novamente em ${Math.ceil(segundos / 60)} minuto(s).`
       });
     }
 
     res.on('finish', () => {
-      if (res.statusCode >= 400 && res.statusCode < 500) {
+      const respostaDeErroDoCliente = res.statusCode >= 400 && res.statusCode < 500;
+      const contabilizar = respostaDeErroDoCliente || (contarSucessos && res.statusCode < 400);
+      if (contabilizar) {
         const atual = tentativas.get(key);
         if (atual && atual.expiraEm > agora()) {
           atual.falhas += 1;
@@ -42,7 +45,7 @@ function criarLimiteTentativas({ maxTentativas = 5, janelaMs = 15 * 60 * 1000, a
           tentativas.set(key, { falhas: 1, expiraEm: agora() + janelaMs });
         }
       } else if (res.statusCode < 400) {
-        // Login certo zera o contador desse e-mail
+        // Um login correto zera o contador; consultas públicas contam sucessos.
         tentativas.delete(key);
       }
     });

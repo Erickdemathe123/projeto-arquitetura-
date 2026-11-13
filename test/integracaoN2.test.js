@@ -203,3 +203,23 @@ test('consulta pública por código + RA devolve a nota só quando o gabarito es
   });
   assert.deepEqual(chamadas, [['SGP-ABC123'], ['RA-1', 9]]);
 });
+
+test('consulta pública limita cinco tentativas por IP e RA, inclusive respostas de sucesso', async (t) => {
+  const baseUrl = await iniciarServidor(t);
+  t.mock.method(pool, 'query', async (sql) => {
+    if (sql.startsWith('SELECT id, title, answer_key_released')) {
+      return [[{ id: 9, title: 'Avaliação de teste', answer_key_released: 1 }]];
+    }
+    return [[{ score: '8.50' }]];
+  });
+
+  const consultar = (ra) => fetch(`${baseUrl}/api/avaliacoes/codigo/sgp-t58-limit?ra=${ra}`);
+  for (let tentativa = 0; tentativa < 5; tentativa += 1) {
+    assert.equal((await consultar('RA-T58-LIMITE')).status, 200);
+  }
+
+  const bloqueada = await consultar('RA-T58-LIMITE');
+  assert.equal(bloqueada.status, 429);
+  assert.equal(bloqueada.headers.get('retry-after'), '900');
+  assert.equal((await consultar('RA-T58-OUTRO')).status, 200);
+});

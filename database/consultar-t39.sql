@@ -30,5 +30,5 @@ JOIN result_answers r ON r.exam_id=a.exam_id AND r.student_id=a.student_id
 JOIN JSON_TABLE(v.printed_items, '$[*]' COLUMNS (
   posicao FOR ORDINALITY, questao BIGINT PATH '$.question_id', correta INT PATH '$.correct_index'
 )) j ON j.questao=r.question_id
-WHERE a.qr_code='T39-SEED-ALUNO-A'
+WHERE a.qr_code='2f97ac95317b62f66cf6e9a214bd3407b45a4b482eaac8d8c8e92138ebcd3375'
 ORDER BY j.posicao;

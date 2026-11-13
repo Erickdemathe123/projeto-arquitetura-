@@ -384,7 +384,9 @@ Tecnologias usadas no projeto e por que cada uma foi escolhida. A stack obrigat�
 - **MySQL 8.4**: banco de dados relacional, acessado pela biblioteca **mysql2**, com pool de conexões e consultas parametrizadas.
 - **bcrypt**: gera o hash das senhas antes de gravá-las no banco (RNF06).
 - **jsonwebtoken (JWT)**: gera e valida o token de login que protege as rotas da API.
-- **Limite de tentativas de login** (`src/middlewares/limiteTentativas.js`): depois de 5 logins errados para o mesmo e-mail e IP em 15 minutos, a API responde 429 até a janela acabar.
+- **Limite de tentativas** (`src/middlewares/limiteTentativas.js`): o login permite até 5 erros por e-mail e IP em 15 minutos. A consulta pública limita a 5 solicitações por RA e IP no mesmo período e retorna HTTP 429; as consultas bem-sucedidas também contam para evitar contornar o limite.
+- **Senhas**: novos cadastros exigem pelo menos 8 caracteres na interface e na API. O login preserva a regra anterior de 6 caracteres para não bloquear contas existentes.
+- **Identificadores de QR**: `gerarCodigoQrOpaco`, em `src/services/atribuicaoService.js`, gera um token aleatório de 256 bits para usar diretamente no QR, sem RA nem nota. A geração do PDF continua em outra tarefa.
 - **dotenv**: lê as configurações (banco, porta, segredo do JWT) do arquivo `.env`, que não vai para o GitHub.
 - **Vue 3 + Vite**: front-end em página única; o Vite roda o ambiente de desenvolvimento e gera o build em `frontend/dist/`.
 - **node:test**: executor de testes nativo do Node, usado no `npm test`.
