@@ -433,6 +433,9 @@ frontend/
   package-lock.json
   vercel.json                  # configuração de publicação/roteamento na Vercel
   vite.config.js
+shared/
+  folhaRespostasLayout.js      # layout da folha de respostas em mm (T38): usado pelo
+                                # gerador de PDF e pelo leitor de marcações (back e front)
 src/
   config/                      # configuração do banco e do back-end
   controllers/                 # validação de entrada e orquestração
