@@ -6,7 +6,7 @@ export default {
     exams: { type: Array, required: true },
     questions: { type: Array, required: true }
   },
-  emits: ["new", "release", "preview", "statistics", "edit", "remove"],
+  emits: ["new", "release", "preview", "export-docx", "statistics", "edit", "remove"],
   computed: {
     examsCountLabel() {
       if (!this.exams.length) return "Nenhuma avaliação criada.";
@@ -33,6 +33,7 @@ export default {
       <div class="question-actions">
         <button class="edit-button" @click="$emit('release', exam)" :aria-label="exam.released ? 'Gabarito liberado' : 'Liberar gabarito'" :title="exam.released ? 'Gabarito liberado' : 'Liberar gabarito'">{{ exam.released ? "🔓" : "🔒" }}</button>
         <button class="edit-button" @click="$emit('preview', exam)" aria-label="Pré-visualizar prova" title="Pré-visualizar prova">◉</button>
+        <button class="edit-button" @click="$emit('export-docx', exam)" aria-label="Exportar caderno em Word (.docx)" title="Exportar caderno em Word (.docx)">W</button>
         <button class="edit-button" @click="$emit('statistics', exam)" aria-label="Ver estatísticas" title="Ver estatísticas">▥</button>
         <button class="edit-button" @click="$emit('edit', exam)" aria-label="Editar avaliação" title="Editar avaliação">✎</button>
         <button class="remove-button" @click="$emit('remove', exam)" aria-label="Remover avaliação" title="Remover avaliação">×</button>

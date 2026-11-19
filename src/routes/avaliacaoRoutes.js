@@ -3,6 +3,7 @@ const controller = require('../controllers/avaliacaoController');
 const resultadoController = require('../controllers/resultadoController');
 const versaoController = require('../controllers/versaoController');
 const atribuicaoController = require('../controllers/atribuicaoController');
+const cadernoController = require('../controllers/cadernoController');
 const { autenticar, exigirRole } = require('../middlewares/authMiddleware');
 const { validarParamId } = require('../middlewares/validator');
 const { criarLimiteTentativas } = require('../middlewares/limiteTentativas');
@@ -32,6 +33,8 @@ router.delete('/:id/resultados/:alunoId', validarParamId('id'), validarParamId('
 // Versões da prova (T42): embaralhamento com semente, ordem impressa e gabarito por caderno
 router.get('/:id/versoes', validarParamId('id'), versaoController.listar);
 router.post('/:id/versoes', validarParamId('id'), versaoController.gerar);
+// Caderno editável em .docx (T55): todas as versões ou só a pedida em ?versao=A
+router.get('/:id/caderno/docx', validarParamId('id'), cadernoController.baixarDocx);
 router.post('/:id/atribuicoes/validar-qr', validarParamId('id'), atribuicaoController.validarQr);
 
 module.exports = router;

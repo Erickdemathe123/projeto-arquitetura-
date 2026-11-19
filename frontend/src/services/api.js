@@ -59,6 +59,29 @@ async function request(endpoint, options = {}) {
   return data;
 }
 
+// Baixa um arquivo binário autenticado (ex.: caderno .docx) e devolve o Blob e o nome
+async function download(endpoint) {
+  const headers = {};
+  const token = getToken();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(`/api${endpoint}`, { headers });
+  if (!response.ok) {
+    let mensagem = `Erro HTTP ${response.status}`;
+    try {
+      const data = await response.json();
+      mensagem = data?.erro || data?.message || mensagem;
+    } catch {
+      // resposta sem JSON: mantém a mensagem padrão
+    }
+    const erro = new Error(mensagem);
+    erro.status = response.status;
+    throw erro;
+  }
+  const disposition = response.headers.get('content-disposition') || '';
+  const match = disposition.match(/filename="?([^";]+)"?/i);
+  return { blob: await response.blob(), filename: match ? match[1] : 'arquivo' };
+}
+
 export const authApi = {
   async cadastro({ nome, email, senha, role = 'professor', ra }) {
     const resultado = await request('/auth/cadastro', {
@@ -119,6 +142,8 @@ export const avaliacoesApi = {
     body: JSON.stringify({ released })
   }),
   remover: (id) => request(`/avaliacoes/${id}`, { method: 'DELETE' }),
+  // Caderno editável em .docx (T55); sem versao, traz todas as versões
+  baixarCadernoDocx: (id, versao) => download(`/avaliacoes/${id}/caderno/docx${versao ? `?versao=${encodeURIComponent(versao)}` : ''}`),
   consultarCodigo: (code, ra) => request(
     `/avaliacoes/codigo/${encodeURIComponent(code)}${ra ? `?ra=${encodeURIComponent(ra)}` : ''}`,
     { method: 'GET' }

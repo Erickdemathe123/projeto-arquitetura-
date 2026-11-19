@@ -473,6 +473,23 @@ export default {
         this.error = erro.message;
       }
     },
+    // T55: baixa o caderno editável (.docx) com todas as versões da avaliação
+    async exportExamDocx(exam) {
+      try {
+        const { blob, filename } = await avaliacoesApi.baixarCadernoDocx(exam.id);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        this.notify("Caderno .docx gerado.");
+      } catch (erro) {
+        this.notify(erro.message);
+      }
+    },
     async consultStudentResult() {
       const code = this.studentCode.trim().toUpperCase();
       const ra = this.studentRa.trim();
@@ -783,6 +800,7 @@ export default {
           @new="newExam"
           @release="releaseExam"
           @preview="previewSavedExam"
+          @export-docx="exportExamDocx"
           @statistics="openStatistics"
           @edit="editExam"
           @remove="removeExam"

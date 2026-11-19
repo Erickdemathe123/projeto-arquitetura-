@@ -610,6 +610,7 @@ retornam `204 No Content`.
 | POST | `/api/avaliacoes/:id/resultados` | Professor | Registra ou atualiza nota com `ra` e `score` (de `0` a `10`); exige avaliação aplicada a uma turma e aluno matriculado nela |
 | DELETE | `/api/avaliacoes/:id/resultados/:alunoId` | Professor | Remove o resultado do aluno na avaliação |
 | POST | `/api/avaliacoes/:id/atribuicoes/validar-qr` | Professor | Recebe `{ "qrCode": "..." }`; valida o código na avaliação autenticada e retorna `{ examId, studentId, studentName, versionId, versionLabel }`, sem expor o QR |
+| GET | `/api/avaliacoes/:id/caderno/docx` | Professor | Baixa o caderno de questões em Word (.docx) editável, com uma seção por versão gerada (ou a ordem original, se ainda não houver versões); `?versao=A` exporta só uma versão. As questões não são divididas entre páginas (RF06, RNF07) |
 
 ## 12. Testes e Validações
 
