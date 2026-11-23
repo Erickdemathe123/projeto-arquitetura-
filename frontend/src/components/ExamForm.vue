@@ -73,7 +73,33 @@ export default {
       if (!file) return;
       if (!file.type.startsWith("image/")) return this.$emit("error", "Selecione um arquivo de imagem válido.");
       const reader = new FileReader();
-      reader.onload = () => { this.form.logo = reader.result; };
+      reader.onerror = () => this.$emit("error", "Não foi possível ler o arquivo da logo.");
+      reader.onload = () => {
+        const image = new Image();
+        image.onerror = () => this.$emit("error", "Não foi possível abrir o arquivo da logo.");
+        image.onload = () => {
+          const maxDimension = 512;
+          const scale = Math.min(1, maxDimension / Math.max(image.naturalWidth, image.naturalHeight));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+          canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+          const context = canvas.getContext("2d");
+          if (!context) return this.$emit("error", "Não foi possível processar a logo neste navegador.");
+          context.fillStyle = "#fff";
+          context.fillRect(0, 0, canvas.width, canvas.height);
+          context.drawImage(image, 0, 0, canvas.width, canvas.height);
+          try {
+            const compressedLogo = canvas.toDataURL("image/jpeg", 0.8);
+            if (compressedLogo.length > 700 * 1024) {
+              return this.$emit("error", "A logo ainda ficou muito grande. Escolha uma imagem menor.");
+            }
+            this.form.logo = compressedLogo;
+          } catch {
+            this.$emit("error", "Não foi possível processar a logo neste navegador.");
+          }
+        };
+        image.src = reader.result;
+      };
       reader.readAsDataURL(file);
     },
     formatDateInput(event) {
