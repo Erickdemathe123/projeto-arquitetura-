@@ -543,7 +543,15 @@ export default {
         this.error = "";
       } catch (erro) {
         this.consultedExam = null;
-        this.error = erro.message;
+        if (erro.status === 404) {
+          this.error = "Código de prova não encontrado.";
+        } else if (erro.status === 503) {
+          this.error = "O banco de dados está indisponível. Tente novamente em instantes.";
+        } else if (erro.status) {
+          this.error = erro.message;
+        } else {
+          this.error = "Não foi possível consultar o resultado. Tente novamente.";
+        }
       }
     },
     isStudentPortalRoute() {

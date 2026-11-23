@@ -204,6 +204,33 @@ test('consulta pública por código + RA devolve a nota só quando o gabarito es
   assert.deepEqual(chamadas, [['SGP-ABC123'], ['RA-1', 9]]);
 });
 
+test('consulta pública com código inexistente retorna 404 em vez de erro interno', async (t) => {
+  const baseUrl = await iniciarServidor(t);
+  t.mock.method(pool, 'query', async () => [[]]);
+
+  const response = await fetch(`${baseUrl}/api/avaliacoes/codigo/NAO-EXISTE`);
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { erro: 'Código de prova não encontrado.' });
+});
+
+test('consulta pública acrescenta answer_key_released quando a coluna antiga está ausente', async (t) => {
+  let calls = 0;
+  t.mock.method(pool, 'query', async (sql) => {
+    calls += 1;
+    if (calls === 1) {
+      throw Object.assign(new Error('Unknown column'), { code: 'ER_BAD_FIELD_ERROR' });
+    }
+    if (/SHOW COLUMNS/.test(sql)) return [[{ Field: 'answer_key_released' }], []];
+    if (/ALTER TABLE exams/.test(sql)) return [[], []];
+    return [[{ id: 9, title: 'Avaliação antiga', answer_key_released: 0 }]];
+  });
+
+  const resultado = await avaliacaoRepository.buscarPublicoPorCodigo('SGP-LEGADO', null);
+  assert.equal(resultado.name, 'Avaliação antiga');
+  assert.equal(resultado.released, false);
+  assert.equal(calls, 3);
+});
+
 test('consulta pública limita cinco tentativas por IP e RA, inclusive respostas de sucesso', async (t) => {
   const baseUrl = await iniciarServidor(t);
   t.mock.method(pool, 'query', async (sql) => {

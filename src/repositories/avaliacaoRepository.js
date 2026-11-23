@@ -271,10 +271,27 @@ async function remover(professorId, id) {
 }
 
 async function buscarPublicoPorCodigo(code, ra) {
-  const [rows] = await pool.query(
-    'SELECT id, title, answer_key_released FROM exams WHERE public_code = ? LIMIT 1',
-    [code]
-  );
+  let rows;
+  try {
+    [rows] = await pool.query(
+      'SELECT id, title, answer_key_released FROM exams WHERE public_code = ? LIMIT 1',
+      [code]
+    );
+  } catch (error) {
+    if (error.code !== 'ER_BAD_FIELD_ERROR') throw error;
+    const [columns] = await pool.query(
+      "SHOW COLUMNS FROM exams LIKE 'answer_key_released'"
+    );
+    if (!columns.length) {
+      await pool.query(
+        'ALTER TABLE exams ADD COLUMN answer_key_released BOOLEAN NOT NULL DEFAULT FALSE'
+      );
+    }
+    [rows] = await pool.query(
+      'SELECT id, title, answer_key_released FROM exams WHERE public_code = ? LIMIT 1',
+      [code]
+    );
+  }
   if (!rows.length) return null;
   const exam = rows[0];
   const released = Boolean(exam.answer_key_released);
