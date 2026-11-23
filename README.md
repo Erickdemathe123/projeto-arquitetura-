@@ -6,7 +6,7 @@
 
 🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
 
-> **Estado da N2:** login/cadastro, turmas e alunos, banco de questões, avaliações, correção de provas (lançamento de notas) e consulta de resultado pelo aluno são persistidos pela API Express no MySQL. A geração de arquivos, a leitura automática de respostas (câmera/QR) e as estatísticas ainda não estão implementadas; a interface informa essa indisponibilidade.
+> **Estado do projeto:** login/cadastro, turmas e alunos, banco de questões, avaliações, correção manual e consulta de resultados são persistidos pela API Express no MySQL. A tela de correção também identifica folhas por câmera e QR Code; a leitura de marcações, o cálculo automático da nota, a geração de arquivos e as estatísticas ainda não estão implementados.
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -210,9 +210,11 @@ as aplica e as decisões complementares tomadas pela equipe.
 
 ## 7. Modelo de Dados
 
-📌 **N2**
+📌 **N2 e T39 da N3**
 
-![Diagrama Entidade-Relacionamento](docs/modelo-dados/mer-der.png)
+![Diagrama Entidade-Relacionamento atualizado para a T39](docs/modelo-dados/mer-der-t39.svg)
+
+O [dicionário e contrato da T39](docs/modelo-dados/t39.md) descreve as tabelas de versões, atribuições e respostas e a migração do banco N2. [Diagrama anterior da N2](docs/modelo-dados/mer-der.png).
 
 ### Dicionário de Dados
 
@@ -363,6 +365,10 @@ prova e ao professor responsável. A FK `(student_id, student_role)` → `(users
 assegura que o destinatário seja um aluno. Cada aluno pode ter um único resultado por
 prova (`UNIQUE (exam_id, student_id)`).
 
+#### Versões, atribuições e respostas (T39)
+
+O campo `exams.answer_key_released` controla a liberação do gabarito. Cada registro em `exam_versions` armazena a ordem impressa e o gabarito de uma versão. A tabela `exam_assignments` liga o caderno ao aluno e ao QR único. A tabela `result_answers` armazena a marcação por questão. Consulte os [campos, tipos, chaves e regras de integridade](docs/modelo-dados/t39.md#dicionário-de-dados).
+
 ## 8. Stack Tecnológica
 
 📌 **N1**
@@ -378,6 +384,9 @@ Tecnologias usadas no projeto e por que cada uma foi escolhida. A stack obrigat�
 - **MySQL 8.4**: banco de dados relacional, acessado pela biblioteca **mysql2**, com pool de conexões e consultas parametrizadas.
 - **bcrypt**: gera o hash das senhas antes de gravá-las no banco (RNF06).
 - **jsonwebtoken (JWT)**: gera e valida o token de login que protege as rotas da API.
+- **Limite de tentativas** (`src/middlewares/limiteTentativas.js`): o login permite até 5 erros por e-mail e IP em 15 minutos. A consulta pública limita a 5 solicitações por RA e IP no mesmo período e retorna HTTP 429; as consultas bem-sucedidas também contam para evitar contornar o limite.
+- **Senhas**: novos cadastros exigem pelo menos 8 caracteres na interface e na API. O login preserva a regra anterior de 6 caracteres para não bloquear contas existentes.
+- **Identificadores de QR**: `gerarCodigoQrOpaco`, em `src/services/atribuicaoService.js`, gera um token aleatório de 256 bits para usar diretamente no QR, sem RA nem nota. A geração do PDF continua em outra tarefa.
 - **dotenv**: lê as configurações (banco, porta, segredo do JWT) do arquivo `.env`, que não vai para o GitHub.
 - **Vue 3 + Vite**: front-end em página única; o Vite roda o ambiente de desenvolvimento e gera o build em `frontend/dist/`.
 - **node:test**: executor de testes nativo do Node, usado no `npm test`.
@@ -424,6 +433,9 @@ frontend/
   package-lock.json
   vercel.json                  # configuração de publicação/roteamento na Vercel
   vite.config.js
+shared/
+  folhaRespostasLayout.js      # layout da folha de respostas em mm (T38): usado pelo
+                                # gerador de PDF e pelo leitor de marcações (back e front)
 src/
   config/                      # configuração do banco e do back-end
   controllers/                 # validação de entrada e orquestração
@@ -597,12 +609,16 @@ retornam `204 No Content`.
 | GET | `/api/avaliacoes/:id/resultados` | Professor | Lista os resultados da avaliação e retorna `totalMatriculados`, `corrigidos` e `status` (`pendente`, `em_andamento` ou `concluida`) |
 | POST | `/api/avaliacoes/:id/resultados` | Professor | Registra ou atualiza nota com `ra` e `score` (de `0` a `10`); exige avaliação aplicada a uma turma e aluno matriculado nela |
 | DELETE | `/api/avaliacoes/:id/resultados/:alunoId` | Professor | Remove o resultado do aluno na avaliação |
+| POST | `/api/avaliacoes/:id/atribuicoes/validar-qr` | Professor | Recebe `{ "qrCode": "..." }`; valida o código na avaliação autenticada e retorna `{ examId, studentId, studentName, versionId, versionLabel }`, sem expor o QR |
+| GET | `/api/avaliacoes/:id/caderno/docx` | Professor | Baixa o caderno de questões em Word (.docx) editável, com uma seção por versão gerada (ou a ordem original, se ainda não houver versões); `?versao=A` exporta só uma versão. As questões não são divididas entre páginas (RF06, RNF07) |
 
 ## 12. Testes e Validações
 
 📌 **N3** (validações e tratamento de erros/casos de borda passam a ser cobrados nesta entrega)
 
 Execute `npm test` na raiz para rodar os testes automatizados sem conectar ao MySQL. A suíte cobre autenticação, proteção por papel, validação de IDs, importação CSV, regras de validação de questões/avaliações e consulta pública sem exposição de respostas. A validação ponta a ponta com um banco MySQL de teste continua necessária para a entrega final.
+
+Os componentes do front-end têm testes próprios (Vitest + Vue Test Utils), executados com `npm --prefix frontend test`. O workflow `.github/workflows/testes.yml` roda os testes da API, os testes do front-end e o build a cada pull request e a cada push na `main`.
 
 ## 13. Manual do Usuário
 

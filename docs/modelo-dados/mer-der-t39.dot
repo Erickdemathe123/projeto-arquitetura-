@@ -1,0 +1,27 @@
+digraph sgp {
+  graph [rankdir=LR, bgcolor="white", pad=0.35, nodesep=0.35, ranksep=0.95,
+         labelloc=t, labeljust=l, fontname="Helvetica", fontsize=22,
+         label="SGP   /   Modelo de dados da T39\n "];
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=12,
+        margin="0.16,0.12", color="#64748b", fillcolor="#f1f5f9", fontcolor="#142937"];
+  edge [color="#718796", arrowsize=0.7];
+  users [label="users\nPK  id"];
+  classes [label="classes\nPK  id"];
+  enrollments [label="enrollments\nPK  id"];
+  questions [label="questions\nPK  id"];
+  alternatives [label="alternatives\nPK  id"];
+  exams [label="exams\nPK  id\nanswer_key_released"];
+  exam_questions [label="exam_questions\nPK  id"];
+  applications [label="applications\nPK  id"];
+  results [label="results\nPK  id"];
+  node [color="#25735c", fillcolor="#e1f4e9"];
+  exam_versions [label="exam_versions\nPK  id\nlabel · printed_items"];
+  exam_assignments [label="exam_assignments\nPK  exam_id + student_id\nversion_id · qr_code"];
+  result_answers [label="result_answers\nPK  exam_id + student_id + question_id\nmarked_index"];
+  users -> {classes questions exams enrollments results exam_assignments};
+  classes -> {enrollments applications};
+  questions -> {alternatives exam_questions};
+  exams -> {exam_questions applications results exam_versions};
+  exam_versions -> exam_assignments;
+  {exam_assignments results exam_questions} -> result_answers;
+}

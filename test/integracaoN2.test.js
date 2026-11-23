@@ -109,11 +109,67 @@ test('avaliações rejeitam questões repetidas e estado de gabarito não boolea
   );
 });
 
+test('avaliações validam os pontos de cada questão e usam 1 como padrão', async (t) => {
+  t.mock.method(avaliacaoRepository, 'criar', async (_professorId, dados) => dados);
+  t.mock.method(avaliacaoRepository, 'atualizar', async (_professorId, _id, dados) => dados);
+  const valid = { name: 'Prova 1', questionIds: [3, 5] };
+
+  const semPontos = await avaliacaoService.criar(17, valid);
+  assert.deepEqual(semPontos.questionPoints, [1, 1]);
+
+  const comPontos = await avaliacaoService.criar(17, { ...valid, questionPoints: [2.5, '1.5'] });
+  assert.deepEqual(comPontos.questionPoints, [2.5, 1.5]);
+
+  const atualizada = await avaliacaoService.atualizar(17, 8, { ...valid, questionPoints: [4, 6] });
+  assert.deepEqual(atualizada.questionPoints, [4, 6]);
+
+  for (const questionPoints of [[0, 1], [0.001, 1], [-1, 1], ['abc', 1], ['', 1], [1], [1, 2, 3], 'dois', [10000, 1]]) {
+    await assert.rejects(
+      avaliacaoService.criar(17, { ...valid, questionPoints }),
+      (erro) => erro.status === 400,
+      `deveria rejeitar ${JSON.stringify(questionPoints)}`
+    );
+  }
+});
+
+test('avaliações gravam os pontos em exam_questions e devolvem o total', async (t) => {
+  const inseridos = [];
+  const connection = {
+    beginTransaction: async () => {},
+    commit: async () => {},
+    rollback: async () => {},
+    release: () => {},
+    query: async (sql, params) => {
+      if (sql.includes('FROM questions q')) {
+        return [[{ id: 3, statement: 'Q3', position: 0, alternative_text: 'A', is_correct: 1 },
+          { id: 5, statement: 'Q5', position: 0, alternative_text: 'B', is_correct: 1 }]];
+      }
+      if (sql.startsWith('INSERT INTO exams')) return [{ insertId: 8 }];
+      if (sql.startsWith('INSERT INTO exam_questions')) inseridos.push(params);
+      return [[]];
+    }
+  };
+  t.mock.method(pool, 'getConnection', async () => connection);
+  t.mock.method(pool, 'query', async (sql) => {
+    if (sql.includes('FROM exams')) return [[{ id: 8, title: 'Prova 1', status: 'draft', public_code: 'SGP-1' }]];
+    return [[{ exam_id: 8, question_id: 3, points: '2.50' }, { exam_id: 8, question_id: 5, points: '1.00' }]];
+  });
+
+  const criada = await avaliacaoRepository.criar(17, {
+    name: 'Prova 1', questionIds: [3, 5], questionPoints: [2.5, 1], applicationClassId: null, details: {}
+  });
+
+  assert.deepEqual(inseridos.map((params) => params[3]), [2.5, 1]);
+  assert.deepEqual(criada.questionIds, [3, 5]);
+  assert.deepEqual(criada.questionPoints, [2.5, 1]);
+  assert.equal(criada.totalPoints, 3.5);
+});
+
 test('consulta pública por código retorna disponibilidade sem expor respostas quando não há RA', async (t) => {
   const baseUrl = await iniciarServidor(t);
   t.mock.method(pool, 'query', async (_sql, params) => {
     assert.deepEqual(params, ['SGP-ABC123']);
-    return [[{ id: 9, title: 'Avaliação de teste', status: 'closed' }]];
+    return [[{ id: 9, title: 'Avaliação de teste', answer_key_released: 1 }]];
   });
 
   const response = await fetch(`${baseUrl}/api/avaliacoes/codigo/sgp-abc123`);
@@ -131,8 +187,8 @@ test('consulta pública por código + RA devolve a nota só quando o gabarito es
   const chamadas = [];
   t.mock.method(pool, 'query', async (sql, params) => {
     chamadas.push(params);
-    if (sql.startsWith('SELECT id, title, status')) {
-      return [[{ id: 9, title: 'Avaliação de teste', status: 'closed' }]];
+    if (sql.startsWith('SELECT id, title, answer_key_released')) {
+      return [[{ id: 9, title: 'Avaliação de teste', answer_key_released: 1 }]];
     }
     return [[{ score: '8.50' }]];
   });
@@ -146,4 +202,24 @@ test('consulta pública por código + RA devolve a nota só quando o gabarito es
     score: 8.5
   });
   assert.deepEqual(chamadas, [['SGP-ABC123'], ['RA-1', 9]]);
+});
+
+test('consulta pública limita cinco tentativas por IP e RA, inclusive respostas de sucesso', async (t) => {
+  const baseUrl = await iniciarServidor(t);
+  t.mock.method(pool, 'query', async (sql) => {
+    if (sql.startsWith('SELECT id, title, answer_key_released')) {
+      return [[{ id: 9, title: 'Avaliação de teste', answer_key_released: 1 }]];
+    }
+    return [[{ score: '8.50' }]];
+  });
+
+  const consultar = (ra) => fetch(`${baseUrl}/api/avaliacoes/codigo/sgp-t58-limit?ra=${ra}`);
+  for (let tentativa = 0; tentativa < 5; tentativa += 1) {
+    assert.equal((await consultar('RA-T58-LIMITE')).status, 200);
+  }
+
+  const bloqueada = await consultar('RA-T58-LIMITE');
+  assert.equal(bloqueada.status, 429);
+  assert.equal(bloqueada.headers.get('retry-after'), '900');
+  assert.equal((await consultar('RA-T58-OUTRO')).status, 200);
 });

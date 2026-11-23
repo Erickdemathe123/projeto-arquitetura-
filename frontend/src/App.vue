@@ -1,9 +1,42 @@
 <script>
 import { SCREEN_TITLES } from "./constants/screens";
-import { dateKey } from "./utils/date";
-import { authApi, questoesApi, turmasApi, avaliacoesApi, resultadosApi, isAuthenticated } from "./services/api";
+import { emptyExamForm, emptyQuestionForm, examFormFrom, questionFormFrom } from "./utils/forms";
+import { authApi, questoesApi, turmasApi, avaliacoesApi, resultadosApi, atribuicoesApi, isAuthenticated } from "./services/api";
+import AuthScreen from "./components/AuthScreen.vue";
+import StudentPortal from "./components/StudentPortal.vue";
+import AppSidebar from "./components/AppSidebar.vue";
+import AppTopbar from "./components/AppTopbar.vue";
+import DashboardScreen from "./components/DashboardScreen.vue";
+import ClassesScreen from "./components/ClassesScreen.vue";
+import QuestionsScreen from "./components/QuestionsScreen.vue";
+import QuestionForm from "./components/QuestionForm.vue";
+import ExamsScreen from "./components/ExamsScreen.vue";
+import ExamForm from "./components/ExamForm.vue";
+import ExamPreview from "./components/ExamPreview.vue";
+import StatisticsScreen from "./components/StatisticsScreen.vue";
+import ScanScreen from "./components/ScanScreen.vue";
+import AppDialog from "./components/AppDialog.vue";
+import ThemeToggle from "./components/ThemeToggle.vue";
+import { applyTheme, getInitialTheme } from "./utils/theme";
 
 export default {
+  components: {
+    AuthScreen,
+    StudentPortal,
+    AppSidebar,
+    AppTopbar,
+    DashboardScreen,
+    ClassesScreen,
+    QuestionsScreen,
+    QuestionForm,
+    ExamsScreen,
+    ExamForm,
+    ExamPreview,
+    StatisticsScreen,
+    ScanScreen,
+    AppDialog,
+    ThemeToggle
+  },
   data() {
     return {
       screen: "login",
@@ -12,7 +45,6 @@ export default {
       email: "",
       password: "",
       confirmation: "",
-      showPassword: false,
       error: "",
       message: "",
       toast: "",
@@ -28,28 +60,14 @@ export default {
       editingQuestionId: null,
       editingExamId: null,
       editingQuestionFromExam: false,
-      questionForm: { text: "", subject: "", topic: "", type: "Múltipla escolha", alternatives: ["", "", "", "", ""], correctAlternative: 0 },
-      examForm: {
-        name: "",
-        selected: [],
-        institution: "",
-        course: "",
-        subject: "",
-        professor: "",
-        className: "",
-        date: "",
-        instructions: "",
-        logo: "",
-        layout: "Uma coluna",
-        shuffleQuestions: true,
-        shuffleAlternatives: true,
-        versions: 1,
-        addBlankPage: true
-      },
-      calendarOpen: false,
-      calendarMonth: new Date().getMonth(),
-      calendarYear: new Date().getFullYear(),
+      questionForm: emptyQuestionForm(),
+      examForm: emptyExamForm(),
       previewExam: null,
+      statisticsExam: null,
+      statisticsSummary: null,
+      statisticsLoading: false,
+      dialog: null,
+      theme: getInitialTheme(),
       studentCode: "",
       studentRa: "",
       consultedExam: null,
@@ -111,26 +129,6 @@ export default {
     },
     examsForScan() {
       return this.exams.filter((exam) => exam.applicationClassId);
-    },
-    filteredQuestionsForExam() {
-      if (!this.examForm.subject) return this.questions;
-      return this.questions.filter((question) => question.subject === this.examForm.subject);
-    },
-    calendarMonthLabel() {
-      return new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(new Date(this.calendarYear, this.calendarMonth, 1));
-    },
-    selectedDateKey() {
-      const date = this.toIsoDate(this.examForm.date);
-      return date ? date.split("-").map(Number).join("-") : "";
-    },
-    todayDateKey() {
-      const today = new Date();
-      return dateKey(today);
-    },
-    calendarDays() {
-      const firstDay = new Date(this.calendarYear, this.calendarMonth, 1).getDay();
-      const daysInMonth = new Date(this.calendarYear, this.calendarMonth + 1, 0).getDate();
-      return [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, index) => index + 1)];
     }
   },
   watch: {
@@ -151,6 +149,9 @@ export default {
         return question && question.subject === newSubject;
       });
     }
+  },
+  created() {
+    applyTheme(this.theme, { save: false });
   },
   async mounted() {
     window.addEventListener("popstate", this.handleRouteChange);
@@ -196,7 +197,10 @@ export default {
       this.message = "";
       if (this.mode === "register" && !this.name.trim()) return (this.error = "Informe seu nome completo.");
       if (!this.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) return (this.error = "Digite um e-mail válido.");
-      if (this.password.length < 6) return (this.error = "A senha deve ter pelo menos 6 caracteres.");
+      const tamanhoMinimoSenha = this.mode === "register" ? 8 : 6;
+      if (this.password.length < tamanhoMinimoSenha) {
+        return (this.error = `A senha deve ter pelo menos ${tamanhoMinimoSenha} caracteres.`);
+      }
       if (this.mode === "register" && this.password !== this.confirmation) return (this.error = "As senhas não coincidem.");
 
       try {
@@ -338,8 +342,8 @@ export default {
       this.alunoForm = { name: "", ra: "" };
       this.error = "";
     },
-        async editTurma(turma) {
-      const novoNome = window.prompt("Novo nome da turma:", turma.name);
+    async editTurma(turma) {
+      const novoNome = await this.askDialog({ title: "Editar turma", withInput: true, inputLabel: "Nome da turma", initialValue: turma.name, confirmLabel: "Salvar" });
       if (novoNome === null) return;
       const nome = novoNome.trim();
       if (!nome) return (this.error = "Informe o nome da turma.");
@@ -356,7 +360,8 @@ export default {
     },
     // A API não apaga turmas: arquiva, para preservar o histórico de provas aplicadas
     async removeTurma(turma) {
-      if (!window.confirm(`Arquivar a turma "${turma.name}"? Ela deixará de aparecer na lista.`)) return;
+      const confirmado = await this.askDialog({ title: "Arquivar turma", message: `Arquivar a turma "${turma.name}"? Ela deixará de aparecer na lista.`, confirmLabel: "Arquivar", danger: true });
+      if (!confirmado) return;
       try {
         await turmasApi.arquivar(turma.id);
         this.turmas = this.turmas.filter((item) => item.id !== turma.id);
@@ -420,7 +425,7 @@ export default {
         } else {
           this.questions.push(question);
         }
-        this.questionForm = { text: "", subject: "", topic: "", type: "Múltipla escolha", alternatives: ["", "", "", "", ""], correctAlternative: 0 };
+        this.questionForm = emptyQuestionForm();
         this.editingQuestionId = null;
         this.editingQuestionFromExam = false;
         this.notify(wasEditing ? "Questão atualizada com sucesso." : "Questão cadastrada com sucesso.");
@@ -432,27 +437,13 @@ export default {
     editQuestion(question) {
       this.editingQuestionId = question.id;
       this.editingQuestionFromExam = false;
-      this.questionForm = {
-        text: question.text,
-        subject: question.subject,
-        topic: question.topic,
-        type: "Múltipla escolha",
-        alternatives: [...question.alternatives],
-        correctAlternative: question.correctAlternative || 0
-      };
+      this.questionForm = questionFormFrom(question);
       this.navigate("newQuestion");
     },
     editQuestionFromExam(question) {
       this.editingQuestionId = question.id;
       this.editingQuestionFromExam = true;
-      this.questionForm = {
-        text: question.text,
-        subject: question.subject,
-        topic: question.topic,
-        type: "Múltipla escolha",
-        alternatives: [...question.alternatives],
-        correctAlternative: question.correctAlternative || 0
-      };
+      this.questionForm = questionFormFrom(question);
       this.navigate("newQuestion");
     },
     cancelQuestionEdit() {
@@ -462,6 +453,8 @@ export default {
       this.navigate(returnToExam ? "newExam" : "questions");
     },
     async removeQuestion(question) {
+      const confirmado = await this.askDialog({ title: "Remover questão", message: `Remover a questão "${question.text}"? Essa ação não pode ser desfeita.`, confirmLabel: "Remover", danger: true });
+      if (!confirmado) return;
       try {
         await questoesApi.remover(question.id);
         this.questions = this.questions.filter((item) => item.id !== question.id);
@@ -470,27 +463,19 @@ export default {
         this.error = erro.message;
       }
     },
-    addAlternative() {
-      if (this.questionForm.alternatives.length >= 5) return;
-      this.questionForm.alternatives.push("");
-    },
-    removeAlternative() {
-      if (this.questionForm.alternatives.length <= 2) return;
-      const removedIndex = this.questionForm.alternatives.length - 1;
-      this.questionForm.alternatives.pop();
-      if (this.questionForm.correctAlternative === removedIndex) {
-        this.questionForm.correctAlternative = 0;
-      }
-    },
     async saveExam() {
       if (!this.examForm.name.trim()) return (this.error = "Informe o nome da avaliação.");
       if (!this.examForm.selected.length) return (this.error = "Selecione ao menos uma questão.");
+      const questionPoints = this.examForm.selected.map((questionId) => Number(this.examForm.points[questionId]));
+      if (questionPoints.some((points) => !(points > 0))) return (this.error = "Informe uma pontuação maior que zero para cada questão selecionada.");
       const wasEditing = Boolean(this.editingExamId);
       const selectedClass = this.turmas.find((turma) => turma.name === this.examForm.className);
+      const { points, ...examFields } = this.examForm;
       const payload = {
-        ...this.examForm,
+        ...examFields,
         name: this.examForm.name.trim(),
         questionIds: [...this.examForm.selected],
+        questionPoints,
         applicationClassId: selectedClass ? selectedClass.id : null
       };
       try {
@@ -503,23 +488,7 @@ export default {
         } else {
           this.exams.unshift(exam);
         }
-        this.examForm = {
-          name: "",
-          selected: [],
-          institution: "",
-          course: "",
-          subject: "",
-          professor: "",
-          className: "",
-          date: "",
-          instructions: "",
-          logo: "",
-          layout: "Uma coluna",
-          shuffleQuestions: true,
-          shuffleAlternatives: true,
-          versions: 1,
-          addBlankPage: true
-        };
+        this.examForm = emptyExamForm();
         this.editingExamId = null;
         this.notify(wasEditing ? "Avaliação atualizada com sucesso." : "Avaliação criada com sucesso.");
         this.navigate("exams");
@@ -529,84 +498,12 @@ export default {
     },
     editExam(exam) {
       this.editingExamId = exam.id;
-      this.examForm = {
-        name: exam.name,
-        selected: [...exam.questionIds],
-        institution: exam.institution || "",
-        course: exam.course || "",
-        subject: exam.subject || "",
-        professor: exam.professor || "",
-        className: exam.className || "",
-        date: this.formatStoredDate(exam.date),
-        instructions: exam.instructions || "",
-        logo: exam.logo || "",
-        layout: exam.layout || "Uma coluna",
-        shuffleQuestions: exam.shuffleQuestions !== false,
-        shuffleAlternatives: exam.shuffleAlternatives !== false,
-        versions: exam.versions || 1,
-        addBlankPage: exam.addBlankPage !== false
-      };
+      this.examForm = examFormFrom(exam);
       this.navigate("newExam");
     },
-    handleLogoUpload(event) {
-      const [file] = event.target.files;
-      if (!file) return;
-      if (!file.type.startsWith("image/")) return (this.error = "Selecione um arquivo de imagem válido.");
-      const reader = new FileReader();
-      reader.onload = () => { this.examForm.logo = reader.result; };
-      reader.readAsDataURL(file);
-    },
-    formatDateInput(event) {
-      const digits = event.target.value.replace(/\D/g, "").slice(0, 8);
-      const parts = [];
-      if (digits.length > 0) parts.push(digits.slice(0, 2));
-      if (digits.length > 2) parts.push(digits.slice(2, 4));
-      if (digits.length > 4) parts.push(digits.slice(4, 8));
-      this.examForm.date = parts.join("/");
-    },
-    formatStoredDate(date) {
-      if (!date) return "";
-      const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
-      return match ? `${match[3]}/${match[2]}/${match[1]}` : date;
-    },
-    toIsoDate(date) {
-      const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(date || "");
-      return match ? `${match[3]}-${match[2]}-${match[1]}` : "";
-    },
-    updateDateFromPicker(event) {
-      this.examForm.date = this.formatStoredDate(event.target.value);
-    },
-    toggleCalendar() {
-      this.calendarOpen = !this.calendarOpen;
-      if (this.calendarOpen) {
-        const date = this.examForm.date ? this.toIsoDate(this.examForm.date) : "";
-        if (date) {
-          const [year, month] = date.split("-").map(Number);
-          this.calendarYear = year;
-          this.calendarMonth = month - 1;
-        } else {
-          const today = new Date();
-          this.calendarYear = today.getFullYear();
-          this.calendarMonth = today.getMonth();
-        }
-      }
-    },
-    calendarDayIsSelected(day) {
-      const selectedDate = this.selectedDateKey || this.todayDateKey;
-      return Boolean(day) && `${this.calendarYear}-${this.calendarMonth + 1}-${day}` === selectedDate;
-    },
-    changeCalendarMonth(offset) {
-      const next = new Date(this.calendarYear, this.calendarMonth + offset, 1);
-      this.calendarYear = next.getFullYear();
-      this.calendarMonth = next.getMonth();
-    },
-    selectCalendarDay(day) {
-      const date = new Date(this.calendarYear, this.calendarMonth, day);
-      const formatted = `${String(day).padStart(2, "0")}/${String(this.calendarMonth + 1).padStart(2, "0")}/${this.calendarYear}`;
-      this.examForm.date = formatted;
-      this.calendarOpen = false;
-    },
     async removeExam(exam) {
+      const confirmado = await this.askDialog({ title: "Remover avaliação", message: `Remover a avaliação "${exam.name}"? Essa ação não pode ser desfeita.`, confirmLabel: "Remover", danger: true });
+      if (!confirmado) return;
       try {
         await avaliacoesApi.remover(exam.id);
         this.exams = this.exams.filter((item) => item.id !== exam.id);
@@ -622,6 +519,23 @@ export default {
         this.notify(exam.released ? "Gabarito liberado para consulta." : "Gabarito bloqueado para consulta.");
       } catch (erro) {
         this.error = erro.message;
+      }
+    },
+    // T55: baixa o caderno editável (.docx) com todas as versões da avaliação
+    async exportExamDocx(exam) {
+      try {
+        const { blob, filename } = await avaliacoesApi.baixarCadernoDocx(exam.id);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        this.notify("Caderno .docx gerado.");
+      } catch (erro) {
+        this.notify(erro.message);
       }
     },
     async consultStudentResult() {
@@ -675,9 +589,6 @@ export default {
         this.screen = "login";
       }
     },
-    questionsForExam(exam) {
-      return exam && exam.questionSnapshots ? exam.questionSnapshots : this.questions.filter((question) => exam.questionIds.includes(question.id));
-    },
     previewExamForm() {
       this.previewExam = {
         ...this.examForm,
@@ -690,22 +601,51 @@ export default {
       this.previewExam = exam;
       this.navigate("preview");
     },
-    openStatistics() {
-      this.notify("Estatísticas indisponíveis: ainda não há respostas de avaliações persistidas.");
+    async openStatistics(exam) {
+      this.statisticsExam = exam;
+      this.statisticsSummary = null;
+      this.statisticsLoading = true;
+      this.error = "";
+      this.navigate("statistics");
+      try {
+        this.statisticsSummary = await resultadosApi.listar(exam.id);
+      } catch (erro) {
+        this.error = erro.message;
+      } finally {
+        this.statisticsLoading = false;
+      }
     },
-    scanTurmaName(exam) {
-      const turma = this.turmas.find((item) => item.id === exam.applicationClassId);
-      return turma ? turma.name : "Turma";
+    newQuestion() {
+      this.editingQuestionId = null;
+      this.editingQuestionFromExam = false;
+      this.questionForm = emptyQuestionForm();
+      this.navigate("newQuestion");
     },
-    scanStatusLabel(examId) {
-      const status = this.scanSummaries[examId]?.status;
-      if (status === "concluida") return "Corrigida";
-      if (status === "em_andamento") return "Em correção";
-      return "Pendente";
+    newExam() {
+      this.editingExamId = null;
+      this.examForm = emptyExamForm();
+      this.navigate("newExam");
+    },
+    // Abre o AppDialog e devolve uma Promise com o texto digitado,
+    // true (confirmado) ou null (cancelado)
+    askDialog(options) {
+      return new Promise((resolve) => {
+        this.dialog = { options, resolve };
+      });
+    },
+    toggleTheme() {
+      this.theme = this.theme === "dark" ? "light" : "dark";
+      applyTheme(this.theme);
+    },
+    closeDialog(result) {
+      if (!this.dialog) return;
+      this.dialog.resolve(result);
+      this.dialog = null;
     },
     async openScan() {
       this.scanStep = "list";
       this.scanActiveExam = null;
+      this.resetScanBatch();
       this.navigate("scan");
       await this.loadScanSummaries();
     },
@@ -726,11 +666,50 @@ export default {
       this.scanActiveExam = exam;
       this.scanForm = { ra: "", score: "" };
       this.error = "";
+      this.resetScanBatch();
       this.scanStep = "form";
     },
     backToScanList() {
       this.scanStep = "list";
       this.scanActiveExam = null;
+      this.resetScanBatch();
+    },
+    resetScanBatch() {
+      this.scanQrBatchId += 1;
+      this.scanQrBatch = [];
+      this.scanQrError = "";
+      this.scanQrFeedback = "";
+      this.scanQrLoading = false;
+    },
+    async validateScannedQr(qrCode) {
+      if (!this.scanActiveExam || this.scanQrLoading) return;
+      const examId = this.scanActiveExam.id;
+      const batchId = this.scanQrBatchId;
+      this.scanQrLoading = true;
+      this.scanQrError = "";
+      this.scanQrFeedback = "";
+      try {
+        const folha = await atribuicoesApi.validarQr(examId, qrCode);
+        if (batchId !== this.scanQrBatchId) return;
+        if (this.scanQrBatch.some((item) => item.studentId === folha.studentId)) {
+          this.scanQrError = "Esta folha já foi identificada nesta lista.";
+          return;
+        }
+        this.scanQrBatch.push(folha);
+        this.scanQrFeedback = `Folha de ${folha.studentName}, versão ${folha.versionLabel}, validada.`;
+      } catch (erro) {
+        if (batchId !== this.scanQrBatchId) return;
+        if (erro.status === 404) {
+          this.scanQrError = "Este QR Code não pertence à avaliação selecionada ou não está atribuído.";
+        } else if (erro.status) {
+          this.scanQrError = erro.message;
+        } else {
+          console.error("Falha ao validar QR Code:", erro.message);
+          this.scanQrError = "Não foi possível validar o QR Code. Verifique a conexão e tente novamente.";
+        }
+      } finally {
+        if (batchId === this.scanQrBatchId) this.scanQrLoading = false;
+      }
     },
     async submitScanResult() {
       if (!this.scanActiveExam) return;
@@ -782,10 +761,147 @@ export default {
 </script>
 
 <template>
-
-    <main v-if="screen === 'login' || screen === 'register'" class="auth-page">
-      <section class="auth-art"><div class="brand"><span class="brand-mark">SGP</span><span>Sistema de Geração de Provas</span></div><div class="art-copy"><span class="eyebrow">EDUCAÇÃO MAIS INTELIGENTE</span><h2>Crie. Organize.<br><strong>Avalie.</strong></h2><p>Uma plataforma feita para simplificar a criação, organização e geração de provas para professores.</p></div><svg class="auth-illustration" viewBox="0 0 500 330" aria-hidden="true"><circle cx="250" cy="160" r="130" fill="#dcf3ed"/><path d="M95 280h320" stroke="#17394e" stroke-width="3"/><rect x="125" y="170" width="55" height="110" rx="8" fill="#8bb1e9" stroke="#17394e" stroke-width="3"/><rect x="180" y="130" width="52" height="150" rx="8" fill="#83d2b6" stroke="#17394e" stroke-width="3"/><path d="M213 105c0-35 26-62 58-62s58 27 58 62l-12 42H225Z" fill="#ffda69" stroke="#17394e" stroke-width="3"/><path d="m270 185 55-64 26 26 50-59 22 20-66 83-30-28-37 47Z" fill="#6592df"/><path d="M230 204c38 0 63 16 84 35v41c-28-12-57-12-84 0ZM314 239c26-20 53-29 79-29v70c-27-1-52 8-79 19Z" fill="#fff" stroke="#17394e" stroke-width="3"/></svg></section>
-      <section class="auth-form"><div class="auth-card"><h1>{{ mode === "login" ? "Bem-vindo" : "Crie sua conta" }}</h1><p class="auth-subtitle">{{ mode === "login" ? "Entre para continuar sua jornada." : "Comece a criar provas de forma simples." }}</p>      <form novalidate @submit.prevent="submitAuth"><label v-if="mode === 'register'">Nome completo<input v-model="name" placeholder="Nome completo"></label><label>E-mail<input v-model="email" type="email" placeholder="E-mail"></label><label>Senha<span class="password-field"><input v-model="password" :type="showPassword ? 'text' : 'password'" placeholder="Senha"><button type="button" @click="showPassword = !showPassword" :title="showPassword ? 'Ocultar senha' : 'Mostrar senha'">{{ showPassword ? "◉" : "◌" }}</button></span></label><label v-if="mode === 'register'">Confirmar senha<input v-model="confirmation" type="password" placeholder="Confirmar senha"></label><p v-if="error" class="auth-error" role="alert">{{ error }}</p><p v-if="message" class="auth-message" role="status">{{ message }}</p><button class="primary-button" type="submit" :disabled="loadingAuth">{{ loadingAuth ? "Processando..." : (mode === "login" ? "Entrar" : "Cadastrar") }}</button>            </form><button class="text-button" @click="switchMode">{{ mode === "login" ? "Ainda não tenho uma conta" : "Já possuo uma conta" }} <strong>{{ mode === "login" ? "Criar conta" : "Entrar" }}</strong></button><button type="button" class="text-button student-link" @click="openStudentPortal()">Sou aluno — <strong>consultar resultado</strong></button></div></section>
+  <AuthScreen
+    v-if="screen === 'login' || screen === 'register'"
+    :mode="mode"
+    v-model:name="name"
+    v-model:email="email"
+    v-model:password="password"
+    v-model:confirmation="confirmation"
+    :error="error"
+    :message="message"
+    :loading="loadingAuth"
+    @submit="submitAuth"
+    @switch-mode="switchMode"
+    @open-student-portal="openStudentPortal()"
+  />
+  <StudentPortal
+    v-else-if="screen === 'studentPortal'"
+    v-model:code="studentCode"
+    v-model:ra="studentRa"
+    :result="consultedExam"
+    :error="error"
+    @consult="consultStudentResult"
+    @back="leaveStudentPortal()"
+  />
+  <div v-else class="app-shell">
+    <AppSidebar
+      :screen="screen"
+      @navigate="navigate"
+      @open-classes="navigate('classes'); selectedTurmaId = null"
+      @open-scan="openScan"
+      @logout="logout"
+    />
+    <main class="main-content">
+      <AppTopbar :title="currentTitle" :name="name" :theme="theme" @logout="logout" @toggle-theme="toggleTheme" />
+      <section class="content">
+        <DashboardScreen
+          v-if="screen === 'dashboard'"
+          :name="name"
+          :exams="exams"
+          :questions="questions"
+          @new-question="newQuestion"
+          @new-exam="newExam"
+          @open-classes="navigate('classes'); selectedTurmaId = null"
+          @open-scan="openScan"
+          @release="releaseExam"
+          @preview="previewSavedExam"
+          @statistics="openStatistics"
+          @edit="editExam"
+          @remove="removeExam"
+        />
+        <ClassesScreen
+          v-if="screen === 'classes'"
+          :turmas="turmas"
+          :selected-turma="selectedTurma"
+          :turma-form="turmaForm"
+          :aluno-form="alunoForm"
+          :error="error"
+          @save-turma="saveTurma"
+          @edit-turma="editTurma"
+          @open-turma="openTurma"
+          @remove-turma="removeTurma"
+          @close-turma="closeTurma"
+          @save-aluno="saveAluno"
+          @remove-aluno="removeAluno"
+          @import-students="importStudents"
+        />
+        <QuestionsScreen
+          v-if="screen === 'questions'"
+          :questions="questions"
+          @new="newQuestion"
+          @edit="editQuestion"
+          @remove="removeQuestion"
+        />
+        <QuestionForm
+          v-if="screen === 'newQuestion'"
+          :form="questionForm"
+          :editing="Boolean(editingQuestionId)"
+          :error="error"
+          @save="saveQuestion"
+          @cancel="cancelQuestionEdit"
+        />
+        <ExamsScreen
+          v-if="screen === 'exams'"
+          :exams="exams"
+          :questions="questions"
+          @new="newExam"
+          @release="releaseExam"
+          @preview="previewSavedExam"
+          @export-docx="exportExamDocx"
+          @statistics="openStatistics"
+          @edit="editExam"
+          @remove="removeExam"
+        />
+        <ExamForm
+          v-if="screen === 'newExam'"
+          :form="examForm"
+          :editing-exam-id="editingExamId"
+          :questions="questions"
+          :subjects="availableSubjects"
+          :classes="availableClasses"
+          :error="error"
+          @save="saveExam"
+          @cancel="editingExamId = null; navigate('exams')"
+          @preview="previewExamForm"
+          @edit-question="editQuestionFromExam"
+          @error="error = $event"
+        />
+        <ExamPreview
+          v-if="screen === 'preview'"
+          :exam="previewExam"
+          :questions="questions"
+          @back="navigate('newExam')"
+        />
+        <StatisticsScreen
+          v-if="screen === 'statistics'"
+          :exam="statisticsExam"
+          :summary="statisticsSummary"
+          :loading="statisticsLoading"
+          :error="error"
+          @back="navigate('exams')"
+        />
+        <ScanScreen
+          v-if="screen === 'scan'"
+          :step="scanStep"
+          :loading="scanLoading"
+          :exams="examsForScan"
+          :summaries="scanSummaries"
+          :active-exam="scanActiveExam"
+          :form="scanForm"
+          :turmas="turmas"
+          :error="error"
+          :qr-batch="scanQrBatch"
+          :qr-loading="scanQrLoading"
+          :qr-error="scanQrError"
+          :qr-feedback="scanQrFeedback"
+          @open-exam="openScanExam"
+          @back="backToScanList"
+          @submit="submitScanResult"
+          @remove-result="removeScanResult"
+          @qr-detected="validateScannedQr"
+        />
+      </section>
     </main>
     <main v-else-if="screen === 'studentPortal'" class="student-portal"><div class="student-portal-card"><span class="brand-mark">SGP</span><h1>Consulta de resultado</h1><p>Informe o código único impresso na sua prova e o seu RA.</p><form @submit.prevent="consultStudentResult"><label>Código da prova<input v-model="studentCode" placeholder="Ex.: SGP-ABC123"></label><label>RA<input v-model="studentRa" placeholder="Seu registro acadêmico"></label><p v-if="error" class="auth-error">{{ error }}</p><button class="primary-button" type="submit">Consultar</button></form><div v-if="consultedExam" class="student-result"><div v-if="!consultedExam.released" class="empty-card"><span>🔒</span><h2>Gabarito ainda não liberado</h2><p>O professor precisa liberar o resultado para esta consulta.</p></div><div v-else-if="!consultedExam.resultAvailable" class="empty-card"><span>⌗</span><h2>Nota ainda não lançada</h2><p>O professor ainda não corrigiu a sua prova, ou o RA informado não confere com o desta avaliação.</p></div><div v-else class="released-result"><span class="eyebrow">RESULTADO LIBERADO</span><h2>{{ consultedExam.name }}</h2><p>Nota: <strong>{{ consultedExam.score }}</strong> / 10.0</p></div></div><button type="button" class="text-button" @click="leaveStudentPortal()">Acesso do professor</button></div></main>
     <div v-else class="app-shell">

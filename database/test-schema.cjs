@@ -3,6 +3,8 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const assert = require('node:assert/strict');
 const { migrar } = require('./migrations/002-modelo-gabriel.cjs');
+const { migrarT39 } = require('./migrations/003-t39.cjs');
+const { testarEstruturaT39, testarUpgradeT39, testarLiberacao } = require('./test-t39.cjs');
 async function main() {
   const connection = await mysql.createConnection({
     host: process.env.DB_HOST || '127.0.0.1', port: Number(process.env.DB_PORT || 3306),
@@ -10,7 +12,7 @@ async function main() {
     multipleStatements: true
   });
   const prefix = 'sgp_t07_test_' + process.pid + '_' + Date.now();
-  const databases = [prefix + '_fresh', prefix + '_upgrade'];
+  const databases = [prefix + '_fresh', prefix + '_upgrade', prefix + '_n2'];
   async function runFile(file, database) {
     await connection.query('CREATE DATABASE IF NOT EXISTS `' + database + '`');
     await connection.query('USE `' + database + '`');
@@ -33,18 +35,20 @@ async function main() {
     await runFile('seed.sql',database);
     await runFile('seed.sql',database);
     const [tables] = await connection.query('SHOW TABLES');
-    assert.equal(tables.length,8);
-    for (const [table,count] of [['users',4],['classes',2],['enrollments',2],['questions',2],['alternatives',5],['exams',1],['exam_questions',1],['applications',1]]) {
+    assert.equal(tables.length,12);
+    for (const [table,count] of [['users',4],['classes',2],['enrollments',2],['questions',3],['alternatives',7],['exams',1],['exam_questions',2],['applications',1],['results',1],['exam_versions',2],['exam_assignments',1],['result_answers',2]]) {
       const [[row]] = await connection.query('SELECT COUNT(*) total FROM ' + table);
       assert.equal(row.total,count,table+' seed repetido');
     }
+    console.log('PASS schema e seed executados duas vezes com as contagens esperadas nas 12 tabelas');
+    await testarEstruturaT39(connection);
     await rejects("INSERT INTO users (name,email,role) VALUES ('Aluno','professor.a@example.test','aluno')",'ER_DUP_ENTRY');
     await rejects("INSERT INTO classes (name,invite_code,teacher_id) VALUES ('Inválida','INVALIDO',@student_a)",'ER_NO_REFERENCED_ROW_2');
     await rejects("INSERT INTO enrollments (class_id,student_id) VALUES (@class_a,@teacher_a)",'ER_NO_REFERENCED_ROW_2');
     await rejects("INSERT INTO alternatives (question_id,position,text,is_correct) VALUES (@question_a,5,'X',0)",'ER_CHECK_CONSTRAINT_VIOLATED');
     await rejects("INSERT INTO alternatives (question_id,position,text,is_correct) VALUES (@question_a,3,'X',1)",'ER_DUP_ENTRY');
     await rejects("INSERT INTO applications (exam_id,class_id,teacher_id) VALUES (@exam,@class_b,@teacher_a)",'ER_NO_REFERENCED_ROW_2');
-    await rejects("INSERT INTO exam_questions (exam_id,question_id,teacher_id,position) VALUES (@exam,@question_b,@teacher_a,1)",'ER_NO_REFERENCED_ROW_2');
+    await rejects("INSERT INTO exam_questions (exam_id,question_id,teacher_id,position) VALUES (@exam,@question_b,@teacher_a,2)",'ER_NO_REFERENCED_ROW_2');
     await rejects('UPDATE exam_questions SET points=0','ER_CHECK_CONSTRAINT_VIOLATED');
     await rejects('DELETE FROM questions WHERE id=@question_a','ER_ROW_IS_REFERENCED_2');
     await connection.query('DELETE FROM questions WHERE id=@question_b');
@@ -54,6 +58,7 @@ async function main() {
     process.env.DB_HOST=process.env.DB_HOST || '127.0.0.1';
     const pool=require('../src/config/db');
     try {
+      await testarLiberacao(connection);
       const turmas=require('../src/services/turmaService');
       const turma=await turmas.criarTurma(1,{nome:'Turma HTTP',descricao:'Compatibilidade'});
       assert.equal(turma.professorId,1);
@@ -69,7 +74,7 @@ async function main() {
       await turmas.arquivarTurma(1,turma.id);
       assert.equal((await turmas.obterTurma(1,turma.id)).arquivada,true);
     } finally { await pool.end(); }
-    console.log('PASS oito entidades, seed, papéis, email global, alternativas, FKs e turmas existentes');
+    console.log('PASS integridade das entidades de origem, seed, papéis, email global, alternativas, FKs e turmas existentes');
     const upgrade=databases[1];
     await runFile('../test/fixtures/schema-pre-t07.sql',upgrade);
     await connection.query([
@@ -83,6 +88,7 @@ async function main() {
       "INSERT INTO avaliacao_questoes (avaliacao_id,questao_id,ordem) VALUES (3,9,0)",
       "INSERT INTO correcoes (avaliacao_id,aluno_id,nota) VALUES (3,7,8.5)"
     ].join(';'));
+    await connection.query('UPDATE avaliacoes SET gabarito_liberado = TRUE WHERE id=3');
     await runFile('schema.sql',upgrade);
     await assert.rejects(migrar(connection),error=>error.code==='ER_DUP_ENTRY');
     const [[empty]]=await connection.query('SELECT COUNT(*) total FROM users');
@@ -97,11 +103,15 @@ async function main() {
     const [[application]]=await connection.query('SELECT exam_id,class_id FROM applications');
     assert.deepEqual({...application},{exam_id:3,class_id:5});
     const [[metadata]]=await connection.query('SELECT legacy_details FROM exams WHERE id=3');
+    const [[flag]] = await connection.query('SELECT answer_key_released FROM exams WHERE id=3');
+    assert.equal(flag.answer_key_released, 1);
     assert.equal(metadata.legacy_details.nome,'Prova legada');
     const [[old]]=await connection.query('SELECT COUNT(*) total FROM correcoes');
     assert.equal(old.total,1,'origem N3 preservada');
     await assert.rejects(migrar(connection),/Destino não vazio/);
     console.log('PASS migração com dados, IDs sobrepostos, rollback e origem preservada');
+    await runFile('../test/fixtures/schema-pre-t39.sql',databases[2]);
+    await testarUpgradeT39(connection, migrarT39);
   } finally {
     for (const database of databases) await connection.query('DROP DATABASE IF EXISTS '+database);
     await connection.end();

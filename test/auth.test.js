@@ -31,29 +31,39 @@ test('Autenticação (T11): cadastro, validação de domínio, login e proteçã
   const jsonEmailInvalido = await resEmailInvalido.json();
   assert.match(jsonEmailInvalido.erro, /e-mail/i);
 
-  // 2. Rejeição de senha curta (menos de 6 caracteres)
+  // 2. Rejeição de senha curta (menos de 8 caracteres)
   const resSenhaCurta = await fetch(`${url}/api/auth/cadastro`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       nome: 'Professor Teste',
       email: 'professor@catolicasc.edu.br',
-      senha: '123',
+      senha: '1234567',
       role: 'professor'
     })
   });
   assert.equal(resSenhaCurta.status, 400);
   const jsonSenhaCurta = await resSenhaCurta.json();
-  assert.match(jsonSenhaCurta.erro, /mínimo 6 caracteres/i);
+  assert.match(jsonSenhaCurta.erro, /mínimo 8 caracteres/i);
 
   // 3. Sucesso no cadastro de professor
-  const hashSalvo = await bcrypt.hash('SenhaForte2026!', 12);
+  const hashSalvo = await bcrypt.hash('Senha123', 12);
+  const hashLegado = await bcrypt.hash('123456', 12);
   const usuariosDb = new Map();
   usuariosDb.set('existente@catolicasc.edu.br', {
     id: 10,
     name: 'Prof. Henrique Silveira',
     email: 'existente@catolicasc.edu.br',
     password_hash: hashSalvo,
+    role: 'professor',
+    ra: null,
+    created_at: new Date().toISOString()
+  });
+  usuariosDb.set('legado@catolicasc.edu.br', {
+    id: 11,
+    name: 'Professor legado',
+    email: 'legado@catolicasc.edu.br',
+    password_hash: hashLegado,
     role: 'professor',
     ra: null,
     created_at: new Date().toISOString()
@@ -97,7 +107,7 @@ test('Autenticação (T11): cadastro, validação de domínio, login e proteçã
     body: JSON.stringify({
       nome: 'Prof. Henrique Silveira',
       email: 'henrique@catolicasc.edu.br',
-      senha: 'SenhaForte2026!',
+      senha: 'Senha123',
       role: 'professor'
     })
   });
@@ -114,7 +124,7 @@ test('Autenticação (T11): cadastro, validação de domínio, login e proteçã
     body: JSON.stringify({
       nome: 'Outro Professor',
       email: 'existente@catolicasc.edu.br',
-      senha: 'SenhaForte2026!',
+      senha: 'Senha123',
       role: 'professor'
     })
   });
@@ -128,7 +138,7 @@ test('Autenticação (T11): cadastro, validação de domínio, login e proteçã
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       email: 'existente@catolicasc.edu.br',
-      senha: 'SenhaForte2026!'
+      senha: 'Senha123'
     })
   });
   assert.equal(resLogin.status, 200);
@@ -154,6 +164,17 @@ test('Autenticação (T11): cadastro, validação de domínio, login e proteçã
   assert.equal(resSenhaErrada.status, 401);
   const jsonSenhaErrada = await resSenhaErrada.json();
   assert.equal(jsonSenhaErrada.erro, 'E-mail ou senha incorretos.');
+
+  // Senhas válidas pela política anterior continuam funcionando no login.
+  const resLoginLegado = await fetch(`${url}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: 'legado@catolicasc.edu.br',
+      senha: '123456'
+    })
+  });
+  assert.equal(resLoginLegado.status, 200);
 
   // 7. Rota protegida /api/auth/me sem token (retorna 401)
   const resSemToken = await fetch(`${url}/api/auth/me`);

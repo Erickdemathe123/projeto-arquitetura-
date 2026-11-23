@@ -38,12 +38,12 @@ async function snapshotsDasQuestoes(connection, professorId, questionIds) {
 }
 
 function mapear(rows, links) {
-  const idsPorAvaliacao = new Map();
+  const questoesPorAvaliacao = new Map();
   for (const link of links) {
-    if (!idsPorAvaliacao.has(Number(link.exam_id))) idsPorAvaliacao.set(Number(link.exam_id), []);
-    idsPorAvaliacao.get(Number(link.exam_id)).push(Number(link.question_id));
+    if (!questoesPorAvaliacao.has(Number(link.exam_id))) questoesPorAvaliacao.set(Number(link.exam_id), []);
+    questoesPorAvaliacao.get(Number(link.exam_id)).push({ id: Number(link.question_id), points: Number(link.points ?? 1) });
   }
-  return rows.map((row) => new Avaliacao(row, idsPorAvaliacao.get(Number(row.id)) || []));
+  return rows.map((row) => new Avaliacao(row, questoesPorAvaliacao.get(Number(row.id)) || []));
 }
 
 async function listarPorProfessor(professorId) {
@@ -55,7 +55,7 @@ async function listarPorProfessor(professorId) {
   const ids = rows.map((row) => Number(row.id));
   const placeholders = ids.map(() => '?').join(', ');
   const [links] = await pool.query(
-    `SELECT exam_id, question_id FROM exam_questions WHERE exam_id IN (${placeholders}) ORDER BY exam_id, position`,
+    `SELECT exam_id, question_id, points FROM exam_questions WHERE exam_id IN (${placeholders}) ORDER BY exam_id, position`,
     ids
   );
   return mapear(rows, links);
@@ -65,7 +65,7 @@ async function buscarPorId(professorId, id) {
   const [rows] = await pool.query('SELECT * FROM exams WHERE id = ? AND teacher_id = ?', [id, professorId]);
   if (!rows.length) return null;
   const [links] = await pool.query(
-    'SELECT exam_id, question_id FROM exam_questions WHERE exam_id = ? ORDER BY position',
+    'SELECT exam_id, question_id, points FROM exam_questions WHERE exam_id = ? ORDER BY position',
     [id]
   );
   return mapear(rows, links)[0];
@@ -105,7 +105,7 @@ async function criar(professorId, dados) {
     for (let position = 0; position < dados.questionIds.length; position++) {
       await connection.query(
         'INSERT INTO exam_questions (exam_id, question_id, teacher_id, points, position) VALUES (?, ?, ?, ?, ?)',
-        [result.insertId, dados.questionIds[position], professorId, 1, position]
+        [result.insertId, dados.questionIds[position], professorId, dados.questionPoints[position], position]
       );
     }
     if (dados.applicationClassId) {
@@ -167,12 +167,20 @@ async function atualizar(professorId, id, dados) {
       'UPDATE exams SET title = ?, legacy_details = ? WHERE id = ? AND teacher_id = ?',
       [dados.name, JSON.stringify(details), id, professorId]
     );
-    await connection.query('DELETE FROM exam_questions WHERE exam_id = ?', [id]);
-    for (let position = 0; position < dados.questionIds.length; position++) {
-      await connection.query(
-        'INSERT INTO exam_questions (exam_id, question_id, teacher_id, points, position) VALUES (?, ?, ?, ?, ?)',
-        [id, dados.questionIds[position], professorId, 1, position]
-      );
+    const [links] = await connection.query(
+      'SELECT question_id, points FROM exam_questions WHERE exam_id = ? ORDER BY position', [id]
+    );
+    const mesmosItens = links.length === dados.questionIds.length && links.every((link, i) =>
+      Number(link.question_id) === dados.questionIds[i] && Number(link.points) === dados.questionPoints[i]
+    );
+    if (!mesmosItens) {
+      await connection.query('DELETE FROM exam_questions WHERE exam_id = ?', [id]);
+      for (let position = 0; position < dados.questionIds.length; position++) {
+        await connection.query(
+          'INSERT INTO exam_questions (exam_id, question_id, teacher_id, points, position) VALUES (?, ?, ?, ?, ?)',
+          [id, dados.questionIds[position], professorId, dados.questionPoints[position], position]
+        );
+      }
     }
     await connection.query('DELETE FROM applications WHERE exam_id = ?', [id]);
     if (dados.applicationClassId) {
@@ -193,8 +201,8 @@ async function atualizar(professorId, id, dados) {
 
 async function definirLiberada(professorId, id, liberada) {
   await pool.query(
-    'UPDATE exams SET status = ? WHERE id = ? AND teacher_id = ?',
-    [liberada ? 'closed' : 'ready', id, professorId]
+    'UPDATE exams SET answer_key_released = ? WHERE id = ? AND teacher_id = ?',
+    [liberada, id, professorId]
   );
   return buscarPorId(professorId, id);
 }
@@ -203,6 +211,8 @@ async function remover(professorId, id) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
+    // A exclusão explícita da prova remove primeiro suas notas e marcações dependentes.
+    await connection.query('DELETE FROM results WHERE exam_id = ? AND teacher_id = ?', [id, professorId]);
     const [applications] = await connection.query('DELETE FROM applications WHERE exam_id = ? AND teacher_id = ?', [id, professorId]);
     void applications;
     const [result] = await connection.query('DELETE FROM exams WHERE id = ? AND teacher_id = ?', [id, professorId]);
@@ -218,12 +228,12 @@ async function remover(professorId, id) {
 
 async function buscarPublicoPorCodigo(code, ra) {
   const [rows] = await pool.query(
-    'SELECT id, title, status FROM exams WHERE public_code = ? LIMIT 1',
+    'SELECT id, title, answer_key_released FROM exams WHERE public_code = ? LIMIT 1',
     [code]
   );
   if (!rows.length) return null;
   const exam = rows[0];
-  const released = exam.status === 'closed';
+  const released = Boolean(exam.answer_key_released);
 
   let score = null;
   if (released && ra) {

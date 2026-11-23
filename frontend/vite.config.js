@@ -10,6 +10,10 @@ export default defineConfig({
         changeOrigin: true
       }
     }
+  },
+  // Testes dos componentes (Vitest + Vue Test Utils)
+  test: {
+    environment: 'jsdom',
+    include: ['tests/**/*.test.js']
   }
 })
-
