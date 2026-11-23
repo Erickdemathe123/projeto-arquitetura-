@@ -20,6 +20,31 @@ import AppDialog from "./components/AppDialog.vue";
 import ThemeToggle from "./components/ThemeToggle.vue";
 import { applyTheme, getInitialTheme } from "./utils/theme";
 
+function resumoQuestaoVersao(questao) {
+  return {
+    id: Number(questao.id),
+    text: questao.text || "",
+    alternatives: Array.isArray(questao.alternatives) ? questao.alternatives : [],
+    correctAlternative: Number(questao.correctAlternative) || 0
+  };
+}
+
+function configuracaoVersoesMudou(avaliacao, dados, questoes) {
+  if (!avaliacao) return true;
+
+  const anteriores = (avaliacao.questionSnapshots || []).map(resumoQuestaoVersao);
+  const atuais = dados.questionIds
+    .map((id) => questoes.find((questao) => Number(questao.id) === Number(id)))
+    .filter(Boolean)
+    .map(resumoQuestaoVersao);
+
+  return Number(avaliacao.versions || 1) !== Number(dados.versions || 1)
+    || (avaliacao.shuffleQuestions !== false) !== (dados.shuffleQuestions !== false)
+    || (avaliacao.shuffleAlternatives !== false) !== (dados.shuffleAlternatives !== false)
+    || JSON.stringify(avaliacao.questionIds || []) !== JSON.stringify(dados.questionIds)
+    || JSON.stringify(anteriores) !== JSON.stringify(atuais);
+}
+
 export default {
   components: {
     AuthScreen,
@@ -61,6 +86,7 @@ export default {
       selectedTurmaId: null,
       editingQuestionId: null,
       editingExamId: null,
+      pendingVersionGenerationId: null,
       editingQuestionFromExam: false,
       questionForm: emptyQuestionForm(),
       examForm: emptyExamForm(),
@@ -424,7 +450,14 @@ export default {
       if (!this.examForm.selected.length) return (this.error = "Selecione ao menos uma questão.");
       const questionPoints = this.examForm.selected.map((questionId) => Number(this.examForm.points[questionId]));
       if (questionPoints.some((points) => !(points > 0))) return (this.error = "Informe uma pontuação maior que zero para cada questão selecionada.");
+      const requestedVersions = Number(this.examForm.versions);
+      if (!Number.isInteger(requestedVersions) || requestedVersions < 1 || requestedVersions > 26) {
+        return (this.error = "O número de versões deve ser um inteiro entre 1 e 26.");
+      }
       const wasEditing = Boolean(this.editingExamId);
+      const existingExam = wasEditing
+        ? this.exams.find((item) => Number(item.id) === Number(this.editingExamId))
+        : null;
       const selectedClass = this.turmas.find((turma) => turma.name === this.examForm.className);
       const { points, ...examFields } = this.examForm;
       const payload = {
@@ -435,18 +468,62 @@ export default {
         applicationClassId: selectedClass ? selectedClass.id : null
       };
       try {
+        let versionsNeedGeneration = !wasEditing
+          || this.pendingVersionGenerationId === Number(this.editingExamId)
+          || configuracaoVersoesMudou(existingExam, payload, this.questions);
+
+        if (wasEditing) {
+          const currentVersions = await avaliacoesApi.listarVersoes(this.editingExamId);
+          versionsNeedGeneration ||= currentVersions.length === 0;
+
+          if (versionsNeedGeneration) {
+            const results = await resultadosApi.listar(this.editingExamId);
+            if (results.length) {
+              throw new Error("A avaliação já possui correções; não é possível alterar suas versões.");
+            }
+            if (currentVersions.length) {
+              const confirmed = await this.askDialog({
+                title: "Regenerar versões?",
+                message: "Salvar essas alterações vai recriar as versões e invalidar atribuições e folhas já impressas. Continue somente se ainda não distribuiu as provas.",
+                confirmLabel: "Salvar e regenerar",
+                danger: true
+              });
+              if (!confirmed) return;
+            }
+          }
+        }
+
         const exam = this.editingExamId
           ? await avaliacoesApi.editar(this.editingExamId, payload)
           : await avaliacoesApi.criar(payload);
-        if (wasEditing) {
-          const index = this.exams.findIndex((item) => item.id === this.editingExamId);
-          this.exams.splice(index, 1, exam);
-        } else {
+
+        if (!wasEditing) {
           this.exams.unshift(exam);
+          this.editingExamId = exam.id;
+        }
+
+        if (versionsNeedGeneration) {
+          this.pendingVersionGenerationId = Number(exam.id);
+          try {
+            await avaliacoesApi.gerarVersoes(exam.id, requestedVersions);
+            this.pendingVersionGenerationId = null;
+          } catch (erro) {
+            this.error = `A avaliação foi salva, mas as versões não foram geradas: ${erro.message}`;
+            return;
+          }
+        }
+
+        if (wasEditing) {
+          const index = this.exams.findIndex((item) => Number(item.id) === Number(this.editingExamId));
+          if (index >= 0) this.exams.splice(index, 1, exam);
+          else this.exams.unshift(exam);
         }
         this.examForm = emptyExamForm();
         this.editingExamId = null;
-        this.notify(wasEditing ? "Avaliação atualizada com sucesso." : "Avaliação criada com sucesso.");
+        const status = wasEditing ? "atualizada" : "criada";
+        this.notify(versionsNeedGeneration
+          ? `Avaliação ${status} com ${requestedVersions} ${requestedVersions === 1 ? "versão gerada" : "versões geradas"}.`
+          : "Avaliação atualizada com sucesso.");
         this.navigate("exams");
       } catch (erro) {
         this.error = erro.message;

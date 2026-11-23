@@ -147,7 +147,7 @@ export default {
 </script>
 
 <template>
-  <div class="page-heading"><span class="eyebrow">AVALIAÇÕES</span><h1>{{ editingExamId ? "Editar Avaliação" : "Montar Prova" }}</h1><p>Configure os dados da prova, selecione as questões e prepare o documento editável.</p></div>
+  <div class="page-heading"><span class="eyebrow">AVALIAÇÕES</span><h1>{{ editingExamId ? "Editar Avaliação" : "Montar Prova" }}</h1><p>Configure a prova e selecione as questões. As versões escolhidas serão geradas ao salvar.</p></div>
   <form class="form-card" @submit.prevent="$emit('save')">
     <h2 class="form-section-title">Dados da avaliação</h2>
     <div class="form-grid">
@@ -176,7 +176,7 @@ export default {
     <h2 class="form-section-title">Configurações do documento</h2>
     <div class="form-grid">
       <label>Layout da prova<select v-model="form.layout"><option>Uma coluna</option><option>Duas colunas</option></select></label>
-      <label>Número de versões<input v-model.number="form.versions" type="number" min="1"></label>
+      <label>Número de versões<input v-model.number="form.versions" type="number" min="1" max="26" step="1"></label>
     </div>
     <div class="toggle-list">
       <label><input v-model="form.shuffleQuestions" type="checkbox"> Embaralhar questões</label>
