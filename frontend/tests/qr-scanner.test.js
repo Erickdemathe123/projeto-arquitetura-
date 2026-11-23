@@ -97,7 +97,7 @@ describe("QrScanner", () => {
     nextFrame();
     await flushPromises();
 
-    expect(wrapper.emitted("detected")).toEqual([["opaque-code"]]);
+    expect(wrapper.emitted("detected")).toEqual([[{ qrCode: "opaque-code", answers: [] }]]);
     expect(stopTrack).toHaveBeenCalledOnce();
     expect(wrapper.text()).toContain("Escanear próxima folha");
     wrapper.unmount();

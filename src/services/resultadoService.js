@@ -140,6 +140,7 @@ async function corrigirAutomaticamente(professorId, examIdRaw, body = {}) {
       correctIndex: Number(item.correct_index),
       points: pointsByQuestion.get(Number(item.question_id)) || 1
     }));
+    var versionIdForCorrection = Number(versao.id);
   }
 
   let aluno = null;
@@ -173,7 +174,8 @@ async function corrigirAutomaticamente(professorId, examIdRaw, body = {}) {
     studentId: aluno.id,
     score,
     answers,
-    persistAnswers: !avaliacao.standaloneAnswerSheet
+    persistAnswers: !avaliacao.standaloneAnswerSheet,
+    versionId: avaliacao.standaloneAnswerSheet ? null : versionIdForCorrection
   });
 }
 

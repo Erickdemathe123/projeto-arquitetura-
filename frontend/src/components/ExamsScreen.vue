@@ -35,11 +35,11 @@ export default {
       <div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · {{ formatPoints(exam.totalPoints) }} · Código: {{ exam.publicCode }} · {{ exam.released === true ? "Gabarito liberado" : "Gabarito bloqueado" }}</small></div>
       <div class="question-actions">
         <button class="edit-button" @click="$emit('release', exam)" :aria-label="exam.released ? 'Gabarito liberado' : 'Liberar gabarito'" :title="exam.released ? 'Gabarito liberado' : 'Liberar gabarito'">{{ exam.released ? "🔓" : "🔒" }}</button>
-        <button class="edit-button" @click="$emit('preview', exam)" aria-label="Pré-visualizar prova" title="Pré-visualizar prova">◉</button>
-        <button class="edit-button" @click="$emit('export-docx', exam)" aria-label="Exportar caderno em Word (.docx)" title="Exportar caderno em Word (.docx)">W</button>
+        <button v-if="!exam.standaloneAnswerSheet" class="edit-button" @click="$emit('preview', exam)" aria-label="Pré-visualizar prova" title="Pré-visualizar prova">◉</button>
+        <button v-if="!exam.standaloneAnswerSheet" class="edit-button" @click="$emit('export-docx', exam)" aria-label="Exportar caderno em Word (.docx)" title="Exportar caderno em Word (.docx)">W</button>
         <button class="edit-button" @click="$emit('export-pdf', exam)" aria-label="Baixar PDF da folha de respostas" title="Baixar PDF da folha de respostas">PDF</button>
         <button class="edit-button" @click="$emit('statistics', exam)" aria-label="Ver estatísticas" title="Ver estatísticas">▥</button>
-        <button class="edit-button" @click="$emit('edit', exam)" aria-label="Editar avaliação" title="Editar avaliação">✎</button>
+        <button v-if="!exam.standaloneAnswerSheet" class="edit-button" @click="$emit('edit', exam)" aria-label="Editar avaliação" title="Editar avaliação">✎</button>
         <button class="remove-button" @click="$emit('remove', exam)" aria-label="Remover avaliação" title="Remover avaliação">×</button>
       </div>
     </article>

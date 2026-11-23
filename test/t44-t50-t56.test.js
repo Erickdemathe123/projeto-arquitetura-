@@ -10,6 +10,7 @@ const alunoRepository = require('../src/repositories/alunoRepository');
 const turmaRepository = require('../src/repositories/turmaRepository');
 const versaoRepository = require('../src/repositories/versaoRepository');
 const avaliacaoService = require('../src/services/avaliacaoService');
+const pool = require('../src/config/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sgp_jwt_secret_dev_key_2026';
 
@@ -61,7 +62,11 @@ test('T50 calcula nota pela nota de cada questão e persiste respostas numa tran
   }]);
   t.mock.method(alunoRepository, 'buscarPorRa', async () => ({ id: 51, nome: 'Ana', ra: 'RA-1' }));
   t.mock.method(turmaRepository, 'estaMatriculado', async () => true);
-  t.mock.method(resultadoRepository, 'registrarAutomatico', async (dados) => dados);
+  let registroAutomatico = null;
+  t.mock.method(resultadoRepository, 'registrarAutomatico', async (dados) => {
+    registroAutomatico = dados;
+    return dados;
+  });
 
   const resultado = await resultadoService.corrigirAutomaticamente(17, 8, {
     ra: 'RA-1',
@@ -74,6 +79,7 @@ test('T50 calcula nota pela nota de cada questão e persiste respostas numa tran
     { questionId: 1, markedIndex: 0 },
     { questionId: 2, markedIndex: 0 }
   ]);
+  assert.equal(registroAutomatico.versionId, 2);
 });
 
 test('T50 valida respostas, versão e aluno antes de corrigir', async (t) => {
@@ -97,6 +103,54 @@ test('T50 valida respostas, versão e aluno antes de corrigir', async (t) => {
     resultadoService.corrigirAutomaticamente(17, 8, { respostas: ['A'] }),
     (erro) => erro.status === 400
   );
+});
+
+test('T50 cria atribuição antes das respostas para satisfazer o banco', async (t) => {
+  const queries = [];
+  let committed = false;
+  const connection = {
+    beginTransaction: async () => {},
+    query: async (sql, params) => {
+      queries.push({ sql, params });
+      if (/FROM results r/.test(sql)) return [[{
+        id: 1,
+        exam_id: 8,
+        student_id: 51,
+        student_name: 'Ana',
+        ra: 'RA-1',
+        score: 8,
+        corrected_at: new Date()
+      }]];
+      return [[], []];
+    },
+    commit: async () => { committed = true; },
+    rollback: async () => {},
+    release: () => {}
+  };
+  t.mock.method(pool, 'getConnection', async () => connection);
+  t.mock.method(pool, 'query', async () => [[{
+    id: 1,
+    exam_id: 8,
+    student_id: 51,
+    student_name: 'Ana',
+    ra: 'RA-1',
+    score: 8,
+    corrected_at: new Date()
+  }]]);
+
+  await resultadoRepository.registrarAutomatico({
+    examId: 8,
+    teacherId: 17,
+    studentId: 51,
+    score: 8,
+    versionId: 2,
+    persistAnswers: true,
+    answers: [{ questionId: 1, markedIndex: 0 }]
+  });
+
+  assert.equal(committed, true);
+  assert.ok(queries.some(({ sql }) => /INSERT INTO exam_assignments/.test(sql)));
+  assert.ok(queries.some(({ sql }) => /INSERT INTO result_answers/.test(sql)));
 });
 
 test('T56 cria avaliação avulsa somente com quantidade e gabarito', async (t) => {

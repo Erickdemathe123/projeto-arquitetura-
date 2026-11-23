@@ -77,7 +77,7 @@ export default {
       scanLoading: false,
       scanSummaries: {},
       scanActiveExam: null,
-      scanForm: { ra: "", score: "" },
+      scanForm: { ra: "", score: "", answers: "", version: "", detectedAnswers: [] },
       scanQrBatch: [],
       scanQrBatchId: 0,
       scanQrLoading: false,
@@ -104,7 +104,7 @@ export default {
       return [...new Set(this.turmas.map((turma) => turma.name).filter(Boolean))].sort((a, b) => a.localeCompare(b));
     },
     examsForScan() {
-      return this.exams.filter((exam) => exam.applicationClassId);
+      return this.exams.filter((exam) => exam.applicationClassId || exam.standaloneAnswerSheet);
     }
   },
   watch: {
@@ -654,7 +654,7 @@ export default {
     },
     openScanExam(exam) {
       this.scanActiveExam = exam;
-      this.scanForm = { ra: "", score: "", answers: "", version: "" };
+      this.scanForm = { ra: "", score: "", answers: "", version: "", detectedAnswers: [] };
       this.error = "";
       this.resetScanBatch();
       this.scanStep = "form";
@@ -671,8 +671,10 @@ export default {
       this.scanQrFeedback = "";
       this.scanQrLoading = false;
     },
-    async validateScannedQr(qrCode) {
+    async validateScannedQr(detected) {
       if (!this.scanActiveExam || this.scanQrLoading) return;
+      const qrCode = typeof detected === "string" ? detected : detected?.qrCode;
+      const detectedAnswers = Array.isArray(detected?.answers) ? detected.answers : [];
       const examId = this.scanActiveExam.id;
       const batchId = this.scanQrBatchId;
       this.scanQrLoading = true;
@@ -681,12 +683,20 @@ export default {
       try {
         const folha = await atribuicoesApi.validarQr(examId, qrCode);
         if (batchId !== this.scanQrBatchId) return;
-        if (this.scanQrBatch.some((item) => item.studentId === folha.studentId)) {
+        const folhaKey = qrCode;
+        if (this.scanQrBatch.some((item) => item.qrCode === folhaKey)) {
           this.scanQrError = "Esta folha já foi identificada nesta lista.";
           return;
         }
-        this.scanQrBatch.push(folha);
-        this.scanQrFeedback = `Folha de ${folha.studentName}, versão ${folha.versionLabel}, validada.`;
+        this.scanQrBatch.push({ ...folha, qrCode, answers: detectedAnswers });
+        this.scanForm.version = folha.versionLabel || this.scanForm.version;
+        if (detectedAnswers.length) {
+          this.scanForm.detectedAnswers = detectedAnswers;
+          this.scanForm.answers = detectedAnswers.map((answer) => answer === null ? "?" : String.fromCharCode(65 + answer)).join(", ");
+        }
+        this.scanQrFeedback = folha.studentName
+          ? `Folha de ${folha.studentName}, versão ${folha.versionLabel}, validada.`
+          : `Folha avulsa, versão ${folha.versionLabel}, validada.`;
       } catch (erro) {
         if (batchId !== this.scanQrBatchId) return;
         if (erro.status === 404) {
@@ -706,18 +716,22 @@ export default {
       this.error = "";
       try {
         let resultado;
-        if (this.scanForm.answers.trim()) {
-          const respostas = this.scanForm.answers.split(/[,\s]+/).map((item) => item.trim()).filter(Boolean).map((item) => /^[A-Ea-e]$/.test(item) ? item.toUpperCase() : Number(item));
+        if (this.scanForm.detectedAnswers?.length || this.scanForm.answers.trim()) {
+          const respostas = this.scanForm.detectedAnswers?.length
+            ? this.scanForm.detectedAnswers
+            : this.scanForm.answers.split(/[,\s]+/).map((item) => item.trim()).filter(Boolean).map((item) => /^[A-Ea-e]$/.test(item) ? item.toUpperCase() : Number(item));
+          const identified = this.scanQrBatch.find((item) => item.studentId);
           resultado = await resultadosApi.corrigirAutomaticamente(this.scanActiveExam.id, {
             ra: this.scanForm.ra,
             versao: this.scanForm.version,
-            respostas
+            respostas,
+            studentId: identified?.studentId
           });
         } else {
           resultado = await resultadosApi.registrar(this.scanActiveExam.id, this.scanForm);
         }
         this.scanSummaries[this.scanActiveExam.id] = await resultadosApi.listar(this.scanActiveExam.id);
-        this.scanForm = { ra: "", score: "", answers: "", version: "" };
+        this.scanForm = { ra: "", score: "", answers: "", version: "", detectedAnswers: [] };
         this.notify(`Nota registrada para ${resultado.studentName}.`);
       } catch (erro) {
         this.error = erro.message;

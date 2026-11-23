@@ -15,12 +15,6 @@ function nomeArquivo(avaliacao) {
 }
 
 async function gerar(avaliacao, versoes = [], quantidadeFallback = 20) {
-  const qrcodeText = JSON.stringify({
-    examId: avaliacao.id,
-    publicCode: avaliacao.publicCode,
-    standalone: Boolean(avaliacao.standaloneAnswerSheet)
-  });
-  const qrBuffer = await QRCode.toBuffer(qrcodeText, { width: 240, margin: 1 });
   const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: mm(layout.MARGIN_MM) });
   const chunks = [];
   const finished = new Promise((resolve, reject) => {
@@ -32,6 +26,13 @@ async function gerar(avaliacao, versoes = [], quantidadeFallback = 20) {
   const listaVersoes = versoes && versoes.length ? versoes : [{ label: 'Única', printedItems: [] }];
   for (let indiceVersao = 0; indiceVersao < listaVersoes.length; indiceVersao++) {
     const versao = listaVersoes[indiceVersao];
+    const qrcodeText = JSON.stringify({
+      examId: avaliacao.id,
+      publicCode: avaliacao.publicCode,
+      standalone: Boolean(avaliacao.standaloneAnswerSheet),
+      versionLabel: avaliacao.standaloneAnswerSheet ? 'Única' : (versao.label || 'Única')
+    });
+    const qrBuffer = await QRCode.toBuffer(qrcodeText, { width: 240, margin: 1 });
     const printedItems = Array.isArray(versao.printedItems) ? versao.printedItems : [];
     const questionCount = Math.min(20, avaliacao.standaloneAnswerSheet
       ? Number(avaliacao.questionCount || quantidadeFallback)

@@ -35,7 +35,7 @@ export default {
 
 <template>
   <div v-if="step === 'list'">
-    <div class="page-heading"><span class="eyebrow">CORREÇÃO</span><h1>Corrigir Provas</h1><p>Lance notas manualmente ou identifique folhas pelo QR Code. Só aparecem aqui avaliações aplicadas a uma turma.</p></div>
+    <div class="page-heading"><span class="eyebrow">CORREÇÃO</span><h1>Corrigir Provas</h1><p>Identifique a folha pelo QR Code e leia as respostas pela câmera.</p></div>
     <div v-if="loading" class="empty-card"><span>⌗</span><h2>Carregando…</h2><p>Buscando o andamento da correção de cada avaliação.</p></div>
     <div v-else-if="!exams.length" class="empty-card"><span>⌗</span><h2>Nenhuma avaliação para corrigir</h2><p>Aplique uma avaliação a uma turma em "Montar Prova" para liberar a correção.</p></div>
     <div v-else class="question-list">
@@ -53,18 +53,19 @@ export default {
     </div>
     <section class="qr-scan-card" aria-labelledby="qr-scan-title">
       <h2 id="qr-scan-title" class="form-section-title">Identificar folhas com QR Code</h2>
-      <p class="qr-scan-description">Escaneie cada folha para confirmar a qual aluno e versão ela pertence. A leitura das marcações e o cálculo da nota ainda não fazem parte deste fluxo.</p>
+      <p class="qr-scan-description">Aponte a câmera para a folha inteira. O sistema identifica o QR e lê as bolhas marcadas.</p>
       <QrScanner
         :busy="qrLoading"
         :error="qrError"
         :feedback="qrFeedback"
+        :answer-count="activeExam.standaloneAnswerSheet ? (activeExam.questionCount || 20) : (activeExam.questionIds?.length || 20)"
         @detected="$emit('qr-detected', $event)"
       />
       <div v-if="qrBatch.length" class="qr-batch">
         <h3>Folhas identificadas ({{ qrBatch.length }})</h3>
         <ul>
-          <li v-for="folha in qrBatch" :key="folha.studentId">
-            <strong>{{ folha.studentName }}</strong>
+          <li v-for="folha in qrBatch" :key="folha.qrCode">
+            <strong>{{ folha.studentName || 'Folha avulsa' }}</strong>
             <span>Versão {{ folha.versionLabel }}</span>
           </li>
         </ul>

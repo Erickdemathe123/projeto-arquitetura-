@@ -1,6 +1,7 @@
 // Repositório: único ponto que acessa a tabela results no MySQL.
 const pool = require('../config/db');
 const Resultado = require('../models/resultadoModel');
+const crypto = require('node:crypto');
 
 async function listarPorAvaliacao(examId) {
   const [rows] = await pool.query(
@@ -43,7 +44,7 @@ async function registrar({ examId, teacherId, studentId, score }) {
   return Resultado.fromRow(rows[0]);
 }
 
-async function registrarAutomatico({ examId, teacherId, studentId, score, answers, persistAnswers = true }) {
+async function registrarAutomatico({ examId, teacherId, studentId, score, answers, persistAnswers = true, versionId = null }) {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -54,6 +55,13 @@ async function registrarAutomatico({ examId, teacherId, studentId, score, answer
       [examId, teacherId, studentId, score]
     );
     if (persistAnswers) {
+      if (!versionId) throw new Error('Versão da correção obrigatória.');
+      await connection.query(
+        `INSERT INTO exam_assignments (exam_id, student_id, student_role, version_id, qr_code)
+         VALUES (?, ?, 'aluno', ?, ?)
+         ON DUPLICATE KEY UPDATE version_id = VALUES(version_id)`,
+        [examId, studentId, versionId, `SGP-${crypto.randomBytes(24).toString('hex')}`]
+      );
       await connection.query('DELETE FROM result_answers WHERE exam_id = ? AND student_id = ?', [examId, studentId]);
       for (const answer of answers) {
         await connection.query(

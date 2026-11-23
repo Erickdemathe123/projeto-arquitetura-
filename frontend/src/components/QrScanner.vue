@@ -1,11 +1,13 @@
 <script>
 import jsQR from "jsqr";
+import { lerRespostasDaFolha } from "../utils/answerSheetScan";
 
 export default {
   props: {
     busy: { type: Boolean, default: false },
     error: { type: String, default: "" },
-    feedback: { type: String, default: "" }
+    feedback: { type: String, default: "" },
+    answerCount: { type: Number, default: 20 }
   },
   emits: ["detected"],
   data() {
@@ -109,8 +111,9 @@ export default {
           const qr = jsQR(image.data, image.width, image.height, { inversionAttempts: "attemptBoth" });
           if (qr?.data) {
             this.hasScanned = true;
+            const answers = lerRespostasDaFolha(image.data, image.width, image.height, qr.location, this.answerCount);
             this.stopCamera();
-            this.$emit("detected", qr.data);
+            this.$emit("detected", { qrCode: qr.data, answers });
             return;
           }
         } catch (error) {
