@@ -70,8 +70,21 @@ export function pontuacaoBolha(imageData, width, height, center, radius) {
       if (luminance < 170) dark++;
       total++;
     }
+
   }
   return total ? dark / total : 0;
+}
+
+export function classificarMarcacao(scores) {
+  const ordered = [...scores].sort((a, b) => b - a);
+  const markedIndex = scores.indexOf(ordered[0]);
+  if (ordered[0] < 0.28) {
+    return { markedIndex: null, status: "blank", confidence: ordered[0] };
+  }
+  if (ordered[0] - ordered[1] < 0.08) {
+    return { markedIndex: null, status: "multiple", confidence: ordered[0] - ordered[1] };
+  }
+  return { markedIndex, status: "marked", confidence: ordered[0] - ordered[1] };
 }
 
 export function lerRespostasDaFolha(imageData, width, height, qrLocation, questionCount) {
@@ -108,13 +121,7 @@ export function lerRespostasDaFolha(imageData, width, height, qrLocation, questi
       const radius = Math.max(3, (layout.BUBBLE_GRID.bubbleDiameterMm / 2) / mmPerPixel);
       scores.push(pontuacaoBolha(imageData, width, height, pixelPosition, radius));
     }
-    const sorted = [...scores].sort((a, b) => b - a);
-    const markedIndex = scores.indexOf(sorted[0]);
-    if (sorted[0] < 0.28 || sorted[0] - sorted[1] < 0.08) {
-      answers.push(null);
-    } else {
-      answers.push(markedIndex);
-    }
+    answers.push(classificarMarcacao(scores));
   }
   return answers;
 }

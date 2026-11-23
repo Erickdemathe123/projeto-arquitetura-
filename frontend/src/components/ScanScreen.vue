@@ -15,7 +15,8 @@ export default {
     qrBatch: { type: Array, default: () => [] },
     qrLoading: { type: Boolean, default: false },
     qrError: { type: String, default: "" },
-    qrFeedback: { type: String, default: "" }
+    qrFeedback: { type: String, default: "" },
+    conference: { type: Object, default: null }
   },
   emits: ["open-exam", "back", "submit", "remove-result", "qr-detected"],
   methods: {
@@ -69,6 +70,25 @@ export default {
             <span>Versão {{ folha.versionLabel }}</span>
           </li>
         </ul>
+      </div>
+    </section>
+    <section v-if="conference" class="form-card conference-card" aria-labelledby="conference-title">
+      <h2 id="conference-title" class="form-section-title">Conferir leitura antes de confirmar</h2>
+      <p><strong>{{ conference.studentName }}</strong><span v-if="conference.ra"> · RA {{ conference.ra }}</span><span> · Versão {{ conference.versionLabel }}</span></p>
+      <div class="conference-list">
+        <label v-for="(answer, index) in conference.answers" :key="index">
+          <span>Questão {{ index + 1 }}</span>
+          <select
+            :value="answer && answer.status === 'marked' ? answer.markedIndex : answer && answer.status === 'multiple' ? 'multiple' : 'blank'"
+            @change="$event.target.value === 'blank' || $event.target.value === 'multiple'
+              ? Object.assign(answer, { markedIndex: null, status: $event.target.value })
+              : Object.assign(answer, { markedIndex: Number($event.target.value), status: 'marked' })"
+          >
+            <option value="blank">Em branco</option>
+            <option value="multiple">Dupla marcação</option>
+            <option v-for="(letter, alternative) in ['A','B','C','D','E']" :key="letter" :value="alternative">{{ letter }}</option>
+          </select>
+        </label>
       </div>
     </section>
     <form class="form-card" @submit.prevent="$emit('submit')">

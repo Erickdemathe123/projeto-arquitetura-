@@ -87,6 +87,15 @@ function normalizarRespostas(respostas) {
     throw new ErroDeNegocio(400, 'Informe as respostas da folha.');
   }
   return respostas.map((resposta) => {
+    if (resposta && typeof resposta === 'object') {
+      if (resposta.status === 'blank' || resposta.status === 'multiple') return null;
+      const numero = Number(resposta.markedIndex);
+      if (!Number.isInteger(numero) || numero < 0 || numero > 4) {
+        throw new ErroDeNegocio(400, 'A marcação da questão é inválida.');
+      }
+      return numero;
+    }
+    if (resposta === null || resposta === undefined || resposta === '') return null;
     if (typeof resposta === 'string') {
       const letra = resposta.trim().toUpperCase();
       if (!/^[A-E]$/.test(letra)) throw new ErroDeNegocio(400, 'Cada resposta deve ser uma letra de A a E.');

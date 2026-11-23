@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { examQuestionsCountLabel, formatPoints } from "../src/utils/exam";
 import { formatStoredDate, toIsoDate } from "../src/utils/date";
-import { aplicarHomografia, criarHomografia, pontuacaoBolha } from "../src/utils/answerSheetScan";
+import { aplicarHomografia, criarHomografia, pontuacaoBolha, classificarMarcacao } from "../src/utils/answerSheetScan";
 
 describe("utils/exam", () => {
   it("escreve a quantidade de questões no singular e no plural", () => {
@@ -50,6 +50,12 @@ describe("utils/date", () => {
         }
       }
       expect(pontuacaoBolha(imageData, width, height, { x: 10, y: 10 }, 5)).toBeGreaterThan(0.25);
+    });
+
+    it("classifica respostas marcadas, em branco e com dupla marcação", () => {
+      expect(classificarMarcacao([0.8, 0.1, 0.1, 0.1, 0.1])).toMatchObject({ markedIndex: 0, status: "marked" });
+      expect(classificarMarcacao([0.1, 0.1, 0.1, 0.1, 0.1]).status).toBe("blank");
+      expect(classificarMarcacao([0.9, 0.88, 0.1, 0.1, 0.1]).status).toBe("multiple");
     });
   });
 });
