@@ -11,6 +11,9 @@ const turmaRepository = require('../src/repositories/turmaRepository');
 const versaoRepository = require('../src/repositories/versaoRepository');
 const avaliacaoService = require('../src/services/avaliacaoService');
 const pool = require('../src/config/db');
+const atribuicaoRepository = require('../src/repositories/atribuicaoRepository');
+const atribuicaoService = require('../src/services/atribuicaoService');
+const cadernoPdf = require('../src/utils/cadernoPdf');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sgp_jwt_secret_dev_key_2026';
 
@@ -195,4 +198,106 @@ test('rotas T44, T50 e T56 exigem autenticação e validam os parâmetros', asyn
     headers: { Authorization: `Bearer ${token()}` }
   });
   assert.equal(pdfInvalido.status, 400);
+});
+
+test('T45 gera atribuições individualizadas para todos os alunos da turma', async (t) => {
+  t.mock.method(avaliacaoRepository, 'buscarPorId', async () => ({
+    id: 8,
+    applicationClassId: 4
+  }));
+  t.mock.method(turmaRepository, 'listarAlunos', async () => [
+    { id: 51, nome: 'Ana', ra: 'RA-1' },
+    { id: 52, nome: 'Beto', ra: 'RA-2' }
+  ]);
+  t.mock.method(versaoRepository, 'listarPorAvaliacao', async () => [
+    { id: 10, label: 'A', printedItems: [] },
+    { id: 11, label: 'B', printedItems: [] }
+  ]);
+  t.mock.method(atribuicaoRepository, 'substituirPorAlunos', async (examId, atribuicoes) => atribuicoes);
+
+  const atribuicoes = await atribuicaoService.gerarAtribuicoes(17, 8);
+  assert.equal(atribuicoes.length, 2);
+  assert.deepEqual(atribuicoes.map((item) => item.studentName), ['Ana', 'Beto']);
+  assert.deepEqual(atribuicoes.map((item) => item.versionLabel), ['A', 'B']);
+  assert.ok(atribuicoes.every((item) => /^[a-f0-9]{64}$/.test(item.qrCode)));
+});
+
+test('T45 recusa atribuição sem turma', async (t) => {
+  t.mock.method(avaliacaoRepository, 'buscarPorId', async () => ({
+    id: 8,
+    applicationClassId: null
+  }));
+  await assert.rejects(
+    atribuicaoService.gerarAtribuicoes(17, 8),
+    (erro) => erro.status === 409
+  );
+});
+
+test('T43 gera PDF do caderno completo e não corta questão estruturalmente', async () => {
+  const pdf = await cadernoPdf.gerar({
+    id: 8,
+    name: 'Avaliação T43',
+    institution: 'Instituição',
+    subject: 'Direito',
+    professor: 'Prof. Ana',
+    date: '23/11/2026',
+    instructions: 'Não consulte materiais.',
+    questionSnapshots: [{
+      id: 1,
+      text: 'Questão longa que precisa permanecer inteira.',
+      alternatives: ['Alternativa A', 'Alternativa B', 'Alternativa C', 'Alternativa D', 'Alternativa E']
+    }],
+    questionIds: [1],
+    questionPoints: [2]
+  }, [{
+    label: 'A',
+    printedItems: [{ question_id: 1, alternative_order: [0, 1, 2, 3, 4], correct_index: 2 }]
+  }], {
+    studentName: 'Ana',
+    studentRa: 'RA-1',
+    qrCode: 'a'.repeat(64),
+    versionLabel: 'A'
+  });
+
+  assert.ok(Buffer.isBuffer(pdf));
+  assert.equal(pdf.subarray(0, 4).toString('ascii'), '%PDF');
+  assert.ok(pdf.length > 1000);
+});
+
+test('T62 registra o gate de impressão: PDF, DOCX, QR e marcadores são gerados', async () => {
+  const avaliacao = {
+    id: 8,
+    name: 'Avaliação T62',
+    publicCode: 'SGP-T62',
+    institution: 'Instituição',
+    subject: 'Direito',
+    professor: 'Prof. Ana',
+    date: '23/11/2026',
+    instructions: 'Prova objetiva.',
+    questionSnapshots: [{
+      id: 1,
+      text: 'Questão T62.',
+      alternatives: ['A', 'B', 'C', 'D', 'E']
+    }],
+    questionIds: [1],
+    questionPoints: [1]
+  };
+  const versoes = [{
+    label: 'A',
+    printedItems: [{ question_id: 1, alternative_order: [0, 1, 2, 3, 4], correct_index: 0 }]
+  }];
+
+  const pdfIndividual = await cadernoPdf.gerar(avaliacao, versoes, {
+    studentId: 51,
+    studentName: 'Ana',
+    studentRa: 'RA-1',
+    versionLabel: 'A',
+    qrCode: 'b'.repeat(64)
+  });
+  const pdfFolhaAvulsa = await pdfFolha.gerar(avaliacao, versoes, 1);
+
+  assert.equal(pdfIndividual.subarray(0, 4).toString('ascii'), '%PDF');
+  assert.equal(pdfFolhaAvulsa.subarray(0, 4).toString('ascii'), '%PDF');
+  assert.ok(pdfIndividual.length > 1000);
+  assert.ok(pdfFolhaAvulsa.length > 1000);
 });

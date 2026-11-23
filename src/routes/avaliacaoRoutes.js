@@ -39,5 +39,7 @@ router.post('/:id/versoes', validarParamId('id'), versaoController.gerar);
 router.get('/:id/caderno/docx', validarParamId('id'), cadernoController.baixarDocx);
 router.get('/:id/pdf', validarParamId('id'), cadernoController.baixarPdf);
 router.post('/:id/atribuicoes/validar-qr', validarParamId('id'), atribuicaoController.validarQr);
+router.get('/:id/atribuicoes', validarParamId('id'), atribuicaoController.listar);
+router.post('/:id/atribuicoes', validarParamId('id'), atribuicaoController.gerar);
 
 module.exports = router;

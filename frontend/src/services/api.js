@@ -144,7 +144,13 @@ export const avaliacoesApi = {
   remover: (id) => request(`/avaliacoes/${id}`, { method: 'DELETE' }),
   // Caderno editável em .docx (T55); sem versao, traz todas as versões
   baixarCadernoDocx: (id, versao) => download(`/avaliacoes/${id}/caderno/docx${versao ? `?versao=${encodeURIComponent(versao)}` : ''}`),
-  baixarPdf: (id, versao) => download(`/avaliacoes/${id}/pdf${versao ? `?versao=${encodeURIComponent(versao)}` : ''}`),
+  baixarPdf: (id, versao, alunoId) => {
+    const params = new URLSearchParams();
+    if (versao) params.set("versao", versao);
+    if (alunoId) params.set("alunoId", alunoId);
+    const query = params.toString();
+    return download(`/avaliacoes/${id}/pdf${query ? `?${query}` : ""}`);
+  },
   criarAvulsa: (avaliacao) => request('/avaliacoes/avulsa', {
     method: 'POST',
     body: JSON.stringify(avaliacao)
@@ -172,6 +178,8 @@ export const resultadosApi = {
 };
 
 export const atribuicoesApi = {
+  listar: (avaliacaoId) => request(`/avaliacoes/${avaliacaoId}/atribuicoes`, { method: 'GET' }),
+  gerar: (avaliacaoId) => request(`/avaliacoes/${avaliacaoId}/atribuicoes`, { method: 'POST' }),
   validarQr: (avaliacaoId, qrCode) => request(`/avaliacoes/${avaliacaoId}/atribuicoes/validar-qr`, {
     method: 'POST',
     body: JSON.stringify({ qrCode })
