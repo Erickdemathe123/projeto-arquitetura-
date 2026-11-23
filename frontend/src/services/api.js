@@ -142,6 +142,11 @@ export const avaliacoesApi = {
     body: JSON.stringify({ released })
   }),
   remover: (id) => request(`/avaliacoes/${id}`, { method: 'DELETE' }),
+  listarVersoes: (id) => request(`/avaliacoes/${id}/versoes`, { method: 'GET' }),
+  gerarVersoes: (id, versions) => request(`/avaliacoes/${id}/versoes`, {
+    method: 'POST',
+    body: JSON.stringify({ versions })
+  }),
   // Caderno editável em .docx (T55); sem versao, traz todas as versões
   baixarCadernoDocx: (id, versao) => download(`/avaliacoes/${id}/caderno/docx${versao ? `?versao=${encodeURIComponent(versao)}` : ''}`),
   baixarPdf: (id, versao, alunoId) => {
