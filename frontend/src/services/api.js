@@ -144,6 +144,11 @@ export const avaliacoesApi = {
   remover: (id) => request(`/avaliacoes/${id}`, { method: 'DELETE' }),
   // Caderno editável em .docx (T55); sem versao, traz todas as versões
   baixarCadernoDocx: (id, versao) => download(`/avaliacoes/${id}/caderno/docx${versao ? `?versao=${encodeURIComponent(versao)}` : ''}`),
+  baixarPdf: (id, versao) => download(`/avaliacoes/${id}/pdf${versao ? `?versao=${encodeURIComponent(versao)}` : ''}`),
+  criarAvulsa: (avaliacao) => request('/avaliacoes/avulsa', {
+    method: 'POST',
+    body: JSON.stringify(avaliacao)
+  }),
   consultarCodigo: (code, ra) => request(
     `/avaliacoes/codigo/${encodeURIComponent(code)}${ra ? `?ra=${encodeURIComponent(ra)}` : ''}`,
     { method: 'GET' }
@@ -156,6 +161,11 @@ export const resultadosApi = {
   registrar: (avaliacaoId, { ra, score }) => request(`/avaliacoes/${avaliacaoId}/resultados`, {
     method: 'POST',
     body: JSON.stringify({ ra, score })
+  }),
+
+  corrigirAutomaticamente: (avaliacaoId, dados) => request(`/avaliacoes/${avaliacaoId}/correcoes`, {
+    method: 'POST',
+    body: JSON.stringify(dados)
   }),
 
   remover: (avaliacaoId, alunoId) => request(`/avaliacoes/${avaliacaoId}/resultados/${alunoId}`, { method: 'DELETE' })

@@ -92,6 +92,7 @@ async function criar(professorId, dados) {
         throw error;
       }
     }
+
     const publicCode = `SGP-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
     const details = {
       ...dados.details,
@@ -108,6 +109,49 @@ async function criar(professorId, dados) {
         [result.insertId, dados.questionIds[position], professorId, dados.questionPoints[position], position]
       );
     }
+    if (dados.applicationClassId) {
+      await connection.query(
+        'INSERT INTO applications (exam_id, class_id, teacher_id) VALUES (?, ?, ?)',
+        [result.insertId, dados.applicationClassId, professorId]
+      );
+    }
+    await connection.commit();
+    return buscarPorId(professorId, result.insertId);
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+async function criarAvulsa(professorId, dados) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    if (dados.applicationClassId) {
+      const [classes] = await connection.query(
+        'SELECT id FROM classes WHERE id = ? AND teacher_id = ? AND archived = FALSE',
+        [dados.applicationClassId, professorId]
+      );
+      if (!classes.length) {
+        const error = new Error('Turma não encontrada ou arquivada.');
+        error.code = 'CLASS_NOT_OWNED';
+        throw error;
+      }
+    }
+    const publicCode = `SGP-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+    const details = {
+      applicationClassId: dados.applicationClassId,
+      standaloneAnswerSheet: true,
+      questionCount: dados.questionCount,
+      correctAnswers: dados.correctAnswers,
+      questionSnapshots: []
+    };
+    const [result] = await connection.query(
+      'INSERT INTO exams (title, status, teacher_id, public_code, legacy_details) VALUES (?, ?, ?, ?, ?)',
+      [dados.name, 'draft', professorId, publicCode, JSON.stringify(details)]
+    );
     if (dados.applicationClassId) {
       await connection.query(
         'INSERT INTO applications (exam_id, class_id, teacher_id) VALUES (?, ?, ?)',
@@ -251,4 +295,4 @@ async function buscarPublicoPorCodigo(code, ra) {
   return { name: exam.title, released, resultAvailable: score !== null, score };
 }
 
-module.exports = { listarPorProfessor, buscarPorId, criar, atualizar, definirLiberada, remover, buscarPublicoPorCodigo };
+module.exports = { listarPorProfessor, buscarPorId, criar, criarAvulsa, atualizar, definirLiberada, remover, buscarPublicoPorCodigo };

@@ -14,6 +14,7 @@ export default defineConfig({
   // Testes dos componentes (Vitest + Vue Test Utils)
   test: {
     environment: 'jsdom',
-    include: ['tests/**/*.test.js']
+    include: ['tests/**/*.test.js'],
+    setupFiles: ['tests/setup.js']
   }
 })

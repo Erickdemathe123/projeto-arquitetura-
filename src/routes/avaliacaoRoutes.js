@@ -21,6 +21,7 @@ router.get('/codigo/:code', limiteConsultaPublica, controller.consultarCodigo);
 router.use(autenticar, exigirRole('professor'));
 router.get('/', controller.listar);
 router.post('/', controller.criar);
+router.post('/avulsa', controller.criarAvulsa);
 router.put('/:id', validarParamId('id'), controller.atualizar);
 router.patch('/:id/gabarito', validarParamId('id'), controller.liberarGabarito);
 router.delete('/:id', validarParamId('id'), controller.remover);
@@ -28,6 +29,7 @@ router.delete('/:id', validarParamId('id'), controller.remover);
 // Correção de provas (T20): nota de cada aluno na avaliação
 router.get('/:id/resultados', validarParamId('id'), resultadoController.listar);
 router.post('/:id/resultados', validarParamId('id'), resultadoController.registrar);
+router.post('/:id/correcoes', validarParamId('id'), resultadoController.corrigirAutomaticamente);
 router.delete('/:id/resultados/:alunoId', validarParamId('id'), validarParamId('alunoId'), resultadoController.remover);
 
 // Versões da prova (T42): embaralhamento com semente, ordem impressa e gabarito por caderno
@@ -35,6 +37,7 @@ router.get('/:id/versoes', validarParamId('id'), versaoController.listar);
 router.post('/:id/versoes', validarParamId('id'), versaoController.gerar);
 // Caderno editável em .docx (T55): todas as versões ou só a pedida em ?versao=A
 router.get('/:id/caderno/docx', validarParamId('id'), cadernoController.baixarDocx);
+router.get('/:id/pdf', validarParamId('id'), cadernoController.baixarPdf);
 router.post('/:id/atribuicoes/validar-qr', validarParamId('id'), atribuicaoController.validarQr);
 
 module.exports = router;

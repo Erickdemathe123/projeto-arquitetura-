@@ -28,6 +28,8 @@
     "dotenv": "^16.4.5",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.11.0"
+    "mysql2": "^3.11.0",
+    "pdfkit": "^0.21.0",
+    "qrcode": "^1.5.4"
   }
 }

@@ -25,6 +25,44 @@ async function validarQr(professorId, examIdRaw, body = {}) {
     throw new ErroDeNegocio(400, 'QR Code inválido.');
   }
 
+  if (avaliacao.standaloneAnswerSheet && qrCode === avaliacao.publicCode) {
+    return {
+      examId,
+      studentId: null,
+      studentName: null,
+      versionId: null,
+      versionLabel: 'Única',
+      standalone: true
+    };
+  }
+
+  if (qrCode === avaliacao.publicCode) {
+    return {
+      examId,
+      studentId: null,
+      studentName: null,
+      versionId: null,
+      versionLabel: 'Única',
+      standalone: Boolean(avaliacao.standaloneAnswerSheet)
+    };
+  }
+
+  try {
+    const payload = JSON.parse(qrCode);
+    if (payload && Number(payload.examId) === examId && payload.publicCode === avaliacao.publicCode) {
+      return {
+        examId,
+        studentId: null,
+        studentName: null,
+        versionId: null,
+        versionLabel: payload.versionLabel || 'Única',
+        standalone: Boolean(payload.standalone || avaliacao.standaloneAnswerSheet)
+      };
+    }
+  } catch {
+    // QR inválido será tratado pela consulta de atribuição abaixo.
+  }
+
   const atribuicao = await atribuicaoRepository.buscarPorQrCode(examId, qrCode);
   if (!atribuicao) {
     throw new ErroDeNegocio(404, 'QR Code não pertence a esta avaliação ou não está atribuído.');
