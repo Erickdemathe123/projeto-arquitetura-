@@ -495,16 +495,36 @@ export default {
     },
     async exportExamPdf(exam) {
       try {
-        const { blob, filename } = await avaliacoesApi.baixarPdf(exam.id);
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = filename;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-        this.notify("Folha de respostas PDF gerada.");
+        let assignments = [];
+        if (exam.applicationClassId) {
+          assignments = await atribuicoesApi.listar(exam.id);
+          if (!assignments.length) {
+            assignments = await atribuicoesApi.gerar(exam.id);
+          }
+        }
+        const downloads = assignments.length
+          ? assignments
+          : [null];
+        for (let index = 0; index < downloads.length; index++) {
+          const assignment = downloads[index];
+          const { blob, filename } = await avaliacoesApi.baixarPdf(
+            exam.id,
+            assignment?.versionLabel,
+            assignment?.studentId
+          );
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = filename;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+          await new Promise((resolve) => window.setTimeout(resolve, 180));
+        }
+        this.notify(assignments.length
+          ? `${assignments.length} provas individuais em PDF geradas.`
+          : "Folha de respostas PDF gerada.");
       } catch (erro) {
         this.notify(erro.message);
       }

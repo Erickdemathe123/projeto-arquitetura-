@@ -20,7 +20,12 @@ async function baixarDocx(req, res, next) {
 
 async function baixarPdf(req, res, next) {
   try {
-    const { buffer, filename } = await service.exportarPdf(req.usuario.id, req.params.id, req.query.versao);
+    const { buffer, filename } = await service.exportarPdf(
+      req.usuario.id,
+      req.params.id,
+      req.query.versao,
+      req.query.alunoId
+    );
     res.set({
       'Content-Type': PDF_MIME,
       'Content-Disposition': `attachment; filename="${filename}"`,
