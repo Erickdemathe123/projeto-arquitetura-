@@ -18,9 +18,13 @@ const registrar = tratar(async (req, res) => {
   res.status(201).json(await service.registrar(req.usuario.id, req.params.id, req.body || {}));
 });
 
+const corrigirAutomaticamente = tratar(async (req, res) => {
+  res.status(201).json(await service.corrigirAutomaticamente(req.usuario.id, req.params.id, req.body || {}));
+});
+
 const remover = tratar(async (req, res) => {
   await service.remover(req.usuario.id, req.params.id, req.params.alunoId);
   res.status(204).end();
 });
 
-module.exports = { listar, registrar, remover };
+module.exports = { listar, registrar, corrigirAutomaticamente, remover };

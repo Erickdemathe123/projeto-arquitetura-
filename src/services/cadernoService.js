@@ -3,6 +3,7 @@
 const avaliacaoRepository = require('../repositories/avaliacaoRepository');
 const versaoRepository = require('../repositories/versaoRepository');
 const { gerarCadernoDocx, nomeArquivo } = require('../utils/cadernoDocx');
+const folhaPdf = require('../utils/folhaPdf');
 const { ErroDeNegocio } = require('../errors/appError');
 
 function validarId(id, nome) {
@@ -40,4 +41,25 @@ async function exportarDocx(professorId, examIdRaw, versaoRaw) {
   return { buffer, filename: nomeArquivo(avaliacao, rotulo) };
 }
 
-module.exports = { exportarDocx };
+async function exportarPdf(professorId, examIdRaw, versaoRaw) {
+  const examId = validarId(examIdRaw, 'Id da avaliação');
+  const rotulo = validarRotulo(versaoRaw);
+  const avaliacao = await avaliacaoRepository.buscarPorId(professorId, examId);
+  if (!avaliacao) throw new ErroDeNegocio(404, 'Avaliação não encontrada.');
+
+  if (!avaliacao.standaloneAnswerSheet) {
+    if (!avaliacao.questionSnapshots || !avaliacao.questionSnapshots.length) {
+      throw new ErroDeNegocio(400, 'A avaliação não tem questões para gerar a folha de respostas.');
+    }
+  }
+
+  let versoes = await versaoRepository.listarPorAvaliacao(examId);
+  if (rotulo) {
+    versoes = versoes.filter((versao) => versao.label === rotulo);
+    if (!versoes.length) throw new ErroDeNegocio(404, `A versão ${rotulo} não existe nesta avaliação.`);
+  }
+  const buffer = await folhaPdf.gerar(avaliacao, versoes, avaliacao.questionCount || avaliacao.questionSnapshots?.length || 20);
+  return { buffer, filename: folhaPdf.nomeArquivo(avaliacao) };
+}
+
+module.exports = { exportarDocx, exportarPdf };

@@ -75,6 +75,8 @@ export default {
       <div class="form-grid">
         <label>RA do aluno<input v-model="form.ra" placeholder="Registro acadêmico"></label>
         <label>Nota<input v-model.number="form.score" type="number" min="0" max="10" step="0.1" placeholder="0 a 10"></label>
+        <label>Respostas automáticas<input v-model="form.answers" placeholder="A, B, C, D ou 0, 1, 2, 3"></label>
+        <label>Versão<input v-model="form.version" placeholder="Ex.: A"></label>
       </div>
       <p v-if="error" class="auth-error">{{ error }}</p>
       <div class="form-actions"><button class="primary-button compact">Registrar nota</button></div>

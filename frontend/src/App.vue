@@ -15,6 +15,7 @@ import ExamForm from "./components/ExamForm.vue";
 import ExamPreview from "./components/ExamPreview.vue";
 import StatisticsScreen from "./components/StatisticsScreen.vue";
 import ScanScreen from "./components/ScanScreen.vue";
+import StandaloneSheetScreen from "./components/StandaloneSheetScreen.vue";
 import AppDialog from "./components/AppDialog.vue";
 import ThemeToggle from "./components/ThemeToggle.vue";
 import { applyTheme, getInitialTheme } from "./utils/theme";
@@ -34,6 +35,7 @@ export default {
     ExamPreview,
     StatisticsScreen,
     ScanScreen,
+    StandaloneSheetScreen,
     AppDialog,
     ThemeToggle
   },
@@ -81,6 +83,7 @@ export default {
       scanQrLoading: false,
       scanQrError: "",
       scanQrFeedback: "",
+      standaloneSheetForm: { name: "", questionCount: 20, correctAnswers: Array.from({ length: 20 }, () => "A") },
     };
   },
   computed: {
@@ -490,6 +493,22 @@ export default {
         this.notify(erro.message);
       }
     },
+    async exportExamPdf(exam) {
+      try {
+        const { blob, filename } = await avaliacoesApi.baixarPdf(exam.id);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        this.notify("Folha de respostas PDF gerada.");
+      } catch (erro) {
+        this.notify(erro.message);
+      }
+    },
     async consultStudentResult() {
       const code = this.studentCode.trim().toUpperCase();
       const ra = this.studentRa.trim();
@@ -578,6 +597,25 @@ export default {
       this.examForm = emptyExamForm();
       this.navigate("newExam");
     },
+    newStandaloneSheet() {
+      this.standaloneSheetForm = { name: "", questionCount: 20, correctAnswers: Array.from({ length: 20 }, () => "A") };
+      this.navigate("newStandaloneSheet");
+    },
+    async saveStandaloneSheet() {
+      if (!this.standaloneSheetForm.name.trim()) return (this.error = "Informe o nome da folha avulsa.");
+      try {
+        const created = await avaliacoesApi.criarAvulsa({
+          name: this.standaloneSheetForm.name,
+          questionCount: Number(this.standaloneSheetForm.questionCount),
+          correctAnswers: this.standaloneSheetForm.correctAnswers
+        });
+        this.exams.unshift(created);
+        this.notify("Folha avulsa criada com sucesso.");
+        this.navigate("exams");
+      } catch (erro) {
+        this.error = erro.message;
+      }
+    },
     // Abre o AppDialog e devolve uma Promise com o texto digitado,
     // true (confirmado) ou null (cancelado)
     askDialog(options) {
@@ -616,7 +654,7 @@ export default {
     },
     openScanExam(exam) {
       this.scanActiveExam = exam;
-      this.scanForm = { ra: "", score: "" };
+      this.scanForm = { ra: "", score: "", answers: "", version: "" };
       this.error = "";
       this.resetScanBatch();
       this.scanStep = "form";
@@ -667,9 +705,19 @@ export default {
       if (!this.scanActiveExam) return;
       this.error = "";
       try {
-        const resultado = await resultadosApi.registrar(this.scanActiveExam.id, this.scanForm);
+        let resultado;
+        if (this.scanForm.answers.trim()) {
+          const respostas = this.scanForm.answers.split(/[,\s]+/).map((item) => item.trim()).filter(Boolean).map((item) => /^[A-Ea-e]$/.test(item) ? item.toUpperCase() : Number(item));
+          resultado = await resultadosApi.corrigirAutomaticamente(this.scanActiveExam.id, {
+            ra: this.scanForm.ra,
+            versao: this.scanForm.version,
+            respostas
+          });
+        } else {
+          resultado = await resultadosApi.registrar(this.scanActiveExam.id, this.scanForm);
+        }
         this.scanSummaries[this.scanActiveExam.id] = await resultadosApi.listar(this.scanActiveExam.id);
-        this.scanForm = { ra: "", score: "" };
+        this.scanForm = { ra: "", score: "", answers: "", version: "" };
         this.notify(`Nota registrada para ${resultado.studentName}.`);
       } catch (erro) {
         this.error = erro.message;
@@ -798,12 +846,21 @@ export default {
           :exams="exams"
           :questions="questions"
           @new="newExam"
+          @new-avulsa="newStandaloneSheet"
           @release="releaseExam"
           @preview="previewSavedExam"
           @export-docx="exportExamDocx"
+          @export-pdf="exportExamPdf"
           @statistics="openStatistics"
           @edit="editExam"
           @remove="removeExam"
+        />
+        <StandaloneSheetScreen
+          v-if="screen === 'newStandaloneSheet'"
+          :form="standaloneSheetForm"
+          :error="error"
+          @save="saveStandaloneSheet"
+          @cancel="navigate('exams')"
         />
         <ExamForm
           v-if="screen === 'newExam'"

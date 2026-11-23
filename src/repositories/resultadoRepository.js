@@ -43,6 +43,36 @@ async function registrar({ examId, teacherId, studentId, score }) {
   return Resultado.fromRow(rows[0]);
 }
 
+async function registrarAutomatico({ examId, teacherId, studentId, score, answers, persistAnswers = true }) {
+  const connection = await pool.getConnection();
+  try {
+    await connection.beginTransaction();
+    await connection.query(
+      `INSERT INTO results (exam_id, teacher_id, student_id, score)
+       VALUES (?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE score = VALUES(score), corrected_at = CURRENT_TIMESTAMP`,
+      [examId, teacherId, studentId, score]
+    );
+    if (persistAnswers) {
+      await connection.query('DELETE FROM result_answers WHERE exam_id = ? AND student_id = ?', [examId, studentId]);
+      for (const answer of answers) {
+        await connection.query(
+          `INSERT INTO result_answers (exam_id, student_id, question_id, marked_index)
+           VALUES (?, ?, ?, ?)`,
+          [examId, studentId, answer.questionId, answer.markedIndex]
+        );
+      }
+    }
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+  return registrar({ examId, teacherId, studentId, score });
+}
+
 async function remover(examId, studentId) {
   const [result] = await pool.query(
     'DELETE FROM results WHERE exam_id = ? AND student_id = ?',
@@ -51,4 +81,4 @@ async function remover(examId, studentId) {
   return result.affectedRows > 0;
 }
 
-module.exports = { listarPorAvaliacao, contarMatriculados, registrar, remover };
+module.exports = { listarPorAvaliacao, contarMatriculados, registrar, registrarAutomatico, remover };

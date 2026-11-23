@@ -5,6 +5,7 @@ export const SCREEN_TITLES = {
   newQuestion: "Nova Questão",
   exams: "Minhas Avaliações",
   newExam: "Montar Prova",
+  newStandaloneSheet: "Folha avulsa",
   preview: "Pré-visualização",
   statistics: "Estatísticas",
   studentPortal: "Consulta do aluno",

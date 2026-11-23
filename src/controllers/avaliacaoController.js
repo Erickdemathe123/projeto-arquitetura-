@@ -22,6 +22,10 @@ const criar = tratar(async (req, res) => {
   res.status(201).json(await service.criar(req.usuario.id, req.body));
 });
 
+const criarAvulsa = tratar(async (req, res) => {
+  res.status(201).json(await service.criarAvulsa(req.usuario.id, req.body));
+});
+
 const atualizar = tratar(async (req, res) => {
   res.json(await service.atualizar(req.usuario.id, req.params.id, req.body));
 });
@@ -35,4 +39,4 @@ const remover = tratar(async (req, res) => {
   res.status(204).end();
 });
 
-module.exports = { consultarCodigo, listar, criar, atualizar, liberarGabarito, remover };
+module.exports = { consultarCodigo, listar, criar, criarAvulsa, atualizar, liberarGabarito, remover };
