@@ -104,7 +104,7 @@ describe("ExamForm (pontos por questão, T41)", () => {
       }
     });
     vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context);
-    vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/jpeg;base64,compressed");
+    const encode = vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/jpeg;base64,compressed");
 
     wrapper.vm.handleLogoUpload({
       target: { files: [new File(["logo"], "logo.png", { type: "image/png" })] }
@@ -112,6 +112,12 @@ describe("ExamForm (pontos por questão, T41)", () => {
 
     expect(form.logo).toBe("data:image/jpeg;base64,compressed");
     expect(context.drawImage).toHaveBeenCalledWith(expect.any(Image), 0, 0, 512, 256);
+    encode.mockReturnValue(`data:image/jpeg;base64,${"x".repeat(700 * 1024)}`);
+    wrapper.vm.handleLogoUpload({
+      target: { files: [new File(["logo"], "logo.png", { type: "image/png" })] }
+    });
+    expect(form.logo).toBe("data:image/jpeg;base64,compressed");
+    expect(wrapper.emitted("error")[0]).toEqual(["A logo ainda ficou muito grande. Escolha uma imagem menor."]);
     wrapper.unmount();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
