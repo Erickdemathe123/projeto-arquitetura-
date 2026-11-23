@@ -1669,3 +1669,52 @@ button.theme-toggle[aria-label]:hover::after {
     grid-template-columns: 1fr;
   }
 }
+.conference-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  gap: 10px;
+}
+.conference-list label {
+  display: grid;
+  gap: 6px;
+}
+.conference-list select {
+  width: 100%;
+}
+@media (max-width: 414px) {
+  .sidebar {
+    width: 58px;
+  }
+  .main-content {
+    margin-left: 58px;
+  }
+  .content {
+    padding: 24px 12px;
+  }
+  .topbar {
+    height: 64px;
+    padding: 0 12px;
+  }
+  .page-heading h1 {
+    font-size: 22px;
+  }
+  .qr-camera-preview,
+  .qr-camera-preview video {
+    min-height: 220px;
+  }
+  .conference-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .form-actions,
+  .question-actions {
+    width: 100%;
+  }
+  .form-actions button,
+  .question-actions button {
+    min-height: 44px;
+  }
+  .student-portal-card {
+    margin: 12px;
+    padding: 24px 18px;
+  }
+}

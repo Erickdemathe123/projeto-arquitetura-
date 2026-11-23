@@ -78,6 +78,7 @@ export default {
       scanSummaries: {},
       scanActiveExam: null,
       scanForm: { ra: "", score: "", answers: "", version: "", detectedAnswers: [] },
+      scanConference: null,
       scanQrBatch: [],
       scanQrBatchId: 0,
       scanQrLoading: false,
@@ -690,6 +691,7 @@ export default {
       this.scanQrError = "";
       this.scanQrFeedback = "";
       this.scanQrLoading = false;
+      this.scanConference = null;
     },
     async validateScannedQr(detected) {
       if (!this.scanActiveExam || this.scanQrLoading) return;
@@ -712,7 +714,20 @@ export default {
         this.scanForm.version = folha.versionLabel || this.scanForm.version;
         if (detectedAnswers.length) {
           this.scanForm.detectedAnswers = detectedAnswers;
-          this.scanForm.answers = detectedAnswers.map((answer) => answer === null ? "?" : String.fromCharCode(65 + answer)).join(", ");
+          this.scanForm.answers = detectedAnswers.map((answer) => {
+            if (answer && typeof answer === "object") {
+              if (answer.status === "blank") return "BRANCO";
+              if (answer.status === "multiple") return "DUAS";
+              return String.fromCharCode(65 + answer.markedIndex);
+            }
+            return answer === null ? "?" : String.fromCharCode(65 + answer);
+          }).join(", ");
+          this.scanConference = {
+            studentName: folha.studentName || "Folha avulsa",
+            ra: folha.studentRa || "",
+            versionLabel: folha.versionLabel,
+            answers: detectedAnswers
+          };
         }
         this.scanQrFeedback = folha.studentName
           ? `Folha de ${folha.studentName}, versão ${folha.versionLabel}, validada.`
@@ -938,6 +953,7 @@ export default {
           :qr-loading="scanQrLoading"
           :qr-error="scanQrError"
           :qr-feedback="scanQrFeedback"
+          :conference="scanConference"
           @open-exam="openScanExam"
           @back="backToScanList"
           @submit="submitScanResult"

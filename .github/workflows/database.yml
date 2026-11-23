@@ -27,3 +27,7 @@ jobs:
         env:
           DB_HOST: 127.0.0.1
           DB_PASSWORD: sgp_ci_test_only
+      - run: npm test
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PASSWORD: sgp_ci_test_only
