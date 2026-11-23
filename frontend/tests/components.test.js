@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { mount } from "@vue/test-utils";
 import { reactive } from "vue";
 import AuthScreen from "../src/components/AuthScreen.vue";
@@ -83,6 +83,44 @@ describe("ExamForm (pontos por questão, T41)", () => {
   it("só mostra o campo de pontos nas questões marcadas", () => {
     const wrapper = montar(novoFormulario({ selected: [2] }));
     expect(wrapper.findAll(".selection-points")).toHaveLength(1);
+  });
+
+  it("redimensiona e comprime a logo antes de salvar a avaliação", () => {
+    const form = novoFormulario();
+    const wrapper = montar(form);
+    const context = { fillRect: vi.fn(), drawImage: vi.fn(), fillStyle: "" };
+
+    vi.stubGlobal("FileReader", class {
+      readAsDataURL() {
+        this.result = "data:image/png;base64,original";
+        this.onload();
+      }
+    });
+    vi.stubGlobal("Image", class {
+      naturalWidth = 2000;
+      naturalHeight = 1000;
+      set src(_value) {
+        this.onload();
+      }
+    });
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockReturnValue(context);
+    const encode = vi.spyOn(HTMLCanvasElement.prototype, "toDataURL").mockReturnValue("data:image/jpeg;base64,compressed");
+
+    wrapper.vm.handleLogoUpload({
+      target: { files: [new File(["logo"], "logo.png", { type: "image/png" })] }
+    });
+
+    expect(form.logo).toBe("data:image/jpeg;base64,compressed");
+    expect(context.drawImage).toHaveBeenCalledWith(expect.any(Image), 0, 0, 512, 256);
+    encode.mockReturnValue(`data:image/jpeg;base64,${"x".repeat(700 * 1024)}`);
+    wrapper.vm.handleLogoUpload({
+      target: { files: [new File(["logo"], "logo.png", { type: "image/png" })] }
+    });
+    expect(form.logo).toBe("data:image/jpeg;base64,compressed");
+    expect(wrapper.emitted("error")[0]).toEqual(["A logo ainda ficou muito grande. Escolha uma imagem menor."]);
+    wrapper.unmount();
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 });
 
