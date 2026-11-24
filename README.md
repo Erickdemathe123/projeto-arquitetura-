@@ -92,43 +92,26 @@ Professores com carga horária alta enfrentam um volume grande de provas para co
 
 ## 3. Modelagem (UML)
 
-📌 **N2**
+📌 **N3** — diagramas atualizados para o sistema final (T67). Os fontes PlantUML (`.puml`) ficam ao lado dos PNGs em `docs/uml/`.
 
 ### Diagrama de Classes
 
 ![Diagrama de Classes](docs/uml/diagrama-classes.png)
 
-Representa as principais entidades do domínio do SGP: `Professor`, `Turma`, `Aluno`, `Questao` e `Avaliacao`. O professor cria questões e monta avaliações; a turma possui alunos e é vinculada a uma avaliação; a avaliação é composta por questões (relação muitos-para-muitos) e, na correção, associada aos alunos corrigidos.
+Representa as entidades do domínio do SGP no sistema final. O `Professor` cria `Questao` (cada uma com 2 a 5 `Alternativa`), gerencia `Turma` (com matrícula de `Aluno`), guarda a `ConfiguracaoFolha` (instituição, logo e instruções) e monta `Avaliacao`. A avaliação tem até 25 `ItemAvaliacao` (questão + pontos) e é embaralhada em uma ou mais `Versao`, cada uma com a ordem impressa e o gabarito. A `Atribuicao` liga um aluno a uma versão por meio do código opaco do QR. Na correção, cada `Correcao` guarda a nota do aluno e as `Resposta` marcadas por questão. Correspondência com o banco: `exam_versions`, `exam_assignments`, `results` e `result_answers`.
 
 ### Diagrama de Atividades — Corrigir Provas
 
 ![Diagrama de Atividades](docs/uml/diagrama-atividades-corrigir-provas.png)
 
-Descreve o fluxo de atividades da correção de provas, incluindo o desvio de decisão quando não há avaliação pendente, o laço de captura de alunos (repetido a cada `Capturar`) e o ponto de decisão entre `Escanear próxima prova` e `Finalizar turma`, que encerra o laço e atualiza o status da avaliação para `concluída`.
+Substitui o fluxo simulado da N1/N2 pela correção automática pela câmera. O diagrama tem duas raias: **Professor**, que aponta a câmera, confere e confirma, e **Sistema**, que lê o QR e as bolhas, valida e calcula a nota.
 
-**Sequência lógica extraída do fluxo:**
-
-1. Professor acessa a tela **Corrigir Provas** .
-2. O sistema carrega as avaliações cadastradas no armazenamento local.
-3. **Decisão:** existe avaliação pendente de correção?
-   - **[Não]** → Sistema exibe o aviso "Não há provas pendentes para corrigir" (fim).
-   - **[Sim]** → Sistema exibe a lista de avaliações (pendente / em correção / corrigida).
-4. Professor seleciona uma avaliação ou clica em "Escanear Turma".
-5. Sistema exibe a tela de escaneamento (simulada, conforme escopo da N1).
-6. Professor clica em "Capturar".
-7. Sistema executa `captureScan()`, gerando aluno e nota simulados, e atualiza o status da avaliação para `"em_andamento"`.
-8. Sistema exibe o resultado (aluno identificado + nota).
-9. **Decisão:** o professor escolhe continuar corrigindo?
-   - **[Escanear próxima prova]** → retorna ao passo 6.
-   - **[Finalizar turma]** → Sistema executa `finishScanTurma()`, atualizando o status da avaliação para `"concluida"`.
-10. Sistema retorna à lista de avaliações (fim).
-
-**Raias identificadas:** o processo envolve apenas dois responsáveis — o Professor, que decide e interage, e o próprio Sistema, que processa e persiste os dados. Por isso o diagrama foi modelado sem raias (swimlanes): com só duas partes, raias não adicionam clareza, e um fluxo linear com pontos de decisão já representa bem o cenário.
-
-| Responsável | Responsabilidades |
-|---|---|
-| **Professor** | Acessar a tela, selecionar avaliação, clicar em "Escanear Turma"/"Capturar", decidir entre escanear próxima prova ou finalizar turma |
-| **Sistema (SGP)** | Carregar avaliações, exibir listas e telas, gerar aluno/nota simulados, atualizar e persistir o status da avaliação |
+1. O professor acessa **Corrigir Provas** e o sistema carrega as avaliações com o andamento da correção. Se nenhuma avaliação foi aplicada a uma turma, o sistema exibe um aviso e o fluxo termina.
+2. O professor seleciona a avaliação e abre a câmera. Se a câmera não estiver disponível (permissão negada, aparelho sem câmera ou página sem HTTPS), o sistema mostra o motivo e o professor lança a nota manualmente.
+3. O sistema captura quadros do vídeo até encontrar um QR Code. Depois corrige a perspectiva pelos cantos do QR, mede o preenchimento de cada bolha e classifica cada questão como marcada, em branco ou com dupla marcação.
+4. O sistema valida o QR na API. Um QR de outra prova, não atribuído ou já lido no lote é recusado sem gerar nota.
+5. Com o QR válido, o professor confere o aluno, a versão e as respostas lidas, ajusta alguma leitura se precisar, informa o RA se a prova não tiver identificação e confirma.
+6. O sistema calcula a nota de 0 a 10 com o gabarito e os pesos da versão, grava `results` e `result_answers` numa transação e atualiza o status da avaliação. O laço se repete para a próxima folha.
 
 ### Diagrama de Casos de Uso
 
@@ -145,6 +128,12 @@ A análise do cenário, a lista de atores e casos de uso e o passo a passo da cr
 O diagrama representa o fluxo de criação e persistência de uma avaliação. O professor preenche os dados e seleciona as questões no front-end, que envia a solicitação à rota da API. A requisição passa pelo controller e pelo service, responsável por validar as informações e as questões selecionadas.
 
 Se os dados forem inválidos, a API retorna HTTP 400 e o front-end apresenta mensagens para correção. Se forem válidos, o repository prepara a avaliação e suas associações com as questões e inicia uma transação no MySQL. A avaliação é inserida e cada questão selecionada é associada à prova com sua ordem e peso. Após a confirmação da transação, os dados da avaliação criada retornam pelas camadas até o front-end, que confirma o sucesso ao professor.
+
+### Diagrama de Sequência — Correção automática pela câmera
+
+![Diagrama de Sequência da correção](docs/uml/sequencia-correcao.png)
+
+Mostra a correção de uma folha de ponta a ponta. A leitura acontece toda no navegador (RNF05). O `QrScanner.vue` lê o QR com o jsQR, e o `answerSheetScan.js` usa os cantos do QR e as coordenadas em mm do layout compartilhado (`shared/folhaRespostasLayout.js`) para localizar e medir cada bolha. O front-end valida o QR em `POST /api/avaliacoes/:id/atribuicoes/validar-qr`. A API responde 404 para QR de outra prova; para QR válido, devolve o aluno e a versão para a tela de conferência. Depois da confirmação, `POST /api/avaliacoes/:id/correcoes` calcula a nota com o gabarito e os pesos da versão e grava `results` e `result_answers` numa única transação. Aluno fora da turma, versão inexistente ou número errado de respostas resultam em HTTP 400/404/409.
 
 ## 4. Telas do Sistema
 

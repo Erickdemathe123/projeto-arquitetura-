@@ -1,27 +1,41 @@
 @startuml
+!pragma layout smetana
+title Diagrama de Classes - SGP (sistema final, N3)
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+hide empty members
 
 class Professor {
   -idProfessor: Int
   -nome: String
   -email: String
-  -senha: String
+  -senhaHash: String
   +criarQuestao()
   +montarAvaliacao()
   +liberarGabarito()
 }
 
+class ConfiguracaoFolha {
+  -instituicao: String
+  -logo: String
+  -instrucoesProva: String
+  -instrucoesGabarito: String
+  -urlResultado: String
+}
+
 class Turma {
   -idTurma: Int
   -nome: String
+  -codigoConvite: String
   +cadastrarAluno()
-  +importarAlunos()
+  +importarAlunos(csv)
 }
 
 class Aluno {
   -idAluno: Int
   -nome: String
   -ra: String
-  +consultarResultado()
+  +consultarResultado(codigo, ra)
 }
 
 class Questao {
@@ -29,29 +43,67 @@ class Questao {
   -enunciado: String
   -disciplina: String
   -assunto: String
-  -tipo: String
-  -alternativaCorreta: Int
-  +editar()
+}
+
+class Alternativa {
+  -texto: String
+  -posicao: Int
+  -correta: Boolean
 }
 
 class Avaliacao {
   -idAvaliacao: Int
-  -nome: String
-  -instituicao: String
-  -disciplina: String
-  -dataAplicacao: DateTime
+  -titulo: String
   -codigoPublico: String
   -gabaritoLiberado: Boolean
-  -statusCorrecao: String
-  +calcularNota(): Float
-  +gerarDocumento()
+  -folhaAvulsa: Boolean
+  +gerarVersoes(semente)
+  +gerarPdf()
+  +gerarDocx()
 }
 
-Professor "1"   --> "0..*" Avaliacao : monta >
-Professor "1"   --> "0..*" Questao   : cria >
-Turma     "1"   --> "0..*" Aluno     : possui >
-Turma     "1"   --> "0..*" Avaliacao : é avaliada em >
-Aluno     "0..*" -- "0..*" Avaliacao : é corrigido em
-Avaliacao "0..*" -- "0..*" Questao   : contém
+class ItemAvaliacao {
+  -posicao: Int
+  -pontos: Decimal
+}
+
+class Versao {
+  -idVersao: Int
+  -rotulo: String
+  -itensImpressos: ItemImpresso[]
+  +gabarito(): Int[]
+}
+
+class Atribuicao {
+  -codigoQr: String
+  +validarQr()
+}
+
+class Correcao {
+  -nota: Decimal
+  -corrigidaEm: DateTime
+  +calcularNota(respostas, gabarito, pesos): Decimal
+}
+
+class Resposta {
+  -alternativaMarcada: Int [0..1]
+}
+
+Professor "1" --> "0..1" ConfiguracaoFolha : configura >
+Professor "1" --> "0..*" Questao : cria >
+Professor "1" --> "0..*" Turma : gerencia >
+Professor "1" --> "0..*" Avaliacao : monta >
+Turma "0..*" -- "0..*" Aluno : matrícula
+Turma "1" --> "0..*" Avaliacao : é aplicada em >
+Questao "1" *-- "2..5" Alternativa
+Avaliacao "1" *-- "1..25" ItemAvaliacao
+ItemAvaliacao "0..*" --> "1" Questao
+Avaliacao "1" *-- "1..*" Versao : embaralhada em >
+Versao "1" <-- "0..*" Atribuicao
+Atribuicao "0..*" --> "1" Aluno : identifica >
+Avaliacao "1" *-- "0..*" Correcao
+Correcao "0..*" --> "1" Aluno : de >
+Correcao "1" *-- "0..25" Resposta
+Resposta "0..*" --> "1" Questao : responde >
 
 @enduml

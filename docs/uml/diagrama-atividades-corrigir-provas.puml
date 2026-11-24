@@ -1,33 +1,68 @@
 @startuml
+title Diagrama de Atividades - Corrigir Provas (correção automática pela câmera)
 
+|Professor|
 start
-:Professor acessa "Corrigir Provas";
-:Carregar avaliações do armazenamento local;
-
-if (Existe avaliação pendente?) then (sim)
-  :Exibir lista de avaliações\n(pendente / em correção / corrigida);
-  :Professor seleciona avaliação\nou clica em "Escanear Turma";
-  :Exibir tela de escaneamento (mock);
-
-  repeat
-    :Professor clica em "Capturar";
-    :captureScan()\ngera aluno e nota simulados;
-    :Atualizar avaliação\nstatusCorrecao = "em_andamento";
-    :Exibir resultado\n(aluno identificado + nota);
-
-    if (Professor escolhe) then (Escanear próxima prova)
-    else (Finalizar turma)
-      :finishScanTurma();
-      :Atualizar avaliação\nstatusCorrecao = "concluida";
-      break
-    endif
-  repeat while (continuar corrigindo?) is (sim) not (não)
-
-  :Retornar à lista de avaliações;
-else (não)
-  :Exibir aviso\n"Não há provas pendentes para corrigir";
+:Acessa "Corrigir Provas";
+|Sistema|
+:Carrega as avaliações e o andamento\n(GET /api/avaliacoes/:id/resultados);
+if (Existe avaliação aplicada a uma turma?) then (não)
+  :Exibe aviso para aplicar\numa avaliação a uma turma;
+  stop
+else (sim)
+  :Exibe a lista de avaliações\n(pendente / em correção / corrigida);
 endif
 
+|Professor|
+:Seleciona uma avaliação;
+
+repeat
+  |Professor|
+  :Abre a câmera e aponta\npara a folha de respostas;
+  |Sistema|
+  if (Câmera disponível e permitida?) then (não)
+    :Exibe o motivo\n(permissão negada, sem câmera, sem HTTPS);
+    |Professor|
+    :Lança a nota manualmente\n(RA + respostas ou nota);
+    |Sistema|
+    :Valida o RA e a matrícula\ne registra a nota;
+  else (sim)
+    |Sistema|
+    repeat
+      :Captura um quadro do vídeo;
+    repeat while (QR Code encontrado no quadro?) is (não)
+    :Corrige a perspectiva pelos cantos do QR\ne mede o preenchimento de cada bolha;
+    :Classifica cada questão\n(marcada / em branco / dupla marcação);
+    :Valida o QR na API\n(POST /atribuicoes/validar-qr);
+    if (QR pertence à avaliação?) then (não)
+      :Informa "QR de outra prova\nou não atribuído";
+    else (sim)
+      if (Folha já lida neste lote?) then (sim)
+        :Informa folha repetida;
+      else (não)
+        :Exibe aluno, versão e respostas lidas\npara conferência;
+        |Professor|
+        if (Alguma leitura errada?) then (sim)
+          :Ajusta a alternativa da questão;
+        else (não)
+        endif
+        if (Prova sem identificação do aluno?) then (sim)
+          :Informa o RA do aluno;
+        else (não)
+        endif
+        :Confirma a correção;
+        |Sistema|
+        :Calcula a nota 0-10 com o gabarito\ne os pesos da versão\n(POST /api/avaliacoes/:id/correcoes);
+        :Grava results + result_answers\nnuma transação;
+        :Atualiza status\n(em correção / corrigida);
+      endif
+    endif
+  endif
+  |Professor|
+repeat while (Escanear próxima folha?) is (sim) not (não)
+
+|Sistema|
+:Retorna à lista de avaliações;
 stop
 
 @enduml
