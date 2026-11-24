@@ -8,7 +8,7 @@ const avaliacaoRepository = require('../src/repositories/avaliacaoRepository');
 const versaoRepository = require('../src/repositories/versaoRepository');
 const { gerarCadernoDocx, montarItens, nomeArquivo, formatarPontos } = require('../src/utils/cadernoDocx');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sgp_jwt_secret_dev_key_2026';
+const { JWT_SECRET } = require('../src/config/auth');
 
 // Lê um arquivo de dentro do .docx (zip) sem dependências extras.
 function lerDoZip(buffer, nome) {

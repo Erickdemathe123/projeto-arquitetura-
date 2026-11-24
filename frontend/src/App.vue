@@ -230,22 +230,18 @@ export default {
         ]);
         this.name = this.currentUser?.name || this.name;
         this.questions = questions;
-        this.turmas = await Promise.all(turmas.map(async (turma) => {
-          const students = await turmasApi.listarAlunos(turma.id);
-          const mappedStudents = students.map((aluno) => ({
-            id: Number(aluno.id),
-            name: aluno.nome,
-            ra: aluno.ra
-          }));
-          return {
-            id: Number(turma.id),
-            name: turma.nome,
-            description: turma.descricao,
-            inviteCode: turma.codigoConvite,
-            archived: turma.arquivada,
-            studentCount: mappedStudents.length,
-            students: mappedStudents
-          };
+        // A listagem de turmas já traz totalAlunos. Carregar todos os alunos
+        // aqui criava uma requisição extra por turma e deixava o login lento,
+        // especialmente com a API no Render e o banco no Aiven. Os alunos
+        // completos continuam sendo carregados somente ao abrir uma turma.
+        this.turmas = turmas.map((turma) => ({
+          id: Number(turma.id),
+          name: turma.nome,
+          description: turma.descricao,
+          inviteCode: turma.codigoConvite,
+          archived: turma.arquivada,
+          studentCount: Number(turma.totalAlunos) || 0,
+          students: []
         }));
         this.exams = exams;
         this.screen = "dashboard";

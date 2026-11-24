@@ -7,7 +7,12 @@ export default {
     alunoForm: { type: Object, required: true },
     error: { type: String, default: "" }
   },
-  emits: ["save-turma", "edit-turma", "open-turma", "remove-turma", "close-turma", "save-aluno", "remove-aluno", "import-students"]
+  emits: ["save-turma", "edit-turma", "open-turma", "remove-turma", "close-turma", "save-aluno", "remove-aluno", "import-students"],
+  methods: {
+    studentTotal(turma) {
+      return Number(turma?.studentCount ?? turma?.students?.length ?? 0);
+    }
+  }
 }
 </script>
 
@@ -24,7 +29,7 @@ export default {
     <div v-else class="question-list">
       <article v-for="turma in turmas" :key="turma.id" class="question-item">
         <span class="question-number">♙</span>
-        <div><strong>{{ turma.name }}</strong><small>{{ turma.students.length }} {{ turma.students.length === 1 ? "aluno cadastrado" : "alunos cadastrados" }}</small></div>
+        <div><strong>{{ turma.name }}</strong><small>{{ studentTotal(turma) }} {{ studentTotal(turma) === 1 ? "aluno cadastrado" : "alunos cadastrados" }}</small></div>
         <div class="question-actions">
           <button class="edit-button" @click="$emit('edit-turma', turma)" aria-label="Editar turma">✎</button>
           <button class="edit-button" @click="$emit('open-turma', turma)" aria-label="Acessar turma">→</button>
@@ -35,7 +40,7 @@ export default {
   </div>
   <div v-else>
     <div class="page-heading row">
-      <div><span class="eyebrow">TURMA</span><h1>{{ selectedTurma.name }}</h1><p>{{ selectedTurma.students.length }} {{ selectedTurma.students.length === 1 ? "aluno cadastrado" : "alunos cadastrados" }}</p></div>
+      <div><span class="eyebrow">TURMA</span><h1>{{ selectedTurma.name }}</h1><p>{{ studentTotal(selectedTurma) }} {{ studentTotal(selectedTurma) === 1 ? "aluno cadastrado" : "alunos cadastrados" }}</p></div>
       <button class="outline-button" @click="$emit('close-turma')">Voltar para turmas</button>
     </div>
     <form class="form-card turma-form" @submit.prevent="$emit('save-aluno')">
@@ -50,7 +55,7 @@ export default {
       </div>
     </form>
     <h2 class="dashboard-section-title">Alunos da turma</h2>
-    <div v-if="!selectedTurma.students.length" class="empty-card"><span>♙</span><h2>Nenhum aluno cadastrado</h2><p>Cadastre o primeiro aluno desta turma.</p></div>
+    <div v-if="studentTotal(selectedTurma) === 0" class="empty-card"><span>♙</span><h2>Nenhum aluno cadastrado</h2><p>Cadastre o primeiro aluno desta turma.</p></div>
     <div v-else class="question-list">
       <article v-for="aluno in selectedTurma.students" :key="aluno.id" class="question-item">
         <span class="question-number">♙</span>

@@ -3,10 +3,9 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const userRepository = require('../repositories/userRepository');
 const { ErroDeNegocio } = require('../errors/appError');
+const { JWT_SECRET, JWT_EXPIRES_IN } = require('../config/auth');
 
 const SALT_ROUNDS = 12;
-const JWT_SECRET = process.env.JWT_SECRET || 'sgp_jwt_secret_dev_key_2026';
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h';
 
 // Regex para validação estrutural completa do e-mail e domínio
 const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@([a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/;

@@ -7,7 +7,7 @@ const avaliacaoRepository = require('../src/repositories/avaliacaoRepository');
 const atribuicaoRepository = require('../src/repositories/atribuicaoRepository');
 const atribuicaoService = require('../src/services/atribuicaoService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sgp_jwt_secret_dev_key_2026';
+const { JWT_SECRET } = require('../src/config/auth');
 
 async function iniciarServidor(t) {
   const server = criarApp().listen(0, '127.0.0.1');

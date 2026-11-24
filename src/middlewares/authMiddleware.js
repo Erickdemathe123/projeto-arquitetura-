@@ -1,7 +1,6 @@
 // Middleware: intercepta requisições protegidas e valida o token JWT.
 const jwt = require('jsonwebtoken');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'sgp_jwt_secret_dev_key_2026';
+const { JWT_SECRET } = require('../config/auth');
 
 function autenticar(req, res, next) {
   const authHeader = req.headers.authorization;

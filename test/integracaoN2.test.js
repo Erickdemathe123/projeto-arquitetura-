@@ -9,7 +9,7 @@ const avaliacaoRepository = require('../src/repositories/avaliacaoRepository');
 const pool = require('../src/config/db');
 const turmaService = require('../src/services/turmaService');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sgp_jwt_secret_dev_key_2026';
+const { JWT_SECRET } = require('../src/config/auth');
 
 async function iniciarServidor(t) {
   const server = criarApp().listen(0, '127.0.0.1');
