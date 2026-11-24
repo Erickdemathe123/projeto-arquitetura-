@@ -83,8 +83,8 @@ function drawAnswerSheet(doc, {
   });
   const examName = avaliacao.name || 'Avaliação';
   const examNameSize = examName.length > 48 ? 11 : 14;
-  doc.font('Helvetica-Bold').fontSize(examNameSize).text(examName, mm(54), mm(30), {
-    width: mm(108), align: 'center'
+  doc.font('Helvetica-Bold').fontSize(examNameSize).text(examName, mm(55), mm(30), {
+    width: mm(100), align: 'center'
   });
   doc.font('Helvetica').fontSize(8).text(
     [avaliacao.date, `Versão ${versionLabel}`].filter(Boolean).join(' · '),
@@ -129,7 +129,7 @@ function drawAnswerSheet(doc, {
 
   const grid = answerPanel;
   doc.font('Helvetica-Bold').fontSize(7).text('RESPOSTAS', mm(dividerX + 2), mm(grid.yMm + 4), { width: mm(grid.widthMm - 43), align: 'center' });
-  const legendY = layout.BUBBLE_GRID.gridStartYMm - 1;
+  const legendY = layout.BUBBLE_GRID.gridStartYMm - 7;
   for (let index = 0; index < layout.BUBBLE_GRID.alternatives.length; index++) {
     const position = layout.obterPosicaoBolha(0, index);
     doc.font('Helvetica-Bold').fontSize(6.5).text(layout.BUBBLE_GRID.alternatives[index], mm(position.xMm - 2), mm(legendY), { width: mm(4), align: 'center' });

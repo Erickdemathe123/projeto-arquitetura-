@@ -40,9 +40,9 @@ const STUDENT_FIELDS = {
 
 const ANSWER_SHEET = {
   frame: { xMm: 15, yMm: 15, widthMm: 180, heightMm: 267 },
-  logo: { xMm: 28, yMm: 20, widthMm: 34, heightMm: 24 },
-  title: { xMm: 64, yMm: 20, widthMm: 98 },
-  grade: { xMm: 168, yMm: 49, widthMm: 22, heightMm: 25 },
+  logo: { xMm: 22, yMm: 20, widthMm: 28, heightMm: 20 },
+  title: { xMm: 55, yMm: 20, widthMm: 100 },
+  grade: { xMm: 168, yMm: 20, widthMm: 22, heightMm: 25 },
   proofInstructions: { xMm: 20, yMm: 66, widthMm: 78, heightMm: 208 },
   answerInstructions: { xMm: 104, yMm: 66, widthMm: 86, heightMm: 43 },
   qrPanel: { xMm: 20, yMm: 129, widthMm: 78, heightMm: 145 },
@@ -56,7 +56,7 @@ const BUBBLE_GRID = {
   alternatives: ALTERNATIVES,
   columns: 1,
   rowsPerColumn: 25,
-  gridStartYMm: 144,
+  gridStartYMm: 149,
   rowHeightMm: 4.8,
   columnStartXMm: [145],
   questionLabelWidthMm: 8,
