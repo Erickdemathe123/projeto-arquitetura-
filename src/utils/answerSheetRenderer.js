@@ -11,11 +11,12 @@ function imageBuffer(dataUrl) {
 }
 
 function asConfig(avaliacao, config = {}) {
-  const answerSheet = Object.keys(config || {}).length ? config : (avaliacao.answerSheet || {});
+  const hasAnswerSheetConfig = Object.keys(config || {}).length > 0 || Boolean(avaliacao.answerSheet);
+  const answerSheet = hasAnswerSheetConfig ? (config || avaliacao.answerSheet || {}) : {};
   return {
     institutionName: answerSheet.institutionName || avaliacao.institution || '',
     logo: answerSheet.logo || avaliacao.logo || '',
-    proofInstructions: answerSheet.proofInstructions || avaliacao.instructions || '',
+    proofInstructions: hasAnswerSheetConfig ? (answerSheet.proofInstructions || '') : (avaliacao.instructions || ''),
     answerInstructions: answerSheet.answerInstructions || '',
     resultUrl: answerSheet.resultUrl || '',
     resultText: answerSheet.resultText || ''
@@ -117,19 +118,21 @@ function drawAnswerSheet(doc, {
     }
   }
 
-  drawPanel(doc, layout.ANSWER_SHEET.qrPanel);
+  const answerPanel = layout.ANSWER_SHEET.gridPanel;
+  doc.rect(mm(answerPanel.xMm), mm(answerPanel.yMm), mm(answerPanel.widthMm), mm(answerPanel.heightMm)).stroke('#777777');
+  const dividerX = answerPanel.xMm + 39;
+  doc.moveTo(mm(dividerX), mm(answerPanel.yMm)).lineTo(mm(dividerX), mm(answerPanel.yMm + answerPanel.heightMm)).stroke('#999999');
   if (Buffer.isBuffer(qrBuffer)) {
     doc.image(qrBuffer, mm(layout.QR.xMm), mm(layout.QR.yMm), {
       width: mm(layout.QR.sizeMm), height: mm(layout.QR.sizeMm)
     });
   }
-  doc.font('Helvetica').fontSize(7).text('QR Code da prova', mm(28), mm(221), { width: mm(55), align: 'center' });
-  doc.font('Helvetica').fontSize(7).text(`Código: ${avaliacao.publicCode || '-'}`, mm(23), mm(263), { width: mm(68), align: 'center' });
+  doc.font('Helvetica').fontSize(7).text('QR Code da prova', mm(106), mm(221), { width: mm(35), align: 'center' });
+  doc.font('Helvetica').fontSize(7).text(`Código: ${avaliacao.publicCode || '-'}`, mm(106), mm(263), { width: mm(35), align: 'center' });
 
-  const grid = layout.ANSWER_SHEET.gridPanel;
-  drawPanel(doc, grid);
-  doc.font('Helvetica-Bold').fontSize(7).text('RESPOSTAS', mm(grid.xMm + 4), mm(grid.yMm + 4), { width: mm(grid.widthMm - 8), align: 'center' });
-  const legendY = layout.BUBBLE_GRID.gridStartYMm - 5;
+  const grid = answerPanel;
+  doc.font('Helvetica-Bold').fontSize(7).text('RESPOSTAS', mm(dividerX + 2), mm(grid.yMm + 4), { width: mm(grid.widthMm - 43), align: 'center' });
+  const legendY = layout.BUBBLE_GRID.gridStartYMm - 1;
   for (let index = 0; index < layout.BUBBLE_GRID.alternatives.length; index++) {
     const position = layout.obterPosicaoBolha(0, index);
     doc.font('Helvetica-Bold').fontSize(6.5).text(layout.BUBBLE_GRID.alternatives[index], mm(position.xMm - 2), mm(legendY), { width: mm(4), align: 'center' });

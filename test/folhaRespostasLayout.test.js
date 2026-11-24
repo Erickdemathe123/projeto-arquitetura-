@@ -27,12 +27,12 @@ test('QR Code fica dentro da página e não sobrepõe nenhum marcador de canto',
   }
 });
 
-test('obterPosicaoQuestao distribui até 25 questões em 2 colunas de até 13', () => {
+test('obterPosicaoQuestao distribui até 25 questões em uma coluna', () => {
   const posicoes = Array.from({ length: layout.BUBBLE_GRID.maxQuestions }, (_, indice) =>
     layout.obterPosicaoQuestao(indice)
   );
-  assert.equal(posicoes.filter((p) => p.coluna === 0).length, 13);
-  assert.equal(posicoes.filter((p) => p.coluna === 1).length, 12);
+  assert.equal(posicoes.filter((p) => p.coluna === 0).length, 25);
+  assert.equal(posicoes.filter((p) => p.coluna === 1).length, 0);
   const chaves = new Set(posicoes.map((p) => `${p.xMm},${p.yMm}`));
   assert.equal(chaves.size, posicoes.length);
 });
