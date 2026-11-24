@@ -264,6 +264,36 @@ test('T43 gera PDF do caderno completo e não corta questão estruturalmente', a
   assert.ok(pdf.length > 1000);
 });
 
+test('gera um único PDF com todas as provas individuais da turma', async () => {
+  const avaliacao = {
+    id: 8,
+    name: 'Avaliação em lote',
+    publicCode: 'SGP-LOTE',
+    questionSnapshots: [{
+      id: 1,
+      text: 'Questão do lote.',
+      alternatives: ['A', 'B', 'C', 'D', 'E']
+    }],
+    questionIds: [1],
+    questionPoints: [1]
+  };
+  const versoes = [{
+    label: 'A',
+    printedItems: [{ question_id: 1, alternative_order: [0, 1, 2, 3, 4], correct_index: 0 }]
+  }];
+  const atribuicoes = [
+    { studentId: 51, studentName: 'Ana', studentRa: 'RA-1', versionLabel: 'A', qrCode: 'c'.repeat(64) },
+    { studentId: 52, studentName: 'Beto', studentRa: 'RA-2', versionLabel: 'A', qrCode: 'd'.repeat(64) }
+  ];
+
+  const individual = await cadernoPdf.gerar(avaliacao, versoes, atribuicoes[0]);
+  const lote = await cadernoPdf.gerarLote(avaliacao, atribuicoes, versoes);
+
+  assert.equal(lote.subarray(0, 4).toString('ascii'), '%PDF');
+  assert.ok(lote.length > individual.length);
+  assert.equal(cadernoPdf.nomeArquivoLote(avaliacao), 'avaliacao-em-lote-turma.pdf');
+});
+
 test('T62 registra o gate de impressão: PDF, DOCX, QR e marcadores são gerados', async () => {
   const avaliacao = {
     id: 8,

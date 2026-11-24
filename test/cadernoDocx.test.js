@@ -6,6 +6,8 @@ const criarApp = require('../src/app');
 const cadernoService = require('../src/services/cadernoService');
 const avaliacaoRepository = require('../src/repositories/avaliacaoRepository');
 const versaoRepository = require('../src/repositories/versaoRepository');
+const atribuicaoRepository = require('../src/repositories/atribuicaoRepository');
+const cadernoPdf = require('../src/utils/cadernoPdf');
 const { gerarCadernoDocx, montarItens, nomeArquivo, formatarPontos } = require('../src/utils/cadernoDocx');
 
 const { JWT_SECRET } = require('../src/config/auth');
@@ -128,6 +130,29 @@ test('serviço valida avaliação, questões e versão pedida', async (t) => {
   assert.equal(filename, 'prova-de-matematica-versao-B.docx');
   const xml = lerDoZip(buffer, 'word/document.xml');
   assert.ok(xml.includes('Versão B') && !xml.includes('Versão A'));
+});
+
+test('serviço exporta todas as atribuições em um único PDF', async (t) => {
+  t.mock.method(avaliacaoRepository, 'buscarPorId', async () => ({
+    ...avaliacao,
+    applicationClassId: 4
+  }));
+  t.mock.method(versaoRepository, 'listarPorAvaliacao', async () => versoes);
+  t.mock.method(atribuicaoRepository, 'listarPorAvaliacao', async () => [
+    { studentId: 51, studentName: 'Ana', studentRa: 'RA-1', versionLabel: 'A', qrCode: 'a'.repeat(64) },
+    { studentId: 52, studentName: 'Beto', studentRa: 'RA-2', versionLabel: 'B', qrCode: 'b'.repeat(64) }
+  ]);
+  const gerarLote = t.mock.method(cadernoPdf, 'gerarLote', async (exam, assignments, availableVersions) => {
+    assert.equal(exam.id, avaliacao.id);
+    assert.equal(assignments.length, 2);
+    assert.deepEqual(availableVersions, versoes);
+    return Buffer.from('%PDF-lote');
+  });
+
+  const resultado = await cadernoService.exportarPdf(17, avaliacao.id);
+  assert.equal(resultado.filename, 'prova-de-matematica-turma.pdf');
+  assert.equal(resultado.buffer.toString(), '%PDF-lote');
+  assert.equal(gerarLote.mock.calls.length, 1);
 });
 
 test('rota GET /api/avaliacoes/:id/caderno/docx exige professor e devolve o arquivo', async (t) => {

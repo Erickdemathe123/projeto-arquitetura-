@@ -62,28 +62,25 @@ async function exportarPdf(professorId, examIdRaw, versaoRaw, alunoIdRaw) {
   }
   if (avaliacao.applicationClassId) {
     const assignments = await atribuicaoRepository.listarPorAvaliacao(examId);
-    if (!assignments.length) throw new ErroDeNegocio(409, 'Gere as atribuições dos alunos antes de baixar o PDF individual.');
-    let assignment = null;
+    if (!assignments.length) throw new ErroDeNegocio(409, 'Gere as atribuições dos alunos antes de baixar o PDF da turma.');
     if (alunoIdRaw) {
       const alunoId = validarId(alunoIdRaw, 'Id do aluno');
-      assignment = assignments.find((item) => item.studentId === alunoId);
+      const assignment = assignments.find((item) => item.studentId === alunoId);
       if (!assignment) throw new ErroDeNegocio(404, 'Esta atribuição não pertence a esta avaliação.');
-    } else {
-      assignment = assignments[0];
+      const selectedVersions = versoes.filter((versao) => versao.label === assignment.versionLabel);
+      const buffer = await cadernoPdf.gerar(avaliacao, selectedVersions, assignment);
+      return { buffer, filename: cadernoPdf.nomeArquivo(avaliacao, assignment) };
     }
-    const selectedVersions = assignment
-      ? versoes.filter((versao) => versao.label === assignment.versionLabel)
-      : [];
-    const buffer = await cadernoPdf.gerar(avaliacao, selectedVersions, {
-      studentId: assignment.studentId,
-      studentName: assignment.studentName,
-      studentRa: assignment.studentRa,
-      versionLabel: assignment.versionLabel,
-      qrCode: assignment.qrCode
-    });
-    return { buffer, filename: cadernoPdf.nomeArquivo(avaliacao, {
-      studentName: assignment.studentName
-    }) };
+
+    // Sem alunoId, gera um único arquivo com todas as provas individuais.
+    const assignmentsToGenerate = rotulo
+      ? assignments.filter((assignment) => assignment.versionLabel === rotulo)
+      : assignments;
+    if (!assignmentsToGenerate.length) {
+      throw new ErroDeNegocio(404, `Nenhuma atribuição encontrada para a versão ${rotulo}.`);
+    }
+    const buffer = await cadernoPdf.gerarLote(avaliacao, assignmentsToGenerate, versoes);
+    return { buffer, filename: cadernoPdf.nomeArquivoLote(avaliacao) };
   }
   const buffer = await folhaPdf.gerar(avaliacao, versoes, avaliacao.questionCount || avaliacao.questionSnapshots?.length || 20);
   return { buffer, filename: folhaPdf.nomeArquivo(avaliacao) };
