@@ -63,11 +63,10 @@ function drawAnswerSheet(doc, {
   const count = Math.min(layout.BUBBLE_GRID.maxQuestions, Number(questionCount) || 0);
   if (addPage) doc.addPage();
 
-  // Moldura principal e marcadores para a leitura pela câmera.
+  // Moldura principal da folha.
   doc.roundedRect(mm(layout.ANSWER_SHEET.frame.xMm), mm(layout.ANSWER_SHEET.frame.yMm), mm(layout.ANSWER_SHEET.frame.widthMm), mm(layout.ANSWER_SHEET.frame.heightMm), mm(1.5)).stroke('#777777');
-  for (const marker of layout.MARKERS) {
-    doc.rect(mm(marker.xMm), mm(marker.yMm), mm(marker.sizeMm), mm(marker.sizeMm)).fill('#111111');
-  }
+  // A câmera usa o QR Code para corrigir a perspectiva; os marcadores pretos
+  // não são necessários na folha e foram removidos do desenho impresso.
 
   const logo = imageBuffer(settings.logo);
   if (logo) {
@@ -76,22 +75,20 @@ function drawAnswerSheet(doc, {
       align: 'center',
       valign: 'center'
     });
-  } else if (settings.institutionName) {
-    doc.font('Helvetica-Bold').fontSize(9).text(settings.institutionName, mm(28), mm(27), {
-      width: mm(34), align: 'center'
-    });
   }
 
-  const title = [settings.institutionName, avaliacao.course, avaliacao.subject].filter(Boolean).join(' · ');
-  doc.font('Helvetica-Bold').fontSize(10).text(title || 'Instituição', mm(layout.ANSWER_SHEET.title.xMm), mm(21), {
+  const subject = avaliacao.subject || 'Disciplina';
+  doc.font('Helvetica-Bold').fontSize(10).text(subject, mm(layout.ANSWER_SHEET.title.xMm), mm(21), {
     width: mm(layout.ANSWER_SHEET.title.widthMm), align: 'center'
   });
-  doc.font('Helvetica-Bold').fontSize(14).text(avaliacao.name || 'Avaliação', mm(54), mm(31), {
+  const examName = avaliacao.name || 'Avaliação';
+  const examNameSize = examName.length > 48 ? 11 : 14;
+  doc.font('Helvetica-Bold').fontSize(examNameSize).text(examName, mm(54), mm(30), {
     width: mm(108), align: 'center'
   });
   doc.font('Helvetica').fontSize(8).text(
     [avaliacao.date, `Versão ${versionLabel}`].filter(Boolean).join(' · '),
-    mm(54), mm(40), { width: mm(108), align: 'center' }
+    mm(54), mm(41), { width: mm(108), align: 'center' }
   );
 
   const grade = layout.ANSWER_SHEET.grade;

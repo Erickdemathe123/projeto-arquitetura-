@@ -15,21 +15,26 @@ function formatPoints(points) {
 
 function addHeader(doc, avaliacao, versionLabel, student) {
   const logo = answerSheetRenderer.imageBuffer(avaliacao.logo);
+  const headerX = logo ? mm(layout.MARGIN_MM + 32) : mm(layout.MARGIN_MM);
+  const headerWidth = logo ? mm(layout.PAGE.widthMm - layout.MARGIN_MM * 2 - 32) : mm(layout.PAGE.widthMm - layout.MARGIN_MM * 2);
+  const headerY = doc.y;
   if (logo) {
-    doc.image(logo, mm(layout.MARGIN_MM), doc.y, {
+    doc.image(logo, mm(layout.MARGIN_MM), headerY, {
       fit: [mm(25), mm(20)],
       align: 'center',
       valign: 'center'
     });
   }
   const institution = [avaliacao.institution, avaliacao.course, avaliacao.subject].filter(Boolean).join(' · ');
-  if (institution) doc.font('Helvetica-Bold').fontSize(10).text(institution, { align: 'center' });
-  doc.moveDown(0.25).font('Helvetica-Bold').fontSize(16).text(avaliacao.name || 'Avaliação', { align: 'center' });
+  if (institution) doc.font('Helvetica-Bold').fontSize(10).text(institution, headerX, headerY, { width: headerWidth, align: 'center' });
+  const title = avaliacao.name || 'Avaliação';
+  const titleSize = title.length > 48 ? 12 : 16;
+  doc.moveDown(0.25).font('Helvetica-Bold').fontSize(titleSize).text(title, headerX, doc.y, { width: headerWidth, align: 'center' });
   const meta = [avaliacao.professor, avaliacao.className, avaliacao.date].filter(Boolean).join(' · ');
-  if (meta) doc.moveDown(0.2).font('Helvetica').fontSize(9).text(meta, { align: 'center' });
+  if (meta) doc.moveDown(0.2).font('Helvetica').fontSize(9).text(meta, { width: headerWidth, align: 'center' });
   doc.moveDown(0.2).font('Helvetica-Bold').fontSize(9).text(
     `Versão ${versionLabel}${student ? ` · Aluno: ${student.studentName} · RA: ${student.studentRa}` : ''}`,
-    { align: 'center' }
+    { width: headerWidth, align: 'center' }
   );
   if (avaliacao.instructions) {
     doc.moveDown(0.5).font('Helvetica-Oblique').fontSize(9).text(`Instruções: ${avaliacao.instructions}`);

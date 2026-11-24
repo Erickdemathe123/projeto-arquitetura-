@@ -57,11 +57,8 @@ export default {
       <p>Salve uma vez as informações que serão repetidas nos seus gabaritos.</p>
     </div>
     <form class="form-card" @submit.prevent="$emit('save')">
-      <h2 class="form-section-title">Identificação da instituição</h2>
-      <div class="form-grid">
-        <label>Nome da instituição<input v-model="form.institutionName" maxlength="160" placeholder="Nome da escola ou faculdade"></label>
-        <label>Logo da instituição<input type="file" accept="image/*" @change="handleLogoUpload"></label>
-      </div>
+      <h2 class="form-section-title">Logo</h2>
+      <label>Logo<input type="file" accept="image/*" @change="handleLogoUpload"></label>
       <div v-if="form.logo" class="header-config">
         <img class="logo-preview" :src="form.logo" alt="Pré-visualização da logo">
         <button type="button" class="outline-button compact" @click="form.logo = ''">Remover logo</button>
