@@ -737,9 +737,6 @@ export default {
       this.editingExamId = null;
       this.examForm = emptyExamForm();
       this.examForm.answerSheet = { ...this.answerSheetSettings };
-      this.examForm.institution = this.answerSheetSettings.institutionName || "";
-      this.examForm.logo = this.answerSheetSettings.logo || "";
-      this.examForm.instructions = this.answerSheetSettings.proofInstructions || "";
       this.navigate("newExam");
     },
     newStandaloneSheet() {

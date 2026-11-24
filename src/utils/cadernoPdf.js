@@ -14,6 +14,14 @@ function formatPoints(points) {
 }
 
 function addHeader(doc, avaliacao, versionLabel, student) {
+  const logo = answerSheetRenderer.imageBuffer(avaliacao.logo);
+  if (logo) {
+    doc.image(logo, mm(layout.MARGIN_MM), doc.y, {
+      fit: [mm(25), mm(20)],
+      align: 'center',
+      valign: 'center'
+    });
+  }
   const institution = [avaliacao.institution, avaliacao.course, avaliacao.subject].filter(Boolean).join(' · ');
   if (institution) doc.font('Helvetica-Bold').fontSize(10).text(institution, { align: 'center' });
   doc.moveDown(0.25).font('Helvetica-Bold').fontSize(16).text(avaliacao.name || 'Avaliação', { align: 'center' });

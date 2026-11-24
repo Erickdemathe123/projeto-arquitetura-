@@ -30,7 +30,7 @@ const MARKERS = [
 ].map((marker) => ({ ...marker, sizeMm: MARKER_SIZE_MM }));
 
 // QR Code da atribuição, no painel esquerdo da folha.
-const QR = { xMm: 30, yMm: 172, sizeMm: 45 };
+const QR = { xMm: 110, yMm: 178, sizeMm: 30 };
 
 // Campos de identificação do aluno, no cabeçalho da folha.
 const STUDENT_FIELDS = {
@@ -43,7 +43,7 @@ const ANSWER_SHEET = {
   logo: { xMm: 28, yMm: 20, widthMm: 34, heightMm: 24 },
   title: { xMm: 64, yMm: 20, widthMm: 98 },
   grade: { xMm: 168, yMm: 20, widthMm: 22, heightMm: 25 },
-  proofInstructions: { xMm: 20, yMm: 66, widthMm: 78, heightMm: 57 },
+  proofInstructions: { xMm: 20, yMm: 66, widthMm: 78, heightMm: 208 },
   answerInstructions: { xMm: 104, yMm: 66, widthMm: 86, heightMm: 43 },
   qrPanel: { xMm: 20, yMm: 129, widthMm: 78, heightMm: 145 },
   gridPanel: { xMm: 104, yMm: 129, widthMm: 86, heightMm: 145 }
@@ -54,14 +54,14 @@ const ALTERNATIVES = ['A', 'B', 'C', 'D', 'E'];
 const BUBBLE_GRID = {
   maxQuestions: 25,
   alternatives: ALTERNATIVES,
-  columns: 2,
-  rowsPerColumn: 13,
+  columns: 1,
+  rowsPerColumn: 25,
   gridStartYMm: 139,
-  rowHeightMm: 9.5,
-  columnStartXMm: [108, 151],
-  questionLabelWidthMm: 9,
-  bubbleDiameterMm: 4,
-  bubbleSpacingMm: 7
+  rowHeightMm: 4.8,
+  columnStartXMm: [145],
+  questionLabelWidthMm: 8,
+  bubbleDiameterMm: 3.2,
+  bubbleSpacingMm: 5.6
 };
 
 function validarIndiceQuestao(indiceQuestao) {

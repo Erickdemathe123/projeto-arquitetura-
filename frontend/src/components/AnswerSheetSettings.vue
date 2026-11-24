@@ -67,8 +67,8 @@ export default {
         <button type="button" class="outline-button compact" @click="form.logo = ''">Remover logo</button>
       </div>
 
-      <h2 class="form-section-title">Orientações da prova</h2>
-      <label>Texto exibido no lado esquerdo da folha<textarea v-model="form.proofInstructions" maxlength="5000" rows="8" placeholder="Ex.: orientações para realização da prova..."></textarea></label>
+      <h2 class="form-section-title">Orientações gerais do gabarito</h2>
+      <label>Texto exibido no lado esquerdo da folha de respostas<textarea v-model="form.proofInstructions" maxlength="5000" rows="8" placeholder="Orientações gerais que aparecerão no gabarito."></textarea></label>
 
       <h2 class="form-section-title">Orientações para preencher o gabarito</h2>
       <label>Texto exibido junto à grade de respostas<textarea v-model="form.answerInstructions" maxlength="5000" rows="6" placeholder="Explique como o aluno deve preencher as respostas."></textarea></label>
