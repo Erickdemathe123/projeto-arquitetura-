@@ -1250,7 +1250,7 @@ button[aria-label]:hover::after {
 }
 .answer-preview-title h2 {
   margin-top: 4px;
-  font-size: 16px;
+  font-size: 10px;
 }
 .answer-preview-title p {
   margin-top: 4px;
