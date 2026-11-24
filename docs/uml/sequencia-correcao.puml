@@ -1,0 +1,73 @@
+@startuml
+title Diagrama de Sequência - Correção automática pela câmera
+autonumber
+skinparam shadowing false
+skinparam sequenceMessageAlign left
+
+actor Professor
+boundary "ScanScreen /\nQrScanner.vue" as UI
+control "answerSheetScan.js\n(leitor OMR)" as OMR
+participant "App.vue /\nservices/api.js" as Front
+participant "Rotas de\nAvaliações" as Rota
+control "AtribuicaoController\n/ Service" as Atrib
+control "ResultadoController\n/ Service" as Res
+participant "Repositórios" as Repo
+database MySQL
+
+Professor -> UI : abrir câmera
+UI -> UI : getUserMedia (câmera traseira)
+loop a cada ~120 ms até achar um QR
+  UI -> UI : capturar quadro no canvas\njsQR(imagem)
+end
+UI -> OMR : lerRespostasDaFolha(imagem, cantos do QR, nº questões)
+OMR -> OMR : criarHomografia(QR em mm -> pixels)
+loop para cada questão e alternativa
+  OMR -> OMR : obterPosicaoBolha() (layout compartilhado)\npontuacaoBolha()
+end
+OMR -> OMR : classificarMarcacao()\n(marcada / em branco / dupla)
+OMR --> UI : respostas lidas
+UI -> Front : detected { qrCode, respostas }
+Front -> Rota : POST /api/avaliacoes/:id/atribuicoes/validar-qr
+Rota -> Atrib : validarQr(professorId, examId, qrCode)
+Atrib -> Repo : buscarPorQrCode(examId, qrCode)
+Repo -> MySQL : SELECT exam_assignments + exam_versions + users
+MySQL --> Repo : atribuição
+alt QR de outra prova ou não atribuído
+  Repo --> Atrib : vazio
+  Atrib --> Front : HTTP 404
+  Front --> Professor : "QR não pertence à avaliação"
+else QR válido
+  Repo --> Atrib : aluno + versão
+  Atrib --> Front : HTTP 200 { aluno, RA, versão }
+  Front --> Professor : tela de conferência\n(aluno, versão, respostas)
+  opt leitura errada ou prova sem identificação
+    Professor -> Front : ajustar alternativa / informar RA
+  end
+  Professor -> Front : confirmar correção
+  Front -> Rota : POST /api/avaliacoes/:id/correcoes\n{ versao, studentId ou ra, respostas }
+  Rota -> Res : corrigirAutomaticamente(professorId, examId, body)
+  Res -> Repo : buscar avaliação, versão e aluno
+  Repo -> MySQL : SELECT
+  MySQL --> Repo : gabarito da versão, pesos, matrícula
+  Repo --> Res : dados
+  alt aluno fora da turma / versão inexistente / nº de respostas errado
+    Res --> Front : HTTP 400 / 404 / 409
+    Front --> Professor : mensagem de erro
+  else dados válidos
+    Res -> Res : nota = pontos obtidos / total x 10
+    Res -> Repo : registrarAutomatico(nota, respostas)
+    Repo -> MySQL : BEGIN
+    Repo -> MySQL : INSERT results
+    loop para cada questão
+      Repo -> MySQL : INSERT result_answers
+    end
+    Repo -> MySQL : COMMIT
+    Repo --> Res : resultado
+    Res --> Front : HTTP 201 { aluno, nota }
+    Front -> Rota : GET /api/avaliacoes/:id/resultados
+    Rota --> Front : andamento atualizado
+    Front --> Professor : "Nota registrada" e próxima folha
+  end
+end
+
+@enduml
