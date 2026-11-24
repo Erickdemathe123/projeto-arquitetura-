@@ -39,6 +39,9 @@ function addHeader(doc, avaliacao, versionLabel, student) {
   if (avaliacao.instructions) {
     doc.moveDown(0.5).font('Helvetica-Oblique').fontSize(9).text(`Instruções: ${avaliacao.instructions}`);
   }
+  // O cabeçalho usa coordenadas próprias. Retorna o cursor para a margem
+  // antes de desenhar as questões, evitando deslocar o caderno inteiro.
+  doc.x = mm(layout.MARGIN_MM);
   doc.moveDown();
 }
 

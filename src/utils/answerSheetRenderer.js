@@ -82,7 +82,7 @@ function drawAnswerSheet(doc, {
     width: mm(layout.ANSWER_SHEET.title.widthMm), align: 'center'
   });
   const examName = avaliacao.name || 'Avaliação';
-  const examNameSize = examName.length > 48 ? 11 : 14;
+  const examNameSize = 10;
   doc.font('Helvetica-Bold').fontSize(examNameSize).text(examName, mm(55), mm(30), {
     width: mm(100), align: 'center'
   });
