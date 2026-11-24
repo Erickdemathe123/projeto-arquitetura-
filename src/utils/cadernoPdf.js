@@ -28,7 +28,7 @@ function addHeader(doc, avaliacao, versionLabel, student) {
   doc.moveDown();
 }
 
-function drawAnswerSheet(doc, avaliacao, versionLabel, student, questionCount, qrText) {
+function drawAnswerSheet(doc, avaliacao, versionLabel, student, questionCount, qrBuffer) {
   doc.addPage();
   doc.font('Helvetica-Bold').fontSize(15).text('Folha de respostas', { align: 'center' });
   doc.moveDown(0.25).font('Helvetica').fontSize(9).text(
@@ -38,7 +38,6 @@ function drawAnswerSheet(doc, avaliacao, versionLabel, student, questionCount, q
   for (const marker of layout.MARKERS) {
     doc.rect(mm(marker.xMm), mm(marker.yMm), mm(marker.sizeMm), mm(marker.sizeMm)).fill('#111111');
   }
-  const qrBuffer = Buffer.isBuffer(qrText) ? qrText : null;
   if (qrBuffer) {
     doc.image(qrBuffer, mm(layout.QR.xMm), mm(layout.QR.yMm), {
       width: mm(layout.QR.sizeMm),
@@ -69,17 +68,28 @@ function drawAnswerSheet(doc, avaliacao, versionLabel, student, questionCount, q
   }
 }
 
-async function gerar(avaliacao, versoes = [], student = null) {
-  if (!avaliacao.questionSnapshots?.length) {
-    throw new Error('A avaliação não possui questões.');
-  }
-  const version = versoes.length ? versoes[0] : null;
+function createDocument() {
+  const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: mm(layout.MARGIN_MM) });
+  const chunks = [];
+  const finished = new Promise((resolve, reject) => {
+    doc.on('data', (chunk) => chunks.push(chunk));
+    doc.on('end', () => resolve(Buffer.concat(chunks)));
+    doc.on('error', reject);
+  });
+  return { doc, finished };
+}
+
+function buildItems(avaliacao, version) {
   const printedItems = version?.printedItems || [];
   const byId = new Map(avaliacao.questionSnapshots.map((question) => [Number(question.id), question]));
-  const items = printedItems.length
+  return printedItems.length
     ? printedItems.map((item) => ({ question: byId.get(Number(item.question_id)), item })).filter((row) => row.question)
     : avaliacao.questionSnapshots.map((question) => ({ question, item: null }));
+}
 
+async function renderStudentExam(doc, avaliacao, versao, student = null) {
+  const versionLabel = versao?.label || 'Única';
+  const items = buildItems(avaliacao, versao);
   const qrText = student?.qrCode
     ? JSON.stringify({
         examId: avaliacao.id,
@@ -92,19 +102,12 @@ async function gerar(avaliacao, versoes = [], student = null) {
     : JSON.stringify({
         examId: avaliacao.id,
         publicCode: avaliacao.publicCode,
-        versionLabel: version?.label || 'Única',
+        versionLabel,
         standalone: Boolean(avaliacao.standaloneAnswerSheet)
       });
   const qrBuffer = await QRCode.toBuffer(student?.qrCode || qrText, { width: 240, margin: 1 });
-  const doc = new PDFDocument({ size: 'A4', layout: 'portrait', margin: mm(layout.MARGIN_MM) });
-  const chunks = [];
-  const finished = new Promise((resolve, reject) => {
-    doc.on('data', (chunk) => chunks.push(chunk));
-    doc.on('end', () => resolve(Buffer.concat(chunks)));
-    doc.on('error', reject);
-  });
 
-  addHeader(doc, avaliacao, version?.label || 'Única', student);
+  addHeader(doc, avaliacao, versionLabel, student);
   const pointsByQuestion = new Map(
     (avaliacao.questionIds || []).map((id, index) => [Number(id), (avaliacao.questionPoints || [])[index]])
   );
@@ -127,8 +130,37 @@ async function gerar(avaliacao, versoes = [], student = null) {
     }
     doc.moveDown(0.5);
   }
+  drawAnswerSheet(doc, avaliacao, versionLabel, student, items.length, qrBuffer);
+}
 
-  drawAnswerSheet(doc, avaliacao, version?.label || 'Única', student, items.length, qrBuffer);
+async function gerar(avaliacao, versoes = [], student = null) {
+  if (!avaliacao.questionSnapshots?.length) {
+    throw new Error('A avaliação não possui questões.');
+  }
+  const { doc, finished } = createDocument();
+  await renderStudentExam(doc, avaliacao, versoes.length ? versoes[0] : null, student);
+  doc.end();
+  return finished;
+}
+
+// Gera um único PDF com o caderno e a folha de respostas de cada aluno.
+async function gerarLote(avaliacao, atribuicoes, versoes = []) {
+  if (!avaliacao.questionSnapshots?.length) {
+    throw new Error('A avaliação não possui questões.');
+  }
+  if (!Array.isArray(atribuicoes) || !atribuicoes.length) {
+    throw new Error('A avaliação não possui atribuições para gerar o PDF.');
+  }
+
+  const versoesPorRotulo = new Map(versoes.map((versao) => [versao.label, versao]));
+  const { doc, finished } = createDocument();
+  for (let index = 0; index < atribuicoes.length; index++) {
+    const atribuicao = atribuicoes[index];
+    const versao = versoesPorRotulo.get(atribuicao.versionLabel);
+    if (!versao) throw new Error(`A versão ${atribuicao.versionLabel} não existe nesta avaliação.`);
+    if (index > 0) doc.addPage();
+    await renderStudentExam(doc, avaliacao, versao, atribuicao);
+  }
   doc.end();
   return finished;
 }
@@ -142,4 +174,8 @@ function nomeArquivo(avaliacao, student = null) {
   return `${base}${suffix}.pdf`;
 }
 
-module.exports = { gerar, nomeArquivo };
+function nomeArquivoLote(avaliacao) {
+  return nomeArquivo(avaliacao, { studentName: 'turma' });
+}
+
+module.exports = { gerar, gerarLote, nomeArquivo, nomeArquivoLote };
