@@ -77,6 +77,6 @@ describe("ExamPreview", () => {
   it("mostra na folha de respostas só as letras de cada questão", () => {
     const exam = { name: "Prova", questionIds: [1], questionSnapshots: [{ id: 1, text: "2 + 2?", alternatives: ["4", "3"] }] };
     const wrapper = mount(ExamPreview, { props: { exam, questions: [] } });
-    expect(wrapper.find(".answer-grid div").text()).toBe("1A ○B ○");
+    expect(wrapper.find(".answer-grid div").text()).toBe("Q1:A ○B ○");
   });
 });
