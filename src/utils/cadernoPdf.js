@@ -7,42 +7,55 @@ function mm(value) {
   return value * 72 / 25.4;
 }
 
-function formatPoints(points) {
-  const value = Number(points);
-  if (!Number.isFinite(value) || value <= 0) return '';
-  return `(${value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ${value === 1 ? 'ponto' : 'pontos'})`;
-}
-
 function addHeader(doc, avaliacao, versionLabel, student) {
+  const pageX = mm(layout.MARGIN_MM);
+  const pageWidth = mm(layout.PAGE.widthMm - layout.MARGIN_MM * 2);
   const logo = answerSheetRenderer.imageBuffer(avaliacao.logo);
-  const headerX = logo ? mm(layout.MARGIN_MM + 32) : mm(layout.MARGIN_MM);
-  const headerWidth = logo ? mm(layout.PAGE.widthMm - layout.MARGIN_MM * 2 - 32) : mm(layout.PAGE.widthMm - layout.MARGIN_MM * 2);
-  const headerY = doc.y;
+  const logoX = mm(layout.MARGIN_MM + 5);
+  const logoY = mm(layout.MARGIN_MM + 2);
+  const logoWidth = mm(27);
+  const logoHeight = mm(24);
+  const infoX = mm(layout.MARGIN_MM + 38);
+  const infoWidth = pageWidth - mm(38);
   if (logo) {
-    doc.image(logo, mm(layout.MARGIN_MM), headerY, {
-      fit: [mm(25), mm(20)],
-      align: 'center',
-      valign: 'center'
-    });
+    doc.image(logo, logoX, logoY, { fit: [logoWidth, logoHeight], align: 'center', valign: 'center' });
   }
-  const institution = [avaliacao.institution, avaliacao.course, avaliacao.subject].filter(Boolean).join(' · ');
-  if (institution) doc.font('Helvetica-Bold').fontSize(10).text(institution, headerX, headerY, { width: headerWidth, align: 'center' });
+
+  const institution = avaliacao.institution || 'Instituição';
+  const course = avaliacao.course || 'Curso';
+  const subject = avaliacao.subject || 'Disciplina';
+  doc.font('Helvetica-Bold').fontSize(10).fillColor('#111111').text(institution, infoX, mm(18), { width: infoWidth, align: 'left' });
+  doc.font('Helvetica').fontSize(9).fillColor('#526176').text(course, infoX, mm(25), { width: infoWidth, align: 'left' });
+  doc.font('Helvetica').fontSize(9).fillColor('#526176').text(subject, infoX, mm(32), { width: infoWidth, align: 'left' });
+  doc.moveTo(pageX, mm(47)).lineTo(pageX + pageWidth, mm(47)).stroke('#142b45');
+
   const title = avaliacao.name || 'Avaliação';
-  const titleSize = title.length > 48 ? 12 : 16;
-  doc.moveDown(0.25).font('Helvetica-Bold').fontSize(titleSize).text(title, headerX, doc.y, { width: headerWidth, align: 'center' });
+  const titleSize = title.length > 55 ? 15 : 17;
+  const titleY = mm(55);
+  doc.font('Helvetica-Bold').fontSize(titleSize).fillColor('#102a43').text(title, pageX, titleY, {
+    width: pageWidth,
+    align: 'center',
+    lineGap: 1
+  });
+  const titleHeight = doc.heightOfString(title, { width: pageWidth, font: 'Helvetica-Bold', fontSize: titleSize, lineGap: 1 });
+  let nextY = titleY + titleHeight + mm(3);
   const meta = [avaliacao.professor, avaliacao.className, avaliacao.date].filter(Boolean).join(' · ');
-  if (meta) doc.moveDown(0.2).font('Helvetica').fontSize(9).text(meta, { width: headerWidth, align: 'center' });
-  doc.moveDown(0.2).font('Helvetica-Bold').fontSize(9).text(
-    `Versão ${versionLabel}${student ? ` · Aluno: ${student.studentName} · RA: ${student.studentRa}` : ''}`,
-    { width: headerWidth, align: 'center' }
-  );
-  if (avaliacao.instructions) {
-    doc.moveDown(0.5).font('Helvetica-Oblique').fontSize(9).text(`Instruções: ${avaliacao.instructions}`);
+  if (meta) {
+    doc.font('Helvetica').fontSize(9).fillColor('#526176').text(meta, pageX, nextY, { width: pageWidth, align: 'center' });
+    nextY += mm(6);
   }
-  // O cabeçalho usa coordenadas próprias. Retorna o cursor para a margem
-  // antes de desenhar as questões, evitando deslocar o caderno inteiro.
-  doc.x = mm(layout.MARGIN_MM);
-  doc.moveDown();
+  doc.font('Helvetica-Bold').fontSize(9).fillColor('#102a43').text(
+    `Versão ${versionLabel}${student ? ` · Aluno: ${student.studentName} · RA: ${student.studentRa}` : ''}`,
+    pageX, nextY, { width: pageWidth, align: 'center' }
+  );
+  nextY += mm(7);
+  if (avaliacao.instructions) {
+    doc.font('Helvetica-Oblique').fontSize(9).fillColor('#526176').text(`Instruções: ${avaliacao.instructions}`, pageX, nextY, { width: pageWidth, lineGap: 1 });
+    nextY = doc.y + mm(3);
+  }
+  doc.fillColor('#111111');
+  doc.x = pageX;
+  doc.y = nextY;
 }
 
 function drawAnswerSheet(doc, avaliacao, versionLabel, student, questionItems, qrBuffer) {
@@ -97,15 +110,12 @@ async function renderStudentExam(doc, avaliacao, versao, student = null) {
   const qrBuffer = await QRCode.toBuffer(student?.qrCode || qrText, { width: 240, margin: 1 });
 
   addHeader(doc, avaliacao, versionLabel, student);
-  const pointsByQuestion = new Map(
-    (avaliacao.questionIds || []).map((id, index) => [Number(id), (avaliacao.questionPoints || [])[index]])
-  );
   for (let index = 0; index < items.length; index++) {
     const { question, item } = items[index];
     const alternativeText = (question.alternatives || []).map((text, alternativeIndex) => ({ text, alternativeIndex }));
     const order = item?.alternative_order || alternativeText.map((row) => row.alternativeIndex);
     const ordered = order.map((originalIndex) => question.alternatives[originalIndex]).filter((text) => text !== undefined);
-    const questionHeader = `${index + 1}. ${question.text} ${formatPoints(pointsByQuestion.get(Number(question.id)))}`.trim();
+    const questionHeader = `${index + 1}. ${question.text}`.trim();
     const alternativesHeight = ordered.length * 16;
     const height = doc.heightOfString(questionHeader, { width: mm(layout.PAGE.widthMm - 30) }) + alternativesHeight + 18;
     if (doc.y + height > mm(layout.PAGE.heightMm - layout.MARGIN_MM)) doc.addPage();
@@ -113,7 +123,7 @@ async function renderStudentExam(doc, avaliacao, versao, student = null) {
     doc.moveDown(0.2);
     for (let alternativeIndex = 0; alternativeIndex < ordered.length; alternativeIndex++) {
       doc.font('Helvetica').fontSize(10).text(
-        `  ${String.fromCharCode(65 + alternativeIndex)}. ${ordered[alternativeIndex]}`,
+        `  ${String.fromCharCode(65 + alternativeIndex)}) ${ordered[alternativeIndex]}`,
         { width: mm(layout.PAGE.widthMm - 30), continued: false }
       );
     }
