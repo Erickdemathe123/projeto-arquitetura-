@@ -1,7 +1,8 @@
 <script>
 import { SCREEN_TITLES } from "./constants/screens";
 import { emptyExamForm, emptyQuestionForm, examFormFrom, questionFormFrom } from "./utils/forms";
-import { authApi, questoesApi, turmasApi, avaliacoesApi, resultadosApi, atribuicoesApi, isAuthenticated } from "./services/api";
+import { authApi, questoesApi, turmasApi, avaliacoesApi, resultadosApi, atribuicoesApi, configuracoesApi, isAuthenticated } from "./services/api";
+import { answerSheetSettingsFrom, emptyAnswerSheetSettings } from "./utils/answerSheetSettings";
 import AuthScreen from "./components/AuthScreen.vue";
 import StudentPortal from "./components/StudentPortal.vue";
 import AppSidebar from "./components/AppSidebar.vue";
@@ -16,6 +17,7 @@ import ExamPreview from "./components/ExamPreview.vue";
 import StatisticsScreen from "./components/StatisticsScreen.vue";
 import ScanScreen from "./components/ScanScreen.vue";
 import StandaloneSheetScreen from "./components/StandaloneSheetScreen.vue";
+import AnswerSheetSettings from "./components/AnswerSheetSettings.vue";
 import AppDialog from "./components/AppDialog.vue";
 import ThemeToggle from "./components/ThemeToggle.vue";
 import { applyTheme, getInitialTheme } from "./utils/theme";
@@ -61,6 +63,7 @@ export default {
     StatisticsScreen,
     ScanScreen,
     StandaloneSheetScreen,
+    AnswerSheetSettings,
     AppDialog,
     ThemeToggle
   },
@@ -90,6 +93,11 @@ export default {
       editingQuestionFromExam: false,
       questionForm: emptyQuestionForm(),
       examForm: emptyExamForm(),
+      answerSheetSettings: emptyAnswerSheetSettings(),
+      answerSheetForm: emptyAnswerSheetSettings(),
+      answerSheetLoading: false,
+      answerSheetError: "",
+      answerSheetMessage: "",
       previewExam: null,
       statisticsExam: null,
       statisticsSummary: null,
@@ -223,10 +231,15 @@ export default {
       this.loadingWorkspace = true;
       this.error = "";
       try {
-        const [questions, turmas, exams] = await Promise.all([
+        const settingsPromise = configuracoesApi.obterFolhaRespostas().catch((erro) => {
+          console.warn("Não foi possível carregar o modelo da folha:", erro.message);
+          return null;
+        });
+        const [questions, turmas, exams, settings] = await Promise.all([
           questoesApi.listar(),
           turmasApi.listar(),
-          avaliacoesApi.listar()
+          avaliacoesApi.listar(),
+          settingsPromise
         ]);
         this.name = this.currentUser?.name || this.name;
         this.questions = questions;
@@ -244,12 +257,43 @@ export default {
           students: []
         }));
         this.exams = exams;
+        if (settings) {
+          this.answerSheetSettings = answerSheetSettingsFrom(settings);
+          this.answerSheetForm = { ...this.answerSheetSettings };
+        }
         this.screen = "dashboard";
       } catch (erro) {
         this.error = erro.status ? erro.message : "Não foi possível carregar os dados do servidor.";
         throw erro;
       } finally {
         this.loadingWorkspace = false;
+      }
+    },
+    async loadAnswerSheetSettings() {
+      try {
+        const settings = answerSheetSettingsFrom(await configuracoesApi.obterFolhaRespostas());
+        this.answerSheetSettings = settings;
+        this.answerSheetForm = { ...settings };
+      } catch (erro) {
+        // A API continua compatível antes da migração da tabela de configurações.
+        this.answerSheetSettings = emptyAnswerSheetSettings();
+        this.answerSheetForm = { ...this.answerSheetSettings };
+        console.warn("Não foi possível carregar o modelo da folha:", erro.message);
+      }
+    },
+    async saveAnswerSheetSettings() {
+      this.answerSheetError = "";
+      this.answerSheetMessage = "";
+      try {
+        this.answerSheetLoading = true;
+        const saved = answerSheetSettingsFrom(await configuracoesApi.salvarFolhaRespostas(this.answerSheetForm));
+        this.answerSheetSettings = saved;
+        this.answerSheetForm = { ...saved };
+        this.answerSheetMessage = "Modelo da folha salvo. Novas avaliações usarão esta configuração.";
+      } catch (erro) {
+        this.answerSheetError = erro.message;
+      } finally {
+        this.answerSheetLoading = false;
       }
     },
     navigate(screen) {
@@ -267,6 +311,8 @@ export default {
       this.questions = [];
       this.exams = [];
       this.turmas = [];
+      this.answerSheetSettings = emptyAnswerSheetSettings();
+      this.answerSheetForm = emptyAnswerSheetSettings();
     },
     mapearAluno(aluno) {
       return { id: aluno.id, name: aluno.nome, ra: aluno.ra };
@@ -461,6 +507,7 @@ export default {
         name: this.examForm.name.trim(),
         questionIds: [...this.examForm.selected],
         questionPoints,
+        answerSheet: this.examForm.answerSheet,
         applicationClassId: selectedClass ? selectedClass.id : null
       };
       try {
@@ -528,6 +575,9 @@ export default {
     editExam(exam) {
       this.editingExamId = exam.id;
       this.examForm = examFormFrom(exam);
+      this.examForm.answerSheet = exam.answerSheet
+        ? { ...exam.answerSheet }
+        : { ...this.answerSheetSettings };
       this.navigate("newExam");
     },
     async removeExam(exam) {
@@ -686,6 +736,10 @@ export default {
     newExam() {
       this.editingExamId = null;
       this.examForm = emptyExamForm();
+      this.examForm.answerSheet = { ...this.answerSheetSettings };
+      this.examForm.institution = this.answerSheetSettings.institutionName || "";
+      this.examForm.logo = this.answerSheetSettings.logo || "";
+      this.examForm.instructions = this.answerSheetSettings.proofInstructions || "";
       this.navigate("newExam");
     },
     newStandaloneSheet() {
@@ -944,6 +998,15 @@ export default {
           @save-aluno="saveAluno"
           @remove-aluno="removeAluno"
           @import-students="importStudents"
+        />
+        <AnswerSheetSettings
+          v-if="screen === 'settings'"
+          :form="answerSheetForm"
+          :loading="answerSheetLoading"
+          :error="answerSheetError"
+          :message="answerSheetMessage"
+          @save="saveAnswerSheetSettings"
+          @error="answerSheetError = $event"
         />
         <QuestionsScreen
           v-if="screen === 'questions'"

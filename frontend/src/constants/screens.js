@@ -9,5 +9,6 @@ export const SCREEN_TITLES = {
   preview: "Pré-visualização",
   statistics: "Estatísticas",
   studentPortal: "Consulta do aluno",
-  scan: "Corrigir Provas"
+  scan: "Corrigir Provas",
+  settings: "Configurações"
 };

@@ -40,7 +40,7 @@ function validarDados(body = {}) {
   for (const field of [
     'institution', 'course', 'subject', 'professor', 'className', 'date',
     'instructions', 'logo', 'layout', 'shuffleQuestions', 'shuffleAlternatives',
-    'versions', 'addBlankPage', 'createdAt', 'correctionStatus'
+    'versions', 'addBlankPage', 'createdAt', 'correctionStatus', 'answerSheet'
   ]) {
     if (body[field] !== undefined) details[field] = body[field];
   }
@@ -59,8 +59,8 @@ async function criarAvulsa(professorId, body = {}) {
   const name = typeof body.name === 'string' ? body.name.trim() : '';
   if (!name || name.length > 120) throw new ErroDeNegocio(400, 'Informe um nome válido para a folha avulsa.');
   const questionCount = Number(body.questionCount);
-  if (!Number.isInteger(questionCount) || questionCount < 1 || questionCount > 20) {
-    throw new ErroDeNegocio(400, 'O número de questões deve ser um inteiro entre 1 e 20.');
+  if (!Number.isInteger(questionCount) || questionCount < 1 || questionCount > 25) {
+    throw new ErroDeNegocio(400, 'O número de questões deve ser um inteiro entre 1 e 25.');
   }
   if (!Array.isArray(body.correctAnswers) || body.correctAnswers.length !== questionCount) {
     throw new ErroDeNegocio(400, 'Informe o gabarito com uma letra de A a E para cada questão.');

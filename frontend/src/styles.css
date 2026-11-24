@@ -433,6 +433,12 @@ h1 {
 .form-section-title:not(:first-child) {
   margin-top: 30px;
 }
+.form-help {
+  margin: -14px 0 16px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
 .header-config {
   display: flex;
   align-items: flex-start;
@@ -448,6 +454,34 @@ h1 {
   border: 1px dashed var(--border-strong);
   border-radius: 8px;
   background: var(--bg);
+}
+.answer-sheet-settings-preview,
+.answer-sheet-form-note {
+  margin-top: 22px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink-2);
+}
+.answer-sheet-settings-preview-copy {
+  margin-top: 10px;
+  padding: 12px;
+  border-left: 3px solid var(--accent);
+  white-space: pre-line;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.answer-sheet-settings-preview-copy p {
+  margin: 0 0 10px;
+}
+.answer-sheet-settings-preview-copy p:last-child {
+  margin-bottom: 0;
+}
+.answer-sheet-form-note p {
+  margin: 7px 0 0;
+  color: var(--muted);
+  font-size: 13px;
 }
 .toggle-list {
   display: grid;

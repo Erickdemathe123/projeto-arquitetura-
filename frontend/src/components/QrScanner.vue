@@ -7,7 +7,7 @@ export default {
     busy: { type: Boolean, default: false },
     error: { type: String, default: "" },
     feedback: { type: String, default: "" },
-    answerCount: { type: Number, default: 20 }
+    answerCount: { type: Number, default: 25 }
   },
   emits: ["detected"],
   data() {

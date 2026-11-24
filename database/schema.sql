@@ -14,6 +14,22 @@ CREATE TABLE IF NOT EXISTS users (
   CONSTRAINT uq_user_role UNIQUE (id, role)
 );
 
+CREATE TABLE IF NOT EXISTS teacher_settings (
+  teacher_id BIGINT UNSIGNED PRIMARY KEY,
+  teacher_role VARCHAR(9) NOT NULL DEFAULT 'professor',
+  institution_name VARCHAR(160),
+  logo_data LONGTEXT,
+  proof_instructions TEXT,
+  answer_instructions TEXT,
+  result_url VARCHAR(500),
+  result_text VARCHAR(500),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT ck_teacher_settings_role CHECK (teacher_role = 'professor'),
+  CONSTRAINT fk_teacher_settings_teacher FOREIGN KEY (teacher_id, teacher_role)
+    REFERENCES users(id, role) ON DELETE CASCADE
+);
+
 CREATE TABLE IF NOT EXISTS classes (
   id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(120) NOT NULL,
@@ -140,7 +156,7 @@ CREATE TABLE IF NOT EXISTS exam_versions (
   CONSTRAINT uq_version_exam UNIQUE (exam_id, id),
   CONSTRAINT fk_version_exam FOREIGN KEY (exam_id) REFERENCES exams(id) ON DELETE CASCADE,
   CONSTRAINT ck_version_items CHECK (JSON_SCHEMA_VALID(
-    '{"type":"array","minItems":1,"maxItems":20,"items":{"type":"object","required":["question_id","alternative_order","correct_index"],"properties":{"question_id":{"type":"integer","minimum":1},"alternative_order":{"type":"array","minItems":2,"maxItems":5,"uniqueItems":true,"items":{"type":"integer","minimum":0,"maximum":4}},"correct_index":{"type":"integer","minimum":0,"maximum":4}}}}',
+    '{"type":"array","minItems":1,"maxItems":25,"items":{"type":"object","required":["question_id","alternative_order","correct_index"],"properties":{"question_id":{"type":"integer","minimum":1},"alternative_order":{"type":"array","minItems":2,"maxItems":5,"uniqueItems":true,"items":{"type":"integer","minimum":0,"maximum":4}},"correct_index":{"type":"integer","minimum":0,"maximum":4}}}}',
     printed_items
   ))
 );

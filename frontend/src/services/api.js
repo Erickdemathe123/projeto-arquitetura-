@@ -191,6 +191,14 @@ export const atribuicoesApi = {
   })
 };
 
+export const configuracoesApi = {
+  obterFolhaRespostas: () => request('/configuracoes/folha-respostas', { method: 'GET' }),
+  salvarFolhaRespostas: (configuracao) => request('/configuracoes/folha-respostas', {
+    method: 'PUT',
+    body: JSON.stringify(configuracao)
+  })
+};
+
 export const turmasApi = {
   listar(arquivadas = false) {
     return request(`/turmas${arquivadas ? '?arquivadas=true' : ''}`, { method: 'GET' });

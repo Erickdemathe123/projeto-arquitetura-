@@ -167,12 +167,19 @@ export default {
       <label>Professor<input v-model="form.professor" placeholder="Nome do professor"></label>
       <label>Turma<select v-model="form.className"><option value="">Selecione uma turma</option><option v-for="className in classes" :key="className" :value="className">{{ className }}</option></select></label>
     </div>
-    <h2 class="form-section-title">Cabeçalho e instruções</h2>
+    <h2 class="form-section-title">Cabeçalho do caderno de questões</h2>
+    <p class="form-help">Essas informações são específicas desta prova. O modelo e as orientações da folha de respostas ficam salvos em Configurações.</p>
     <div class="header-config">
       <label>Logo da instituição<input type="file" accept="image/*" @change="handleLogoUpload"></label>
       <img v-if="form.logo" class="logo-preview" :src="form.logo" alt="Logo da instituição">
     </div>
     <label>Instruções da prova<textarea v-model="form.instructions" placeholder="Digite as orientações para os alunos"></textarea></label>
+    <section class="answer-sheet-form-note">
+      <h2 class="form-section-title">Folha de respostas</h2>
+      <p>Esta avaliação usa o modelo padrão salvo em Configurações. A configuração é copiada para a avaliação, portanto alterações futuras não mudam provas já salvas.</p>
+      <p v-if="form.answerSheet?.institutionName"><strong>Instituição:</strong> {{ form.answerSheet.institutionName }}</p>
+      <p v-if="form.answerSheet?.resultUrl"><strong>Consulta:</strong> {{ form.answerSheet.resultUrl }}</p>
+    </section>
     <h2 class="form-section-title">Configurações do documento</h2>
     <div class="form-grid">
       <label>Layout da prova<select v-model="form.layout"><option>Uma coluna</option><option>Duas colunas</option></select></label>

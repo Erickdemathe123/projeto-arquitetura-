@@ -1,6 +1,7 @@
 const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const layout = require('../../shared/folhaRespostasLayout');
+const answerSheetRenderer = require('./answerSheetRenderer');
 
 function mm(value) {
   return value * 72 / 25.4;
@@ -28,44 +29,16 @@ function addHeader(doc, avaliacao, versionLabel, student) {
   doc.moveDown();
 }
 
-function drawAnswerSheet(doc, avaliacao, versionLabel, student, questionCount, qrBuffer) {
-  doc.addPage();
-  doc.font('Helvetica-Bold').fontSize(15).text('Folha de respostas', { align: 'center' });
-  doc.moveDown(0.25).font('Helvetica').fontSize(9).text(
-    `Versão ${versionLabel}${student ? ` · ${student.studentName} · RA ${student.studentRa}` : ` · Código ${avaliacao.publicCode}`}`,
-    { align: 'center' }
-  );
-  for (const marker of layout.MARKERS) {
-    doc.rect(mm(marker.xMm), mm(marker.yMm), mm(marker.sizeMm), mm(marker.sizeMm)).fill('#111111');
-  }
-  if (qrBuffer) {
-    doc.image(qrBuffer, mm(layout.QR.xMm), mm(layout.QR.yMm), {
-      width: mm(layout.QR.sizeMm),
-      height: mm(layout.QR.sizeMm)
-    });
-  }
-  doc.font('Helvetica').fontSize(10).text(
-    `Aluno: ${student?.studentName || '_'.repeat(32)}   RA: ${student?.studentRa || '_'.repeat(18)}`,
-    mm(layout.STUDENT_FIELDS.name.xMm),
-    mm(layout.STUDENT_FIELDS.ra.yMm),
-    { width: mm(layout.PAGE.widthMm - layout.MARGIN_MM * 2) }
-  );
-  for (let index = 0; index < questionCount; index++) {
-    const position = layout.obterPosicaoQuestao(index);
-    const x = mm(position.xMm);
-    const y = mm(position.yMm);
-    doc.font('Helvetica-Bold').fontSize(8).text(String(index + 1), x - mm(4), y - mm(1));
-    for (let alternative = 0; alternative < 5; alternative++) {
-      const bubble = layout.obterPosicaoBolha(index, alternative);
-      doc.circle(mm(bubble.xMm), mm(bubble.yMm), mm(layout.BUBBLE_GRID.bubbleDiameterMm / 2)).stroke();
-      doc.font('Helvetica').fontSize(6).text(
-        String.fromCharCode(65 + alternative),
-        mm(bubble.xMm - 3),
-        mm(bubble.yMm - 1.5),
-        { width: mm(6), align: 'center' }
-      );
-    }
-  }
+function drawAnswerSheet(doc, avaliacao, versionLabel, student, questionItems, qrBuffer) {
+  answerSheetRenderer.drawAnswerSheet(doc, {
+    avaliacao,
+    versionLabel,
+    student,
+    questionItems,
+    questionCount: questionItems.length,
+    qrBuffer,
+    config: avaliacao.answerSheet
+  });
 }
 
 function createDocument() {
@@ -130,7 +103,7 @@ async function renderStudentExam(doc, avaliacao, versao, student = null) {
     }
     doc.moveDown(0.5);
   }
-  drawAnswerSheet(doc, avaliacao, versionLabel, student, items.length, qrBuffer);
+  drawAnswerSheet(doc, avaliacao, versionLabel, student, items, qrBuffer);
 }
 
 async function gerar(avaliacao, versoes = [], student = null) {

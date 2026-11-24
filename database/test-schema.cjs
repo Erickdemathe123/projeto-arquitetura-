@@ -35,12 +35,12 @@ async function main() {
     await runFile('seed.sql',database);
     await runFile('seed.sql',database);
     const [tables] = await connection.query('SHOW TABLES');
-    assert.equal(tables.length,12);
-    for (const [table,count] of [['users',4],['classes',2],['enrollments',2],['questions',3],['alternatives',7],['exams',1],['exam_questions',2],['applications',1],['results',1],['exam_versions',2],['exam_assignments',1],['result_answers',2]]) {
+    assert.equal(tables.length,13);
+    for (const [table,count] of [['users',4],['teacher_settings',0],['classes',2],['enrollments',2],['questions',3],['alternatives',7],['exams',1],['exam_questions',2],['applications',1],['results',1],['exam_versions',2],['exam_assignments',1],['result_answers',2]]) {
       const [[row]] = await connection.query('SELECT COUNT(*) total FROM ' + table);
       assert.equal(row.total,count,table+' seed repetido');
     }
-    console.log('PASS schema e seed executados duas vezes com as contagens esperadas nas 12 tabelas');
+    console.log('PASS schema e seed executados duas vezes com as contagens esperadas nas 13 tabelas');
     await testarEstruturaT39(connection);
     await rejects("INSERT INTO users (name,email,role) VALUES ('Aluno','professor.a@example.test','aluno')",'ER_DUP_ENTRY');
     await rejects("INSERT INTO classes (name,invite_code,teacher_id) VALUES ('Inválida','INVALIDO',@student_a)",'ER_NO_REFERENCED_ROW_2');

@@ -35,7 +35,8 @@ export function emptyExamForm() {
     shuffleQuestions: true,
     shuffleAlternatives: true,
     versions: 1,
-    addBlankPage: true
+    addBlankPage: true,
+    answerSheet: null
   };
 }
 
@@ -56,6 +57,7 @@ export function examFormFrom(exam) {
     shuffleQuestions: exam.shuffleQuestions !== false,
     shuffleAlternatives: exam.shuffleAlternatives !== false,
     versions: exam.versions || 1,
-    addBlankPage: exam.addBlankPage !== false
+    addBlankPage: exam.addBlankPage !== false,
+    answerSheet: exam.answerSheet ? { ...exam.answerSheet } : null
   };
 }

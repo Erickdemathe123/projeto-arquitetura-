@@ -29,33 +29,39 @@ const MARKERS = [
   { id: 'bottomRight', xMm: PAGE.widthMm - MARGIN_MM - MARKER_SIZE_MM, yMm: PAGE.heightMm - MARGIN_MM - MARKER_SIZE_MM }
 ].map((marker) => ({ ...marker, sizeMm: MARKER_SIZE_MM }));
 
-// QR Code: identificador opaco da atribuição (prova x aluno), ver T58 — não
-// leva RA nem nota, só a chave usada em exam_assignments.qr_code. Fica no
-// canto superior direito, abaixo do marcador, para ficar visível isolado.
-const QR = { xMm: PAGE.widthMm - MARGIN_MM - MARKER_SIZE_MM - 25, yMm: MARGIN_MM + MARKER_SIZE_MM + 4, sizeMm: 25 };
+// QR Code da atribuição, no painel esquerdo da folha.
+const QR = { xMm: 30, yMm: 172, sizeMm: 45 };
 
-// Campos de identificação do aluno, impressos no canto superior esquerdo,
-// abaixo do marcador. Ficam em branco quando a avaliação não tem turma
-// (QR identifica só a versão, conforme T45).
+// Campos de identificação do aluno, no cabeçalho da folha.
 const STUDENT_FIELDS = {
-  name: { xMm: MARGIN_MM, yMm: MARGIN_MM + MARKER_SIZE_MM + 6, widthMm: 110 },
-  ra: { xMm: MARGIN_MM, yMm: MARGIN_MM + MARKER_SIZE_MM + 14, widthMm: 60 }
+  name: { xMm: 28, yMm: 49, widthMm: 105 },
+  ra: { xMm: 28, yMm: 57, widthMm: 70 }
 };
 
-// Grade de bolhas: até 20 questões, 5 alternativas (A-E) cada, em 2 colunas
-// de 10 linhas (questões 1-10 na coluna 1, 11-20 na coluna 2).
+const ANSWER_SHEET = {
+  frame: { xMm: 15, yMm: 15, widthMm: 180, heightMm: 267 },
+  logo: { xMm: 28, yMm: 20, widthMm: 34, heightMm: 24 },
+  title: { xMm: 64, yMm: 20, widthMm: 98 },
+  grade: { xMm: 168, yMm: 20, widthMm: 22, heightMm: 25 },
+  proofInstructions: { xMm: 20, yMm: 66, widthMm: 78, heightMm: 57 },
+  answerInstructions: { xMm: 104, yMm: 66, widthMm: 86, heightMm: 43 },
+  qrPanel: { xMm: 20, yMm: 129, widthMm: 78, heightMm: 145 },
+  gridPanel: { xMm: 104, yMm: 129, widthMm: 86, heightMm: 145 }
+};
+
+// Grade de bolhas: até 25 questões, em duas colunas de até 13 linhas.
 const ALTERNATIVES = ['A', 'B', 'C', 'D', 'E'];
 const BUBBLE_GRID = {
-  maxQuestions: 20,
+  maxQuestions: 25,
   alternatives: ALTERNATIVES,
   columns: 2,
-  rowsPerColumn: 10,
-  gridStartYMm: MARGIN_MM + MARKER_SIZE_MM + 25,
-  rowHeightMm: 10,
-  columnStartXMm: [MARGIN_MM, PAGE.widthMm / 2 + 5],
-  questionLabelWidthMm: 10,
+  rowsPerColumn: 13,
+  gridStartYMm: 139,
+  rowHeightMm: 9.5,
+  columnStartXMm: [108, 151],
+  questionLabelWidthMm: 9,
   bubbleDiameterMm: 4,
-  bubbleSpacingMm: 8
+  bubbleSpacingMm: 7
 };
 
 function validarIndiceQuestao(indiceQuestao) {
@@ -98,6 +104,7 @@ module.exports = {
   MARKERS,
   QR,
   STUDENT_FIELDS,
+  ANSWER_SHEET,
   BUBBLE_GRID,
   obterPosicaoQuestao,
   obterPosicaoBolha

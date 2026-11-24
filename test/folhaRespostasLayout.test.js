@@ -27,19 +27,19 @@ test('QR Code fica dentro da página e não sobrepõe nenhum marcador de canto',
   }
 });
 
-test('obterPosicaoQuestao distribui 20 questões em 2 colunas de 10, sem repetir posição', () => {
+test('obterPosicaoQuestao distribui até 25 questões em 2 colunas de até 13', () => {
   const posicoes = Array.from({ length: layout.BUBBLE_GRID.maxQuestions }, (_, indice) =>
     layout.obterPosicaoQuestao(indice)
   );
-  assert.equal(posicoes.filter((p) => p.coluna === 0).length, 10);
-  assert.equal(posicoes.filter((p) => p.coluna === 1).length, 10);
+  assert.equal(posicoes.filter((p) => p.coluna === 0).length, 13);
+  assert.equal(posicoes.filter((p) => p.coluna === 1).length, 12);
   const chaves = new Set(posicoes.map((p) => `${p.xMm},${p.yMm}`));
   assert.equal(chaves.size, posicoes.length);
 });
 
-test('obterPosicaoQuestao rejeita índice fora de 0..19', () => {
+test('obterPosicaoQuestao rejeita índice fora de 0..24', () => {
   assert.throws(() => layout.obterPosicaoQuestao(-1), RangeError);
-  assert.throws(() => layout.obterPosicaoQuestao(20), RangeError);
+  assert.throws(() => layout.obterPosicaoQuestao(25), RangeError);
   assert.throws(() => layout.obterPosicaoQuestao(1.5), RangeError);
 });
 

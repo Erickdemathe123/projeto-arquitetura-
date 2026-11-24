@@ -16,6 +16,7 @@ export default {
       <button title="Minhas Avaliações" :class="{active: screen === 'exams' || screen === 'newExam'}" @click="$emit('navigate', 'exams')">▣ <span>Minhas Avaliações</span></button>
       <button title="Minhas Turmas" :class="{active: screen === 'classes'}" @click="$emit('open-classes')">♙ <span>Minhas Turmas</span></button>
       <button title="Corrigir Provas" :class="{active: screen === 'scan'}" @click="$emit('open-scan')">⌗ <span>Corrigir Provas</span></button>
+      <button title="Configurações" :class="{active: screen === 'settings'}" @click="$emit('navigate', 'settings')">⚙ <span>Configurações</span></button>
     </nav>
     <button class="logout" @click="$emit('logout')" title="Sair">↪ <span>Sair</span></button>
   </aside>
