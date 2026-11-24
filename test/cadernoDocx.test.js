@@ -7,6 +7,7 @@ const cadernoService = require('../src/services/cadernoService');
 const avaliacaoRepository = require('../src/repositories/avaliacaoRepository');
 const versaoRepository = require('../src/repositories/versaoRepository');
 const atribuicaoRepository = require('../src/repositories/atribuicaoRepository');
+const configuracaoRepository = require('../src/repositories/configuracaoRepository');
 const cadernoPdf = require('../src/utils/cadernoPdf');
 const { gerarCadernoDocx, montarItens, nomeArquivo, formatarPontos } = require('../src/utils/cadernoDocx');
 
@@ -142,6 +143,7 @@ test('serviço exporta todas as atribuições em um único PDF', async (t) => {
     { studentId: 51, studentName: 'Ana', studentRa: 'RA-1', versionLabel: 'A', qrCode: 'a'.repeat(64) },
     { studentId: 52, studentName: 'Beto', studentRa: 'RA-2', versionLabel: 'B', qrCode: 'b'.repeat(64) }
   ]);
+  t.mock.method(configuracaoRepository, 'buscarPorProfessor', async () => ({}));
   const gerarLote = t.mock.method(cadernoPdf, 'gerarLote', async (exam, assignments, availableVersions) => {
     assert.equal(exam.id, avaliacao.id);
     assert.equal(assignments.length, 2);

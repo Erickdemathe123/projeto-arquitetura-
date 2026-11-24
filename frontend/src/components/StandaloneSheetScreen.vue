@@ -7,7 +7,7 @@ export default {
   emits: ["save", "cancel"],
   methods: {
     atualizarGabarito() {
-      const count = Math.max(1, Math.min(20, Number(this.form.questionCount) || 1));
+      const count = Math.max(1, Math.min(25, Number(this.form.questionCount) || 1));
       this.form.questionCount = count;
       this.form.correctAnswers = Array.from({ length: count }, (_, index) => this.form.correctAnswers[index] || "A");
     }
@@ -23,7 +23,7 @@ export default {
   <form class="form-card" @submit.prevent="$emit('save')">
     <div class="form-grid">
       <label>Nome da folha<input v-model="form.name" placeholder="Ex.: Simulado 1"></label>
-      <label>Número de questões<input v-model.number="form.questionCount" type="number" min="1" max="20" @change="atualizarGabarito"></label>
+      <label>Número de questões<input v-model.number="form.questionCount" type="number" min="1" max="25" @change="atualizarGabarito"></label>
     </div>
     <h2 class="form-section-title">Gabarito</h2>
     <div class="form-grid">

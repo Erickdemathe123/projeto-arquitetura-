@@ -1,6 +1,7 @@
 const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const layout = require('../../shared/folhaRespostasLayout');
+const answerSheetRenderer = require('./answerSheetRenderer');
 
 function mm(value) {
   return value * 72 / 25.4;
@@ -22,8 +23,8 @@ async function gerar(avaliacao, versoes = [], quantidadeFallback = 20) {
     doc.on('end', () => resolve(Buffer.concat(chunks)));
     doc.on('error', reject);
   });
-
   const listaVersoes = versoes && versoes.length ? versoes : [{ label: 'Única', printedItems: [] }];
+
   for (let indiceVersao = 0; indiceVersao < listaVersoes.length; indiceVersao++) {
     const versao = listaVersoes[indiceVersao];
     const qrcodeText = JSON.stringify({
@@ -34,58 +35,44 @@ async function gerar(avaliacao, versoes = [], quantidadeFallback = 20) {
     });
     const qrBuffer = await QRCode.toBuffer(qrcodeText, { width: 240, margin: 1 });
     const printedItems = Array.isArray(versao.printedItems) ? versao.printedItems : [];
-    const questionCount = Math.min(20, avaliacao.standaloneAnswerSheet
+    const questionCount = Math.min(layout.BUBBLE_GRID.maxQuestions, avaliacao.standaloneAnswerSheet
       ? Number(avaliacao.questionCount || quantidadeFallback)
       : printedItems.length || Number(avaliacao.questionCount || quantidadeFallback));
 
+    let questionItems = [];
     if (!avaliacao.standaloneAnswerSheet) {
       if (indiceVersao > 0) doc.addPage();
       doc.font('Helvetica-Bold').fontSize(16).text(avaliacao.name || 'Caderno de questões', { align: 'center' });
       doc.moveDown().font('Helvetica').fontSize(9).text(`Versão ${versao.label || 'Única'} · Código: ${avaliacao.publicCode || '-'}`, { align: 'center' });
       const porId = new Map((avaliacao.questionSnapshots || []).map((questao) => [Number(questao.id), questao]));
       const itens = printedItems.length
-        ? printedItems.map((item) => porId.get(Number(item.question_id))).filter(Boolean)
-        : (avaliacao.questionSnapshots || []);
+        ? printedItems.map((item) => ({ question: porId.get(Number(item.question_id)), item })).filter((row) => row.question)
+        : (avaliacao.questionSnapshots || []).map((question) => ({ question, item: null }));
+      questionItems = itens;
       for (let index = 0; index < itens.length; index++) {
-        const questao = itens[index];
-        const item = printedItems[index];
+        const { question, item } = itens[index];
         const ordem = item && Array.isArray(item.alternative_order)
           ? item.alternative_order
-          : (questao.alternatives || []).map((_, alternativa) => alternativa);
-        doc.moveDown(0.5).font('Helvetica-Bold').fontSize(11).text(`${index + 1}. ${questao.text}`);
+          : (question.alternatives || []).map((_, alternativa) => alternativa);
+        doc.moveDown(0.5).font('Helvetica-Bold').fontSize(11).text(`${index + 1}. ${question.text}`);
         for (let alternativa = 0; alternativa < ordem.length; alternativa++) {
-          doc.font('Helvetica').fontSize(10).text(`  ${String.fromCharCode(65 + alternativa)}. ${questao.alternatives[ordem[alternativa]] || ''}`);
+          doc.font('Helvetica').fontSize(10).text(`  ${String.fromCharCode(65 + alternativa)}. ${question.alternatives[ordem[alternativa]] || ''}`);
         }
       }
-      doc.addPage();
-    } else if (indiceVersao > 0) {
-      doc.addPage();
     }
 
-    doc.font('Helvetica-Bold').fontSize(15).text(avaliacao.name || 'Folha de respostas', { align: 'center' });
-    doc.moveDown(0.3).font('Helvetica').fontSize(9).text(`Versão ${versao.label || 'Única'} · Código: ${avaliacao.publicCode || '-'}`, { align: 'center' });
-
-    for (const marker of layout.MARKERS) {
-      doc.save().rect(mm(marker.xMm), mm(marker.yMm), mm(marker.sizeMm), mm(marker.sizeMm)).fill('#111111').restore();
-    }
-    doc.image(qrBuffer, mm(layout.QR.xMm), mm(layout.QR.yMm), { width: mm(layout.QR.sizeMm), height: mm(layout.QR.sizeMm) });
-
-    doc.font('Helvetica').fontSize(10);
-    doc.text(`Aluno: ${'_'.repeat(32)}   RA: ${'_'.repeat(18)}`, mm(layout.STUDENT_FIELDS.name.xMm), mm(layout.STUDENT_FIELDS.ra.yMm), {
-      width: mm(layout.PAGE.widthMm - layout.MARGIN_MM * 2)
+    answerSheetRenderer.drawAnswerSheet(doc, {
+      avaliacao,
+      versionLabel: versao.label || 'Única',
+      questionItems,
+      questionCount,
+      alternativeCounts: questionItems.length
+        ? questionItems.map(({ question }) => question.alternatives?.length || 5)
+        : Array.from({ length: questionCount }, () => 5),
+      qrBuffer,
+      config: avaliacao.answerSheet,
+      addPage: !avaliacao.standaloneAnswerSheet || indiceVersao > 0
     });
-
-    for (let index = 0; index < questionCount; index++) {
-      const position = layout.obterPosicaoQuestao(index);
-      const x = mm(position.xMm);
-      const y = mm(position.yMm);
-      doc.font('Helvetica-Bold').fontSize(8).text(`${index + 1}`, x - mm(4), y - mm(1));
-      for (let alternativa = 0; alternativa < 5; alternativa++) {
-        const bolha = layout.obterPosicaoBolha(index, alternativa);
-        doc.save().circle(mm(bolha.xMm), mm(bolha.yMm), mm(layout.BUBBLE_GRID.bubbleDiameterMm / 2)).stroke('#111111').restore();
-        doc.font('Helvetica').fontSize(6).text(String.fromCharCode(65 + alternativa), mm(bolha.xMm - 3), mm(bolha.yMm - 1.5), { width: mm(6), align: 'center' });
-      }
-    }
   }
   doc.end();
   return finished;

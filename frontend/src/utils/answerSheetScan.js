@@ -104,7 +104,7 @@ export function lerRespostasDaFolha(imageData, width, height, qrLocation, questi
   const homography = criarHomografia(source, destination);
   if (!homography) return [];
   const answers = [];
-  for (let questionIndex = 0; questionIndex < Math.min(questionCount, 20); questionIndex++) {
+  for (let questionIndex = 0; questionIndex < Math.min(questionCount, layout.BUBBLE_GRID.maxQuestions); questionIndex++) {
     const scores = [];
     for (let alternativeIndex = 0; alternativeIndex < 5; alternativeIndex++) {
       const mmPosition = layout.obterPosicaoBolha(questionIndex, alternativeIndex);

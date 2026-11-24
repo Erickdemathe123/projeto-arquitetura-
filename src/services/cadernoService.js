@@ -6,6 +6,7 @@ const { gerarCadernoDocx, nomeArquivo } = require('../utils/cadernoDocx');
 const folhaPdf = require('../utils/folhaPdf');
 const cadernoPdf = require('../utils/cadernoPdf');
 const atribuicaoRepository = require('../repositories/atribuicaoRepository');
+const configuracaoService = require('./configuracaoService');
 const { ErroDeNegocio } = require('../errors/appError');
 
 function validarId(id, nome) {
@@ -48,6 +49,9 @@ async function exportarPdf(professorId, examIdRaw, versaoRaw, alunoIdRaw) {
   const rotulo = validarRotulo(versaoRaw);
   const avaliacao = await avaliacaoRepository.buscarPorId(professorId, examId);
   if (!avaliacao) throw new ErroDeNegocio(404, 'Avaliação não encontrada.');
+  if (!avaliacao.answerSheet) {
+    avaliacao.answerSheet = await configuracaoService.obter(professorId);
+  }
 
   if (!avaliacao.standaloneAnswerSheet) {
     if (!avaliacao.questionSnapshots || !avaliacao.questionSnapshots.length) {

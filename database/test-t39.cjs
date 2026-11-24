@@ -92,8 +92,8 @@ async function testarUpgradeT39(db, migrar) {
   const [[row]] = await db.query("SELECT answer_key_released FROM exams WHERE status='closed'");
   assert.equal(row.answer_key_released, 0);
   const [tables] = await db.query('SHOW TABLES');
-  assert.equal(tables.length, 12);
-  console.log('PASS upgrade de nove para doze tabelas, três avaliações anteriores preservadas, liberação migrada e reexecução segura');
+  assert.equal(tables.length, 13);
+  console.log('PASS upgrade de nove para treze tabelas, três avaliações anteriores preservadas, liberação migrada e reexecução segura');
 }
 
 module.exports = { testarEstruturaT39, testarLiberacao, testarUpgradeT39 };
