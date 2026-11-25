@@ -5,10 +5,9 @@
 // respostas marcadas, as em branco e as com dupla marcação. Também mede o
 // tempo de leitura de uma folha (RNF08).
 import { describe, expect, it } from "vitest";
-import * as layoutModule from "../../shared/folhaRespostasLayout.js";
+import layout from "../../shared/folhaRespostasLayout.js";
 import { aplicarHomografia, criarHomografia, lerRespostasDaFolha } from "../src/utils/answerSheetScan";
 
-const layout = layoutModule;
 const { PAGE, QR, BUBBLE_GRID } = layout;
 
 // Espessura do contorno da bolha no PDF (pdfkit: 1pt ≈ 0,35mm, cor #777777).

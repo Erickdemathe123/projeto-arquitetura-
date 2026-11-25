@@ -1,8 +1,14 @@
 const repository = require('../repositories/configuracaoRepository');
 const { ErroDeNegocio } = require('../errors/appError');
 
+const {
+  DEFAULT_RESULT_URL,
+  DEFAULT_RESULT_TEXT,
+  DEFAULT_PROOF_INSTRUCTIONS,
+  DEFAULT_ANSWER_INSTRUCTIONS
+} = require('../config/folhaRespostasPadrao');
+
 const MAX_LOGO_LENGTH = 700 * 1024;
-const DEFAULT_RESULT_TEXT = 'Acesse o endereço acima, informe o código da prova e o seu RA para consultar o resultado.';
 
 function texto(value, max, field) {
   const result = typeof value === 'string' ? value.trim() : '';
@@ -41,9 +47,9 @@ function padrao() {
   return {
     institutionName: '',
     logo: '',
-    proofInstructions: '',
-    answerInstructions: 'As respostas deverão ser assinaladas com caneta azul ou preta.\nPreencha completamente a área da resposta.\nAssinale somente uma alternativa por questão.',
-    resultUrl: process.env.PUBLIC_STUDENT_PORTAL_URL || '',
+    proofInstructions: DEFAULT_PROOF_INSTRUCTIONS,
+    answerInstructions: DEFAULT_ANSWER_INSTRUCTIONS,
+    resultUrl: DEFAULT_RESULT_URL,
     resultText: DEFAULT_RESULT_TEXT,
     updatedAt: null
   };
@@ -54,7 +60,9 @@ function comPadrao(config) {
   return {
     ...base,
     ...config,
+    proofInstructions: config.proofInstructions || base.proofInstructions,
     answerInstructions: config.answerInstructions || base.answerInstructions,
+    resultUrl: config.resultUrl || base.resultUrl,
     resultText: config.resultText || base.resultText
   };
 }

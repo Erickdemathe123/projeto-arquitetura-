@@ -1865,10 +1865,22 @@ button.theme-toggle[aria-label]:hover::after {
     grid-template-columns: 1fr;
   }
 }
+/* auto-fill: até 4 colunas no computador e menos colunas em telas estreitas.
+   Antes eram sempre 4 colunas de 130px (≈550px), o que estourava em celulares
+   entre 415 e 800px (ex.: iPhone Pro Max, 430px). */
 .conference-list {
   display: grid;
-  grid-template-columns: repeat(4, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(130px, 100%), 1fr));
   gap: 10px;
+}
+.correction-status {
+  font-weight: 600;
+}
+.correction-status[data-status="concluida"] {
+  color: var(--accent-text);
+}
+.correction-status[data-status="em_andamento"] {
+  color: var(--warning, #c98a00);
 }
 .conference-list label {
   display: grid;
