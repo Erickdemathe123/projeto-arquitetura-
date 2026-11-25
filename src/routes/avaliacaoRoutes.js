@@ -5,6 +5,7 @@ const versaoController = require('../controllers/versaoController');
 const atribuicaoController = require('../controllers/atribuicaoController');
 const estatisticaController = require('../controllers/estatisticaController');
 const cadernoController = require('../controllers/cadernoController');
+const relatorioController = require('../controllers/relatorioController');
 const { autenticar, exigirRole } = require('../middlewares/authMiddleware');
 const { validarParamId } = require('../middlewares/validator');
 const { criarLimiteTentativas } = require('../middlewares/limiteTentativas');
@@ -29,6 +30,8 @@ router.delete('/:id', validarParamId('id'), controller.remover);
 
 // Correção de provas (T20): nota de cada aluno na avaliação
 router.get('/:id/resultados', validarParamId('id'), resultadoController.listar);
+// Exportação de resultados em Excel (T54, RF12)
+router.get('/:id/resultados/excel', validarParamId('id'), relatorioController.baixarExcel);
 router.post('/:id/resultados', validarParamId('id'), resultadoController.registrar);
 router.post('/:id/correcoes', validarParamId('id'), resultadoController.corrigirAutomaticamente);
 // Estatísticas da avaliação (T52, RF11): acerto por questão e alternativa incorreta mais marcada

@@ -169,6 +169,7 @@ export const avaliacoesApi = {
 export const resultadosApi = {
   listar: (avaliacaoId) => request(`/avaliacoes/${avaliacaoId}/resultados`, { method: 'GET' }),
     estatisticas: (avaliacaoId) => request(`/avaliacoes/${avaliacaoId}/estatisticas`, { method: 'GET' }),
+    baixarExcel: (avaliacaoId) => download(`/avaliacoes/${avaliacaoId}/resultados/excel`),
 
   registrar: (avaliacaoId, { ra, score }) => request(`/avaliacoes/${avaliacaoId}/resultados`, {
     method: 'POST',
