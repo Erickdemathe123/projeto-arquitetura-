@@ -2,6 +2,7 @@ const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const layout = require('../../shared/folhaRespostasLayout');
 const answerSheetRenderer = require('./answerSheetRenderer');
+const { desenharQuestao } = require('./paginacaoQuestoesPdf');
 
 function mm(value) {
   return value * 72 / 25.4;
@@ -115,19 +116,14 @@ async function renderStudentExam(doc, avaliacao, versao, student = null) {
     const alternativeText = (question.alternatives || []).map((text, alternativeIndex) => ({ text, alternativeIndex }));
     const order = item?.alternative_order || alternativeText.map((row) => row.alternativeIndex);
     const ordered = order.map((originalIndex) => question.alternatives[originalIndex]).filter((text) => text !== undefined);
-    const questionHeader = `${index + 1}. ${question.text}`.trim();
-    const alternativesHeight = ordered.length * 16;
-    const height = doc.heightOfString(questionHeader, { width: mm(layout.PAGE.widthMm - 30) }) + alternativesHeight + 18;
-    if (doc.y + height > mm(layout.PAGE.heightMm - layout.MARGIN_MM)) doc.addPage();
-    doc.font('Helvetica-Bold').fontSize(11).text(questionHeader, { width: mm(layout.PAGE.widthMm - 30) });
-    doc.moveDown(0.2);
-    for (let alternativeIndex = 0; alternativeIndex < ordered.length; alternativeIndex++) {
-      doc.font('Helvetica').fontSize(10).text(
-        `  ${String.fromCharCode(65 + alternativeIndex)}) ${ordered[alternativeIndex]}`,
-        { width: mm(layout.PAGE.widthMm - 30), continued: false }
-      );
-    }
-    doc.moveDown(0.5);
+    
+    desenharQuestao(
+      doc,
+      index + 1,
+      question.text,
+      ordered,
+      mm(layout.PAGE.widthMm - 30)
+    );
   }
   drawAnswerSheet(doc, avaliacao, versionLabel, student, items, qrBuffer);
 }
