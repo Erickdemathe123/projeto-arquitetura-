@@ -6,7 +6,7 @@
 
 🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
 
-> **Estado do projeto:** login/cadastro, turmas e alunos, banco de questões, avaliações, correção manual e consulta de resultados são persistidos pela API Express no MySQL. A tela de correção também identifica folhas por câmera e QR Code; a leitura de marcações, o cálculo automático da nota, a geração de arquivos e as estatísticas ainda não estão implementados.
+> **Estado do projeto (N3):** login/cadastro, turmas e alunos (importação por CSV e Excel), banco de questões, avaliações com pontos por questão, versões embaralhadas, caderno em PDF e Word, folha de respostas com QR Code, provas individualizadas por aluno, correção pela câmera do celular com cálculo automático da nota, folha avulsa, estatísticas por avaliação e consulta do aluno com acertos por questão são persistidos pela API Express no MySQL. O teste de correção com folhas reais em Android e iPhone (T63) segue o roteiro de [docs/teste-camera-t63.md](docs/teste-camera-t63.md).
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -16,7 +16,7 @@
 ![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)
 
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-F5A623?style=flat-square)
-![Entrega](https://img.shields.io/badge/entrega%20atual-N2-3D348B?style=flat-square)
+![Entrega](https://img.shields.io/badge/entrega%20atual-N3-3D348B?style=flat-square)
 ![Licença](https://img.shields.io/badge/licença-uso%20acadêmico-7B4FA6?style=flat-square)
 
 </div>
@@ -29,7 +29,7 @@
 | Gabriel Hoeft Tissi | Revisa/Entrega UML, Script SQL (DDL/Seed), API de questões, Testes e-2-e no ambiente hospedado, Empacotamento de entrega |
 | Henrique Cezar da Silveira | Setup inicial, Front-end, Versionamento, Documentação, API (autenticação JWT e validações/tratamento de erros), Desição Arquitetural, Diagrama UML (sequência), Hospedagem (front-end, back-end e banco na nuvem), Revisão e merge de PRs |
 | Renan Gabriel Piechontcoski | Diagramas UML (atividades), Dicionário de dados, Integração front-end (provas e aplicações), Remoção de mocks |
-| Tasciane Negelski Broca | Diagramas UML (casos de uso), API de turmas e importação de alunos por CSV, integração das turmas no front-end, README v2 |
+| Tasciane Negelski Broca | Diagramas UML (casos de uso), API de turmas e importação de alunos por CSV e Excel, integração das turmas no front-end, estatísticas da avaliação, consulta do aluno por questão, README v2 e v3 |
 
 ## 📑 Sumário
 
@@ -54,13 +54,9 @@
 
 ## 1. Visão Geral
 
-📌 **N1**
-
 Professores com carga horária alta enfrentam um volume grande de provas para corrigir manualmente a cada avaliação (200 a 400 provas por semana de provas), o que consome tempo e atrasa a devolutiva da nota ao aluno. O **SGP (Sistema de Geração de Provas)** resolve esse problema automatizando a criação, a geração e a correção de provas: o professor monta um banco de questões, gera variações embaralhadas da prova em PDF e corrige as folhas de resposta escaneando-as pela câmera do celular direto no navegador, com a nota calculada automaticamente. O sistema é feito para professores e alunos de instituições de ensino que precisam agilizar a correção de avaliações objetivas em turmas grandes.
 
 ## 2. Requisitos
-
-📌 **N1**
 
 ### 2.1 Funcionais (RF)
 
@@ -92,7 +88,7 @@ Professores com carga horária alta enfrentam um volume grande de provas para co
 
 ## 3. Modelagem (UML)
 
-📌 **N3** — diagramas atualizados para o sistema final (T67). Os fontes PlantUML (`.puml`) ficam ao lado dos PNGs em `docs/uml/`.
+Diagramas atualizados para o sistema final (T67). Os fontes PlantUML (`.puml`) ficam ao lado dos PNGs em `docs/uml/`.
 
 ### Diagrama de Classes
 
@@ -137,8 +133,6 @@ Mostra a correção de uma folha de ponta a ponta. A leitura acontece toda no na
 
 ## 4. Telas do Sistema
 
-📌 **N1**
-
 ![Tela de login](docs/telas/tela-login.png)
 *Tela de login: autenticação do usuário por e-mail e senha, com opção de criar conta.*
 
@@ -168,19 +162,34 @@ Mostra a correção de uma folha de ponta a ponta. A leitura acontece toda no na
 
 ## 5. Arquitetura de Software
 
-📌 **N3** (pode ser esboçada antes, mas passa a ser obrigatória na entrega final)
+O back-end segue o estilo em camadas `rota → controle → serviço → repositório → model` (ADR-001). Cada camada só conversa com a seguinte:
 
-Estilo em camadas usado no projeto: `rota → controle → serviço → repositório → model`. Explique, em poucas linhas, a responsabilidade de cada camada (o que ela pode e não pode fazer) e como uma requisição passa por elas até chegar no banco de dados e voltar como resposta.
+| Camada | Pasta | Responsabilidade | O que não faz |
+|---|---|---|---|
+| Rota | `src/routes/` | Liga método + endereço ao controller e aplica os middlewares (login, perfil de professor, validação do `:id`, limite de tentativas). | Não tem regra de negócio. |
+| Controle | `src/controllers/` | Lê a requisição (parâmetros, corpo, usuário do token), chama o serviço e devolve o status HTTP e o JSON. | Não acessa o banco nem decide regras. |
+| Serviço | `src/services/` | Regras de negócio e validações (ex.: aluno precisa estar na turma, nota de 0 a 10, não regerar versões depois da correção). Lança `ErroDeNegocio` com o status adequado. | Não escreve SQL. |
+| Repositório | `src/repositories/` | Único ponto que fala com o MySQL, com consultas parametrizadas e transações (ex.: nota e respostas gravadas juntas). | Não conhece HTTP. |
+| Model | `src/models/` | Converte as linhas do banco em objetos da aplicação. | Não tem regra nem acesso a dados. |
 
-Insira aqui o **desenho da arquitetura** (diagrama de componentes/camadas), exportado como imagem e salvo em `docs/arquitetura/`:
+Uma requisição entra pelo Express (`src/app.js`), passa pelos middlewares (JWT, perfil, validação), chega à rota, ao controller e ao serviço, que usa o repositório para consultar ou gravar no MySQL. O resultado volta pelo mesmo caminho e o `errorHandler` converte qualquer erro em `{ "erro": "mensagem" }` com o status correto. Utilitários de geração de arquivos (`src/utils/`: PDF do caderno e da folha, `.docx`, embaralhamento com semente) são chamados pelos serviços. O layout da folha de respostas em mm fica em `shared/folhaRespostasLayout.js`, usado pelo gerador de PDF e pelo leitor de marcações do navegador.
 
-```
-![Diagrama de arquitetura em camadas](docs/arquitetura/diagrama-camadas.png)
+```mermaid
+flowchart LR
+  subgraph Cliente
+    UI["Vue 3 (Vercel)<br/>câmera + leitura das bolhas no navegador"]
+  end
+  subgraph API["API Express (Render)"]
+    MW["Middlewares<br/>JWT · perfil · validação · limite de tentativas"]
+    R["Rota"] --> C["Controle"] --> S["Serviço"] --> RE["Repositório"] --> M["Model"]
+    S --> U["Utilitários<br/>PDF · DOCX · embaralhamento"]
+  end
+  DB[("MySQL (Aiven, TLS)")]
+  UI -- "/api (HTTPS + JWT)" --> MW --> R
+  RE --> DB
 ```
 
 ## 6. Decisões Arquiteturais (ADRs)
-
-📌 **N2**
 
 Um ADR (*Architecture Decision Record*) registra uma decisão técnica relevante,
 incluindo o contexto que a motivou, a escolha adotada e suas consequências.
@@ -198,8 +207,6 @@ as aplica e as decisões complementares tomadas pela equipe.
 | [ADR-005](docs/adr/ADR-005-dados-de-prototipo.md) | Não migrar dados de domínio do protótipo local para o banco | Adotada |
 
 ## 7. Modelo de Dados
-
-📌 **N2 e T39 da N3**
 
 ![Diagrama Entidade-Relacionamento atualizado para a T39](docs/modelo-dados/mer-der-t39.svg)
 
@@ -360,8 +367,6 @@ O campo `exams.answer_key_released` controla a liberação do gabarito. Cada reg
 
 ## 8. Stack Tecnológica
 
-📌 **N1**
-
 Tecnologias usadas no projeto e por que cada uma foi escolhida. A stack obrigatória da disciplina é:
 
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=flat-square&logo=nodedotjs&logoColor=white)
@@ -375,17 +380,20 @@ Tecnologias usadas no projeto e por que cada uma foi escolhida. A stack obrigat�
 - **jsonwebtoken (JWT)**: gera e valida o token de login que protege as rotas da API.
 - **Limite de tentativas** (`src/middlewares/limiteTentativas.js`): o login permite até 5 erros por e-mail e IP em 15 minutos. A consulta pública limita a 5 solicitações por RA e IP no mesmo período e retorna HTTP 429; as consultas bem-sucedidas também contam para evitar contornar o limite.
 - **Senhas**: novos cadastros exigem pelo menos 8 caracteres na interface e na API. O login preserva a regra anterior de 6 caracteres para não bloquear contas existentes.
-- **Identificadores de QR**: `gerarCodigoQrOpaco`, em `src/services/atribuicaoService.js`, gera um token aleatório de 256 bits para usar diretamente no QR, sem RA nem nota. A geração do PDF continua em outra tarefa.
+- **Identificadores de QR**: `gerarCodigoQrOpaco`, em `src/services/atribuicaoService.js`, gera um token aleatório de 256 bits para usar diretamente no QR, sem RA nem nota.
+- **pdfkit** e **qrcode**: geram o caderno de questões e a folha de respostas em PDF, com o QR Code de cada aluno ou versão.
+- **docx**: exporta o caderno de questões em Word (`.docx`).
+- **exceljs**: lê a primeira aba de planilhas `.xlsx` na importação de alunos.
+- **jsQR**: leitura do QR Code pela câmera, no navegador.
 - **dotenv**: lê as configurações (banco, porta, segredo do JWT) do arquivo `.env`, que não vai para o GitHub.
 - **Vue 3 + Vite**: front-end em página única; o Vite roda o ambiente de desenvolvimento e gera o build em `frontend/dist/`.
 - **node:test**: executor de testes nativo do Node, usado no `npm test`.
+- **Vitest + Vue Test Utils**: testes do front-end (`npm --prefix frontend test`).
 - **Docker Compose**: sobe um MySQL local para desenvolvimento.
 - **Hospedagem**: front-end na **Vercel**, API no **Render** e banco MySQL no **Aiven** (conexão com TLS). A Vercel encaminha as chamadas `/api` para o Render.
-- **GitHub Actions**: valida o schema do banco em todo PR que altera a pasta `database/`.
+- **GitHub Actions**: valida o schema do banco em PRs que alteram `database/` e roda os testes da API, os do front-end e o build a cada PR (`testes.yml`).
 
 ## 9. Estrutura de Pastas
-
-📌 **N1**
 
 ```
 .github/
@@ -397,15 +405,17 @@ Tecnologias usadas no projeto e por que cada uma foi escolhida. A stack obrigat�
 LICENSE                        # licença do projeto
 N2-P1.md                       # material/documentação da entrega N2-P1
 database/
+  migrations/                  # migrações do banco N2 para a N3 (T39, folha de respostas)
   schema.sql                   # estrutura e restrições do banco
   seed.sql                     # dados iniciais/de desenvolvimento
   test-schema.cjs              # validação automatizada do schema
 docs/
   adr/                         # registros de decisões arquiteturais
-  api/                         # documentação da API
-  arquitetura/                 # documentação da arquitetura
   modelo-dados/                # diagrama MER/DER
   telas/                       # imagens das telas
+  manual-usuario.md            # manual do usuário
+  teste-camera-t63.md          # roteiro e resultados do teste com folhas reais
+  spike-leitura-bolhas.md      # estudo da leitura das marcações
   uml/                         # diagramas UML e fontes PlantUML
 frontend/
   index.html
@@ -413,11 +423,13 @@ frontend/
     manifest.webmanifest       # metadados da aplicação web
   src/
     App.vue                    # composição das telas
+    components/                # telas e componentes Vue
     constants/                 # constantes compartilhadas da interface
     services/                  # comunicação com a API
-    utils/                     # funções utilitárias
+    utils/                     # funções utilitárias (leitura das bolhas, estatísticas, filtros)
     main.js
     styles.css
+  tests/                       # testes do front-end (Vitest)
   package.json
   package-lock.json
   vercel.json                  # configuração de publicação/roteamento na Vercel
@@ -434,6 +446,7 @@ src/
   repositories/                # acesso e consultas ao MySQL
   routes/                      # definição dos endpoints HTTP
   services/                    # regras de negócio
+  utils/                       # PDF, DOCX e embaralhamento com semente
   app.js                       # configuração da aplicação Express
 test/
   fixtures/                    # schemas usados como dados de teste
@@ -446,8 +459,6 @@ server.js                      # inicialização do servidor Express
 ```
 
 ## 10. Como Executar o Projeto
-
-📌 **N1**
 
 ### Acessar a versão publicada
 
@@ -554,8 +565,6 @@ Para consultar os endpoints disponíveis, veja [Especificação da API](#11-espe
 
 ## 11. Especificação da API
 
-📌 **N2**
-
 As rotas da API usam o prefixo `/api`, exceto o endpoint de saúde `/health`.
 As requisições com corpo JSON devem usar `Content-Type: application/json`.
 Nas rotas protegidas, envie o token retornado pelo login no cabeçalho:
@@ -584,7 +593,7 @@ retornam `204 No Content`.
 | GET | `/api/turmas/:id/alunos` | Professor | Lista os alunos matriculados na turma |
 | POST | `/api/turmas/:id/alunos` | Professor | Matricula aluno com `ra` e `nome` quando ainda não cadastrado; `email` é opcional |
 | DELETE | `/api/turmas/:id/alunos/:alunoId` | Professor | Remove o aluno da turma |
-| POST | `/api/turmas/:id/alunos/importar` | Professor | Importa CSV enviado como texto puro (`Content-Type: text/csv` ou `text/plain`), com colunas `nome` e `ra`, separadas por `;` ou `,`; aceita até 1000 alunos e retorna `total`, `matriculados`, `jaMatriculados` e `erros` por linha |
+| POST | `/api/turmas/:id/alunos/importar` | Professor | Importa alunos (RF05) de CSV enviado como texto puro (`Content-Type: text/csv` ou `text/plain`, colunas `nome` e `ra` separadas por `;` ou `,`) ou de planilha Excel enviada em binário (`Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, colunas `nome` e `ra` na primeira aba). As duas formas usam as mesmas validações; aceita até 1000 alunos e retorna `total`, `matriculados`, `jaMatriculados` e `erros` por linha |
 | GET | `/api/questoes` | Professor | Lista as questões do professor autenticado |
 | POST | `/api/questoes` | Professor | Cria questão com `text`, `subject`, `topic`, `alternatives` (de 2 a 5 textos) e `correctAlternative` (índice começando em zero) |
 | PUT | `/api/questoes/:id` | Professor | Atualiza os dados da questão usando os mesmos campos da criação |
@@ -594,38 +603,44 @@ retornam `204 No Content`.
 | PUT | `/api/avaliacoes/:id` | Professor | Atualiza a avaliação usando os mesmos campos da criação |
 | PATCH | `/api/avaliacoes/:id/gabarito` | Professor | Altera a liberação do gabarito com `{ "released": true }` ou `{ "released": false }` |
 | DELETE | `/api/avaliacoes/:id` | Professor | Remove avaliação |
-| GET | `/api/avaliacoes/codigo/:code` | Público | Consulta avaliação pelo código público; com `?ra=<RA>`, retorna também a nota correspondente quando o gabarito estiver liberado e houver resultado lançado para esse aluno |
+| GET | `/api/avaliacoes/codigo/:code` | Público | Consulta avaliação pelo código público; com `?ra=<RA>`, retorna também a nota correspondente quando o gabarito estiver liberado e houver resultado lançado para esse aluno. Se a correção gravou as respostas, retorna `detalhes` com a versão do aluno, o total de acertos e, por questão, a alternativa marcada, o gabarito e se acertou (T57) |
 | GET | `/api/avaliacoes/:id/resultados` | Professor | Lista os resultados da avaliação e retorna `totalMatriculados`, `corrigidos` e `status` (`pendente`, `em_andamento` ou `concluida`) |
 | POST | `/api/avaliacoes/:id/resultados` | Professor | Registra ou atualiza nota com `ra` e `score` (de `0` a `10`); exige avaliação aplicada a uma turma e aluno matriculado nela |
 | DELETE | `/api/avaliacoes/:id/resultados/:alunoId` | Professor | Remove o resultado do aluno na avaliação |
 | POST | `/api/avaliacoes/:id/atribuicoes/validar-qr` | Professor | Recebe `{ "qrCode": "..." }`; valida o código na avaliação autenticada e retorna `{ examId, studentId, studentName, versionId, versionLabel }`, sem expor o QR |
+| POST | `/api/avaliacoes/avulsa` | Professor | Cria uma folha de respostas avulsa (sem questões cadastradas) com `name`, `questionCount` (1 a 25), `correctAnswers` (letra de A a E por questão) e `applicationClassId` opcional |
+| GET | `/api/avaliacoes/:id/versoes` | Professor | Lista as versões (cadernos) com a ordem impressa e o gabarito de cada uma |
+| POST | `/api/avaliacoes/:id/versoes` | Professor | Gera as versões embaralhando questões e alternativas com semente; aceita `versions` e `seed`. Retorna `409` se já houver prova corrigida |
 | GET | `/api/avaliacoes/:id/caderno/docx` | Professor | Baixa o caderno de questões em Word (.docx) editável, com uma seção por versão gerada (ou a ordem original, se ainda não houver versões); `?versao=A` exporta só uma versão. As questões não são divididas entre páginas (RF06, RNF07) |
+| GET | `/api/avaliacoes/:id/pdf` | Professor | Baixa o PDF do caderno com a folha de respostas. Com turma: um único PDF com a prova de cada aluno (nome, RA e QR Code individuais), ou só a de um aluno com `?alunoId=`; `?versao=A` filtra por versão. Sem turma, o QR identifica só a versão. Retorna `409` se ainda não houver atribuições |
+| GET | `/api/avaliacoes/:id/atribuicoes` | Professor | Lista a versão e o QR Code atribuídos a cada aluno da turma |
+| POST | `/api/avaliacoes/:id/atribuicoes` | Professor | Distribui as versões entre os alunos da turma e gera um QR Code opaco por aluno; exige turma, versões e alunos matriculados |
+| POST | `/api/avaliacoes/:id/correcoes` | Professor | Corrige uma folha lida pela câmera: recebe `respostas` (letra, índice ou `{ markedIndex, status }`), `versao` e `ra` ou `studentId`; calcula a nota pelo gabarito e pesos da versão e grava `results` e `result_answers` numa transação |
+| GET | `/api/avaliacoes/:id/estatisticas` | Professor | Estatísticas da avaliação (RF11): `media`, `minima`, `maxima` e, por questão, `acertos`, `erros`, `brancos`, `taxaAcerto`, contagem de marcações por alternativa (convertida da ordem impressa de cada versão) e `alternativaIncorretaMaisMarcada` (em empate, vale a primeira alternativa) |
+| GET | `/api/configuracoes/folha-respostas` | Professor | Retorna o modelo configurável da prova e da folha (instituição, logo, orientações, texto e endereço de consulta) |
+| PUT | `/api/configuracoes/folha-respostas` | Professor | Atualiza o modelo da prova e da folha de respostas |
 
 ## 12. Testes e Validações
 
-📌 **N3** (validações e tratamento de erros/casos de borda passam a ser cobrados nesta entrega)
+Execute `npm test` na raiz para rodar os testes automatizados da API sem conectar ao MySQL (os repositórios são simulados). A suíte cobre autenticação e proteção por perfil, validação de IDs e de corpo das requisições, tratamento de erros, importação de alunos por CSV e `.xlsx` (incluindo o relatório de erros por linha), versões e embaralhamento com semente, atribuições e QR Codes, caderno em `.docx`, folha avulsa, correção automática, estatísticas por questão, consulta pública do aluno (nota e acertos por questão, só depois da liberação e com o RA correto) e limite de tentativas.
 
-Execute `npm test` na raiz para rodar os testes automatizados sem conectar ao MySQL. A suíte cobre autenticação, proteção por papel, validação de IDs, importação CSV, regras de validação de questões/avaliações e consulta pública sem exposição de respostas. A validação ponta a ponta com um banco MySQL de teste continua necessária para a entrega final.
+Os componentes e utilitários do front-end têm testes próprios (Vitest + Vue Test Utils), executados com `npm --prefix frontend test`; eles incluem a leitura das bolhas com folhas sintéticas e a medição do tempo por folha (RNF08). O workflow `.github/workflows/testes.yml` roda os testes da API, os do front-end e o build a cada pull request e a cada push na `main`.
 
-Os componentes do front-end têm testes próprios (Vitest + Vue Test Utils), executados com `npm --prefix frontend test`. O workflow `.github/workflows/testes.yml` roda os testes da API, os testes do front-end e o build a cada pull request e a cada push na `main`.
+A validação do schema e do seed contra um MySQL de teste é feita com `node database/test-schema.cjs` e `node database/test-t39.cjs`. A correção pela câmera com folhas reais impressas, em Android e iPhone, é registrada em [docs/teste-camera-t63.md](docs/teste-camera-t63.md).
 
 ## 13. Manual do Usuário
 
-📌 **N3**
-
-Guia rápido de como usar o sistema, do ponto de vista de quem vai operá-lo (o cliente), não do desenvolvedor: passo a passo das principais funcionalidades, com prints. Pode ficar em um arquivo separado, `docs/manual-usuario.md`, com o link a partir daqui:
+O passo a passo das principais funcionalidades, do ponto de vista de quem opera o sistema (professor e aluno), está no arquivo separado:
 
 📘 [Manual do Usuário](docs/manual-usuario.md)
 
 ## 14. Equipe e Contribuições
 
-📌 **N1**
-
-- **Erick Andrei Demathé**: criação do repositório; diagramas UML de classes e de atividades e extensão inicial do schema do banco (N2); correção de provas integrada ao MySQL — tabela `results`, API `/api/avaliacoes/:id/resultados` e tela "Corrigir Provas" — e consulta de resultado pelo aluno por código + RA (RF10) (T20).
+- **Erick Andrei Demathé**: criação do repositório; diagramas UML de classes e de atividades e extensão inicial do schema do banco (N2); correção de provas integrada ao MySQL — tabela `results`, API `/api/avaliacoes/:id/resultados` e tela "Corrigir Provas" — e consulta de resultado pelo aluno por código + RA (RF10) (T20). **N3:** layout compartilhado da folha de respostas em mm (T38), embaralhamento com semente e API de versões (T42), testes da leitura das bolhas com folha sintética e medição de tempo (T47, T48) e diagramas UML do sistema final (T67).
 - **Gabriel Hoeft Tissi**: principais contribuições.
-- **Henrique Cezar da Silveira**: setup inicial do repositório e da estrutura de pastas; desenvolvimento das telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas; organização e estruturação do front-end em Vue; configuração da publicação do front-end na Vercel, do back-end no Render e do banco MySQL no Aiven; integração entre os serviços, incluindo o encaminhamento das chamadas `/api` pela Vercel e a conexão segura da API com o banco.
-- **Renan Gabriel Piechontcoski**: documentação das telas do sistema (capturas de tela de todas as telas principais em `docs/telas/`) e atualização do README v1 com as imagens e legendas da seção 4.
-- **Tasciane Negelski Broca**: diagramas UML de casos de uso e de classes (N1) e passo a passo do diagrama de casos de uso; API de turmas e matrículas e de importação de alunos por CSV; integração da tela de turmas ao back-end, com rotas protegidas por login; README v2.
+- **Henrique Cezar da Silveira**: setup inicial do repositório e da estrutura de pastas; desenvolvimento das telas de autenticação (login/cadastro), banco de questões, montagem de avaliações e turmas; organização e estruturação do front-end em Vue; configuração da publicação do front-end na Vercel, do back-end no Render e do banco MySQL no Aiven; integração entre os serviços, incluindo o encaminhamento das chamadas `/api` pela Vercel e a conexão segura da API com o banco. **N3:** PDF do caderno e da folha com QR Code, folha avulsa, correção automática pela câmera e conferência (T43, T44, T49, T50, T56, T60 a T62, T65), provas individualizadas por aluno e PDF único da turma (T45), controles de segurança (T58), modelo configurável da folha de respostas, geração automática das versões ao salvar a avaliação e compressão da logo.
+- **Renan Gabriel Piechontcoski**: documentação das telas do sistema (capturas de tela de todas as telas principais em `docs/telas/`) e atualização do README v1 com as imagens e legendas da seção 4. **N3:** portal do aluno com rota `/aluno` (T37), pontos por questão na API e na montagem da prova (T40, T41), divisão do `App.vue` em componentes (T36), exportação do caderno em `.docx` (T55), busca e filtros no banco de questões (T59), modo noturno, tela de estatísticas, limite de tentativas de login e workflow de testes no GitHub Actions.
+- **Tasciane Negelski Broca**: diagramas UML de casos de uso e de classes (N1) e passo a passo do diagrama de casos de uso; API de turmas e matrículas e de importação de alunos por CSV; integração da tela de turmas ao back-end, com rotas protegidas por login; README v2. **N3:** importação de alunos também por planilha `.xlsx`, reaproveitando as validações e o relatório de erros do CSV (T46); API `GET /api/avaliacoes/:id/estatisticas` com acerto por questão, contagem por alternativa, alternativa incorreta mais marcada, média, mínima e máxima (T52); consulta do aluno com acertos por questão e gabarito da sua versão depois da liberação (T57); roteiro do teste de correção pela câmera com folhas reais (T63); README v3 e manual do usuário (T68).
 
 ---
 
