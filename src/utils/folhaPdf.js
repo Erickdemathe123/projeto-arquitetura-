@@ -2,6 +2,7 @@ const PDFDocument = require('pdfkit');
 const QRCode = require('qrcode');
 const layout = require('../../shared/folhaRespostasLayout');
 const answerSheetRenderer = require('./answerSheetRenderer');
+const { desenharQuestao } = require('./paginacaoQuestoesPdf');
 
 function mm(value) {
   return value * 72 / 25.4;
@@ -54,9 +55,18 @@ async function gerar(avaliacao, versoes = [], quantidadeFallback = 20) {
         const ordem = item && Array.isArray(item.alternative_order)
           ? item.alternative_order
           : (question.alternatives || []).map((_, alternativa) => alternativa);
-        doc.moveDown(0.5).font('Helvetica-Bold').fontSize(11).text(`${index + 1}. ${question.text}`);
-        for (let alternativa = 0; alternativa < ordem.length; alternativa++) {
-          doc.font('Helvetica').fontSize(10).text(`  ${String.fromCharCode(65 + alternativa)}. ${question.alternatives[ordem[alternativa]] || ''}`);
+       
+        const alternativasOrdenadas = ordem.map(
+          indice => question.alternatives[indice] || ''
+        );
+
+        desenharQuestao(
+          doc,
+          index + 1,
+          question.text,
+          alternativasOrdenadas,
+          doc.page.width - doc.page.margins.left - doc.page.margins.right
+        );
         }
       }
     }
