@@ -1,5 +1,6 @@
 // Serviço: regras de negócio das turmas. Não acessa o banco diretamente, só pelos repositórios.
 const crypto = require('crypto');
+const ExcelJS = require('exceljs');
 const turmaRepository = require('../repositories/turmaRepository');
 const alunoRepository = require('../repositories/alunoRepository');
 
@@ -210,13 +211,58 @@ function lerCsv(conteudo) {
   });
 }
 
+// Converte a primeira aba de uma planilha .xlsx em { linha, nome, ra }.
+// Segue as mesmas regras do CSV: cabeçalho opcional com as colunas "nome" e "ra".
+function textoDaCelula(celula) {
+  const valor = celula && celula.value;
+  if (valor === null || valor === undefined) return '';
+  if (typeof valor === 'object') {
+    if (Array.isArray(valor.richText)) return valor.richText.map((parte) => parte.text).join('').trim();
+    if (valor.result !== undefined && valor.result !== null) return String(valor.result).trim();
+    if (valor.text !== undefined) return String(valor.text).trim();
+    if (valor instanceof Date) return valor.toISOString();
+    return '';
+  }
+  return String(valor).trim();
+}
+
+async function lerXlsx(buffer) {
+  const livro = new ExcelJS.Workbook();
+  try {
+    await livro.xlsx.load(buffer);
+  } catch {
+    throw new ErroDeNegocio(400, 'Não foi possível ler a planilha. Envie um arquivo .xlsx válido.');
+  }
+  const aba = livro.worksheets[0];
+  if (!aba) return [];
+
+  const linhas = [];
+  aba.eachRow({ includeEmpty: false }, (linha, numero) => {
+    const campos = [textoDaCelula(linha.getCell(1)), textoDaCelula(linha.getCell(2))];
+    if (campos.some(Boolean)) linhas.push({ numero, campos });
+  });
+  if (!linhas.length) return [];
+
+  let colunaNome = 0;
+  let colunaRa = 1;
+  const cabecalho = linhas[0].campos.map(normalizarCabecalho);
+  if (cabecalho.includes('nome') && cabecalho.includes('ra')) {
+    colunaNome = cabecalho.indexOf('nome');
+    colunaRa = cabecalho.indexOf('ra');
+    linhas.shift();
+  }
+  return linhas.map(({ numero, campos }) => ({ linha: numero, nome: campos[colunaNome] || '', ra: campos[colunaRa] || '' }));
+}
+
+// Aceita o conteúdo como texto (CSV) ou como Buffer (.xlsx), com as mesmas validações por linha
 async function importarAlunos(professorId, turmaId, conteudo) {
   const turma = await buscarTurmaDoProfessor(professorId, turmaId);
   garantirAtiva(turma, 'importar alunos');
 
-  const registros = lerCsv(conteudo);
+  const ehXlsx = Buffer.isBuffer(conteudo);
+  const registros = ehXlsx ? await lerXlsx(conteudo) : lerCsv(conteudo);
   if (!registros.length) {
-    throw new ErroDeNegocio(400, 'O arquivo CSV está vazio. Use as colunas nome e RA.');
+    throw new ErroDeNegocio(400, `O arquivo ${ehXlsx ? 'da planilha' : 'CSV'} está vazio. Use as colunas nome e RA.`);
   }
   if (registros.length > MAX_LINHAS_CSV) {
     throw new ErroDeNegocio(400, `O arquivo pode ter no máximo ${MAX_LINHAS_CSV} alunos.`);
@@ -260,5 +306,6 @@ module.exports = {
   matricularAluno,
   removerAluno,
   listarAlunos,
-  importarAlunos
+  importarAlunos,
+  lerXlsx
 };

@@ -247,6 +247,15 @@ export const turmasApi = {
       headers: { 'Content-Type': 'text/csv' },
       body: conteudoCsv
     });
+  },
+
+  // Envia a planilha .xlsx em binário (RF05); as validações são as mesmas do CSV
+  importarPlanilha(id, arquivoBinario) {
+    return request(`/turmas/${id}/alunos/importar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
+      body: arquivoBinario
+    });
   }
 };
   

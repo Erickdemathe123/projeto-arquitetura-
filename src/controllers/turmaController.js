@@ -108,10 +108,10 @@ const listarAlunos = tratar(async (req, res) => {
   res.json(alunos);
 });
 
-// Recebe o conteúdo do CSV como texto puro no corpo da requisição (Content-Type: text/csv)
+// Recebe o CSV como texto puro (Content-Type: text/csv) ou a planilha .xlsx em binário
 const importarAlunos = tratar(async (req, res) => {
-  if (typeof req.body !== 'string') {
-    throw new ErroDeNegocio(415, 'Envie o arquivo CSV como texto (Content-Type: text/csv).');
+  if (typeof req.body !== 'string' && !Buffer.isBuffer(req.body)) {
+    throw new ErroDeNegocio(415, 'Envie o arquivo como CSV (text/csv) ou como planilha .xlsx.');
   }
   const resultado = await turmaService.importarAlunos(
     obterProfessorId(req),
