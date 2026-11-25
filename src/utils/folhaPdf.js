@@ -33,7 +33,7 @@ async function gerar(avaliacao, versoes = [], quantidadeFallback = 20) {
       standalone: Boolean(avaliacao.standaloneAnswerSheet),
       versionLabel: avaliacao.standaloneAnswerSheet ? 'Única' : (versao.label || 'Única')
     });
-    const qrBuffer = await QRCode.toBuffer(qrcodeText, { width: 240, margin: 1 });
+    const qrBuffer = await QRCode.toBuffer(qrcodeText, { width: 480, margin: 0 });
     const printedItems = Array.isArray(versao.printedItems) ? versao.printedItems : [];
     const questionCount = Math.min(layout.BUBBLE_GRID.maxQuestions, avaliacao.standaloneAnswerSheet
       ? Number(avaliacao.questionCount || quantidadeFallback)

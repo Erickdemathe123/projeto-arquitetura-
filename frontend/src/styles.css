@@ -701,12 +701,13 @@ h1 {
 .qr-camera-preview video {
   display: block;
   width: 100%;
-  max-height: 420px;
-  object-fit: cover;
+  max-height: 70vh;
+  /* Mostra a imagem inteira que é analisada, sem cortar as bordas. */
+  object-fit: contain;
 }
 .qr-scan-frame {
   position: absolute;
-  inset: 20% 20%;
+  inset: 6% 14%;
   border: 3px solid #fff;
   border-radius: 16px;
   box-shadow: 0 0 0 999px #0005;

@@ -107,7 +107,7 @@ async function renderStudentExam(doc, avaliacao, versao, student = null) {
         versionLabel,
         standalone: Boolean(avaliacao.standaloneAnswerSheet)
       });
-  const qrBuffer = await QRCode.toBuffer(student?.qrCode || qrText, { width: 240, margin: 1 });
+  const qrBuffer = await QRCode.toBuffer(student?.qrCode || qrText, { width: 480, margin: 0 });
 
   addHeader(doc, avaliacao, versionLabel, student);
   for (let index = 0; index < items.length; index++) {
