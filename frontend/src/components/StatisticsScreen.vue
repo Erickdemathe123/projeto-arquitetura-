@@ -50,6 +50,68 @@ export default {
       </div>
     </section>
     <section class="form-card stats-section">
+      <h2 class="form-section-title">Estatísticas por questão</h2>
+
+      <p v-if="!summary.questoes?.length">
+        Nenhuma estatística por questão disponível.
+      </p>
+
+      <article
+        v-for="questao in summary.questoes || []"
+        :key="questao.questionId"
+        style="padding: 16px 0; border-bottom: 1px solid #8885;"
+      >
+        <h3>Questão {{ questao.numero }}</h3>
+        <p>{{ questao.enunciado }}</p>
+
+        <p>
+          Taxa de acerto:
+          <strong>
+            {{ questao.taxaAcerto === null
+              ? 'Sem respostas'
+              : (questao.taxaAcerto * 100).toFixed(1) + '%' }}
+          </strong>
+        </p>
+
+        <progress
+          v-if="questao.taxaAcerto !== null"
+          :value="questao.taxaAcerto"
+          max="1"
+          style="width: 100%; accent-color: #16a34a;"
+          aria-label="Taxa de acerto"
+        ></progress>
+
+        <p>Acertos: {{ questao.acertos }}</p>
+        <p>Erros: {{ questao.erros }}</p>
+        <p>Em branco: {{ questao.brancos }}</p>
+
+        <div
+          v-for="alternativa in questao.alternativas"
+          :key="alternativa.indice"
+        >
+          <p>
+            <strong>{{ alternativa.letra }})</strong>
+            {{ alternativa.texto }} —
+            {{ alternativa.marcacoes }} marcação(ões)
+            <strong v-if="alternativa.correta" style="color: #16a34a;">
+              (Correta)
+            </strong>
+          </p>
+        </div>
+        <p
+          v-if="questao.alternativaIncorretaMaisMarcada"
+          style="color: #dc2626;"
+        >
+          <strong>Alternativa incorreta mais marcada:</strong>
+          {{ questao.alternativaIncorretaMaisMarcada.letra }})
+          {{ questao.alternativaIncorretaMaisMarcada.texto }}
+          — {{ questao.alternativaIncorretaMaisMarcada.marcacoes }}
+          marcação(ões)
+        </p>
+      </article>
+    </section>
+
+    <section class="form-card stats-section">
       <h2 class="form-section-title">Notas por aluno</h2>
       <table class="stats-table">
         <thead><tr><th>Aluno</th><th>RA</th><th>Nota</th></tr></thead>

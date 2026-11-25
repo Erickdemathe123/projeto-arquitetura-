@@ -168,6 +168,7 @@ export const avaliacoesApi = {
 
 export const resultadosApi = {
   listar: (avaliacaoId) => request(`/avaliacoes/${avaliacaoId}/resultados`, { method: 'GET' }),
+    estatisticas: (avaliacaoId) => request(`/avaliacoes/${avaliacaoId}/estatisticas`, { method: 'GET' }),
 
   registrar: (avaliacaoId, { ra, score }) => request(`/avaliacoes/${avaliacaoId}/resultados`, {
     method: 'POST',

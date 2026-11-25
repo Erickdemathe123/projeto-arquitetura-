@@ -74,6 +74,7 @@ Professores com carga horária alta enfrentam um volume grande de provas para co
 | RF10 | O sistema deve prover uma rota de consulta para que o aluno possa verificar sua nota utilizando o código impresso em sua prova. |
 | RF11 | O sistema deve gerar relatórios estatísticos por avaliação, indicando a taxa de acertos e qual alternativa incorreta foi a mais assinalada por questão. |
 | RF12 | O sistema deve exportar um relatório final em Excel contendo a nota e detalhando qual alternativa cada aluno marcou em cada questão. |
+| RF13 | O sistema deve permitir a geração de uma folha de respostas avulsa em PDF, com QR Code, para avaliações elaboradas externamente, permitindo ao professor informar o gabarito para correção automática. |
 
 ### 2.2 Não Funcionais (RNF)
 
@@ -85,6 +86,11 @@ Professores com carga horária alta enfrentam um volume grande de provas para co
 | RNF04 | A interface de usuário web deve ser responsiva, minimalista e focar na usabilidade (poucos cliques para as tarefas principais). |
 | RNF05 | O escaneamento (correção das provas) deve ser executado no próprio navegador do celular, sem a necessidade de um aplicativo mobile. |
 | RNF06 | As senhas dos usuários devem ser armazenadas de forma segura utilizando criptografia. |
+| RNF07 | O caderno de questões gerado em PDF e DOCX não deve dividir uma questão entre duas páginas. |
+| RNF08 | O processamento de cada folha de respostas deve ocorrer em até 5 segundos, permitindo corrigir uma turma de 50 alunos em menos de 30 minutos. |
+| RNF09 | O sistema deve possuir validações, tratamento de erros e testes dos casos de borda nas rotas e interfaces. |
+| RNF10 | O sistema hospedado deve estar disponível durante a entrega e apresentação do projeto. |
+| RNF11 | O sistema deve garantir a segurança e privacidade dos dados, utilizando senhas com no mínimo oito caracteres, QR Codes opacos para provas individualizadas e limite de tentativas de acesso. |
 
 ## 3. Modelagem (UML)
 
