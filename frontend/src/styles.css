@@ -1041,7 +1041,10 @@ h1 {
 .calendar-days button.empty {
   visibility: hidden;
 }
-button[aria-label] {
+/* :where() zera a especificidade: o tooltip precisa de um contexto de
+   posicionamento, mas não pode desfazer o position: absolute de botões
+   posicionados dentro de campos (mostrar senha, calendário). */
+:where(button[aria-label]) {
   position: relative;
 }
 button[aria-label]:hover::after {
