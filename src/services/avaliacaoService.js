@@ -30,6 +30,9 @@ function validarDados(body = {}) {
   if (!Array.isArray(body.questionIds) || body.questionIds.length === 0) {
     throw new ErroDeNegocio(400, 'Selecione ao menos uma questão.');
   }
+    if (body.questionIds.length > 25) {
+    throw new ErroDeNegocio(400, 'A avaliação deve conter no máximo 25 questões.');
+  }
   const questionIds = body.questionIds.map((id) => validarId(id, 'Id da questão'));
   if (new Set(questionIds).size !== questionIds.length) {
     throw new ErroDeNegocio(400, 'A mesma questão não pode ser adicionada mais de uma vez.');
