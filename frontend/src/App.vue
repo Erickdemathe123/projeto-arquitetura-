@@ -631,6 +631,24 @@ export default {
         this.notify(erro.message);
       }
     },
+    
+    // T54: exportação de notas e respostas em Excel
+    async exportExamExcel(exam) {
+      try {
+        const { blob, filename } = await resultadosApi.baixarExcel(exam.id);
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+        this.notify("Relatório Excel gerado com sucesso.");
+      } catch (erro) {
+        this.notify(erro.message);
+      }
+    },
     async exportExamPdf(exam) {
       try {
         let assignments = [];
@@ -1056,6 +1074,7 @@ this.statisticsSummary = {
           @preview="previewSavedExam"
           @export-docx="exportExamDocx"
           @export-pdf="exportExamPdf"
+          @export-excel="exportExamExcel"
           @statistics="openStatistics"
           @edit="editExam"
           @remove="removeExam"
