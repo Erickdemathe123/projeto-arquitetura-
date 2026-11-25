@@ -504,6 +504,9 @@ export default {
     async saveExam() {
       if (!this.examForm.name.trim()) return (this.error = "Informe o nome da avaliação.");
       if (!this.examForm.selected.length) return (this.error = "Selecione ao menos uma questão.");
+      if (this.examForm.selected.length > 25) {
+        return (this.error = "A avaliação deve conter no máximo 25 questões.");
+      }
       const questionPoints = this.examForm.selected.map((questionId) => Number(this.examForm.points[questionId]));
       if (questionPoints.some((points) => !(points > 0))) return (this.error = "Informe uma pontuação maior que zero para cada questão selecionada.");
       const requestedVersions = Number(this.examForm.versions);

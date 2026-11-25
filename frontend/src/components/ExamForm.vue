@@ -191,10 +191,17 @@ export default {
       <label><input v-model="form.addBlankPage" type="checkbox"> Adicionar página em branco se necessário para impressão frente e verso</label>
     </div>
     <h2 class="form-section-title">Questões da avaliação</h2>
-    <p class="selection-title">Selecione as questões:</p>
+<p class="selection-title">
+  Selecione as questões: {{ form.selected.length }}/25
+</p>
+<p v-if="form.selected.length >= 25" class="selection-total">
+  Limite máximo de 25 questões atingido.
+</p>
     <div v-if="!questions.length" class="empty-card compact"><span>✎</span><h2>Sem questões disponíveis</h2><p>Cadastre a primeira questão para começar.</p></div>
     <div v-else class="selection-list">
-      <label v-for="question in filteredQuestionsForExam" :key="question.id"><input type="checkbox" v-model="form.selected" :value="question.id"><span><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }}</small></span><span v-if="form.selected.includes(question.id)" class="selection-points" @click.stop.prevent>Pontos<input v-model.number="form.points[question.id]" type="number" min="0.01" step="any" inputmode="decimal" :aria-label="`Pontos da questão: ${question.text}`"></span><button v-if="editingExamId" type="button" class="edit-button selection-edit" @click.stop.prevent="$emit('edit-question', question)" aria-label="Editar questão da avaliação">✎</button></label>
+      <label v-for="question in filteredQuestionsForExam" :key="question.id">
+<input type="checkbox" v-model="form.selected" :value="question.id" :disabled="form.selected.length >= 25 && !form.selected.includes(question.id)">
+<span><strong>{{ question.text }}</strong><small>{{ question.subject }} · {{ question.topic }}</small></span><span v-if="form.selected.includes(question.id)" class="selection-points" @click.stop.prevent>Pontos<input v-model.number="form.points[question.id]" type="number" min="0.01" step="any" inputmode="decimal" :aria-label="`Pontos da questão: ${question.text}`"></span><button v-if="editingExamId" type="button" class="edit-button selection-edit" @click.stop.prevent="$emit('edit-question', question)" aria-label="Editar questão da avaliação">✎</button></label>
     </div>
     <p v-if="form.selected.length" class="selection-total">Total da prova: <strong>{{ formatPoints(selectedPointsTotal) }}</strong> em {{ form.selected.length }} {{ form.selected.length === 1 ? "questão" : "questões" }}</p>
     <p v-if="error" class="auth-error">{{ error }}</p>
