@@ -51,7 +51,7 @@ export default {
       <p v-if="error" class="auth-error">{{ error }}</p>
       <div class="form-actions">
         <button class="primary-button compact">Cadastrar aluno</button>
-        <label class="outline-button file-button">Importar CSV<input type="file" accept=".csv,text/csv" @change="$emit('import-students', $event)"></label>
+        <label class="outline-button file-button">Importar CSV/Excel<input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" @change="$emit('import-students', $event)"></label>
       </div>
     </form>
     <h2 class="dashboard-section-title">Alunos da turma</h2>

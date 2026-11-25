@@ -923,8 +923,10 @@ export default {
       const turma = this.selectedTurma;
       if (!file || !turma) return;
       try {
-        const conteudo = await file.text();
-        const resultado = await turmasApi.importarCsv(turma.id, conteudo);
+        const ehPlanilha = /\.xlsx$/i.test(file.name);
+        const resultado = ehPlanilha
+          ? await turmasApi.importarPlanilha(turma.id, await file.arrayBuffer())
+          : await turmasApi.importarCsv(turma.id, await file.text());
         await this.recarregarAlunos(turma);
         const partes = [`${resultado.matriculados.length} aluno(s) importado(s)`];
         if (resultado.jaMatriculados.length) partes.push(`${resultado.jaMatriculados.length} já estava(m) na turma`);

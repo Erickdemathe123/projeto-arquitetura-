@@ -1,6 +1,6 @@
 // Rotas: mapeiam método + endereço para a função do controller.
 // Este roteador é montado em /api/turmas no app.js.
-const { Router, text } = require('express');
+const { Router, text, raw } = require('express');
 const controller = require('../controllers/turmaController');
 const { autenticar, exigirRole } = require('../middlewares/authMiddleware');
 const { validarParamId } = require('../middlewares/validator');
@@ -28,6 +28,9 @@ router.delete('/:id/alunos/:alunoId', validarParamId('id'), validarParamId('alun
 
 // Importação de alunos por CSV (RF05): o corpo é o conteúdo do arquivo em texto
 const lerCsv = text({ type: ['text/csv', 'text/plain'], limit: '1mb' });
-router.post('/:id/alunos/importar', validarParamId('id'), lerCsv, controller.importarAlunos);
+// Importação por planilha (.xlsx): o corpo é o arquivo em binário
+const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const lerXlsx = raw({ type: [XLSX_MIME, 'application/octet-stream'], limit: '2mb' });
+router.post('/:id/alunos/importar', validarParamId('id'), lerCsv, lerXlsx, controller.importarAlunos);
 
 module.exports = router;

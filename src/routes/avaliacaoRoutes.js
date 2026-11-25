@@ -3,6 +3,7 @@ const controller = require('../controllers/avaliacaoController');
 const resultadoController = require('../controllers/resultadoController');
 const versaoController = require('../controllers/versaoController');
 const atribuicaoController = require('../controllers/atribuicaoController');
+const estatisticaController = require('../controllers/estatisticaController');
 const cadernoController = require('../controllers/cadernoController');
 const { autenticar, exigirRole } = require('../middlewares/authMiddleware');
 const { validarParamId } = require('../middlewares/validator');
@@ -30,6 +31,8 @@ router.delete('/:id', validarParamId('id'), controller.remover);
 router.get('/:id/resultados', validarParamId('id'), resultadoController.listar);
 router.post('/:id/resultados', validarParamId('id'), resultadoController.registrar);
 router.post('/:id/correcoes', validarParamId('id'), resultadoController.corrigirAutomaticamente);
+// Estatísticas da avaliação (T52, RF11): acerto por questão e alternativa incorreta mais marcada
+router.get('/:id/estatisticas', validarParamId('id'), estatisticaController.obter);
 router.delete('/:id/resultados/:alunoId', validarParamId('id'), validarParamId('alunoId'), resultadoController.remover);
 
 // Versões da prova (T42): embaralhamento com semente, ordem impressa e gabarito por caderno

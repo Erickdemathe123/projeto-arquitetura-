@@ -274,7 +274,7 @@ async function buscarPublicoPorCodigo(code, ra) {
   let rows;
   try {
     [rows] = await pool.query(
-      'SELECT id, title, answer_key_released FROM exams WHERE public_code = ? LIMIT 1',
+      'SELECT id, title, answer_key_released, legacy_details FROM exams WHERE public_code = ? LIMIT 1',
       [code]
     );
   } catch (error) {
@@ -288,7 +288,7 @@ async function buscarPublicoPorCodigo(code, ra) {
       );
     }
     [rows] = await pool.query(
-      'SELECT id, title, answer_key_released FROM exams WHERE public_code = ? LIMIT 1',
+      'SELECT id, title, answer_key_released, legacy_details FROM exams WHERE public_code = ? LIMIT 1',
       [code]
     );
   }
@@ -297,19 +297,53 @@ async function buscarPublicoPorCodigo(code, ra) {
   const released = Boolean(exam.answer_key_released);
 
   let score = null;
+  let detalhe = null;
   if (released && ra) {
     const [resultRows] = await pool.query(
-      `SELECT r.score
+      `SELECT r.score, r.student_id
          FROM results r
          JOIN users u ON u.id = r.student_id AND u.ra = ?
         WHERE r.exam_id = ?
         LIMIT 1`,
       [ra, exam.id]
     );
-    if (resultRows.length) score = Number(resultRows[0].score);
+    if (resultRows.length) {
+      score = Number(resultRows[0].score);
+      detalhe = await buscarDetalheDoAluno(exam, Number(resultRows[0].student_id));
+    }
   }
 
-  return { name: exam.title, released, resultAvailable: score !== null, score };
+  return { name: exam.title, released, resultAvailable: score !== null, score, detalhe };
+}
+
+// Versão impressa e marcações do aluno (T57); null se a correção não gravou as respostas
+async function buscarDetalheDoAluno(exam, studentId) {
+  const [versaoRows] = await pool.query(
+    `SELECT ev.label, ev.printed_items
+       FROM exam_assignments ea
+       JOIN exam_versions ev ON ev.id = ea.version_id AND ev.exam_id = ea.exam_id
+      WHERE ea.exam_id = ? AND ea.student_id = ?
+      LIMIT 1`,
+    [exam.id, studentId]
+  );
+  if (!versaoRows.length) return null;
+  const [answerRows] = await pool.query(
+    'SELECT question_id, marked_index FROM result_answers WHERE exam_id = ? AND student_id = ?',
+    [exam.id, studentId]
+  );
+  if (!answerRows.length) return null;
+
+  const dividir = (valor) => (typeof valor === 'string' ? JSON.parse(valor) : valor);
+  const detalhes = dividir(exam.legacy_details) || {};
+  return {
+    versionLabel: versaoRows[0].label,
+    printedItems: dividir(versaoRows[0].printed_items) || [],
+    snapshots: Array.isArray(detalhes.questionSnapshots) ? detalhes.questionSnapshots : [],
+    answers: answerRows.map((row) => ({
+      questionId: Number(row.question_id),
+      markedIndex: row.marked_index === null || row.marked_index === undefined ? null : Number(row.marked_index)
+    }))
+  };
 }
 
 module.exports = { listarPorProfessor, buscarPorId, criar, criarAvulsa, atualizar, definirLiberada, remover, buscarPublicoPorCodigo };
