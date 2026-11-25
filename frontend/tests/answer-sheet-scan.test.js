@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import layout from "../../shared/folhaRespostasLayout.js";
 import { aplicarHomografia, criarHomografia, lerRespostasDaFolha } from "../src/utils/answerSheetScan";
 
-const { PAGE, QR, BUBBLE_GRID } = layout;
+const { PAGE, QR, BUBBLE_GRID, MARKERS } = layout;
 
 // Espessura do contorno da bolha no PDF (pdfkit: 1pt ≈ 0,35mm, cor #777777).
 const OUTLINE_MM = 0.35;
@@ -36,8 +36,22 @@ function cantosDaPaginaNaFoto(width, height, skew) {
   ];
 }
 
+// Rótulo "Qn:" impresso em negrito à esquerda da bolha A: simulado como
+// traços escuros, para o teste pegar leituras que caiam sobre o texto.
+function noRotulo(point, questionCount) {
+  for (let questionIndex = 0; questionIndex < questionCount; questionIndex++) {
+    const row = layout.obterPosicaoQuestao(questionIndex);
+    const insideX = point.x >= row.xMm && point.x <= row.xMm + 5.5;
+    const insideY = point.y >= row.yMm + 1 && point.y <= row.yMm + 3.6;
+    if (insideX && insideY) return Math.floor(point.x * 2.5) % 2 === 0;
+  }
+  return false;
+}
+
 // marks: array por questão com os índices das alternativas preenchidas.
-function gerarFotoDaFolha({ width, height, marks, skew = 40, noise = 18, seed = 7 }) {
+// qrError: erro, em milímetros, nos cantos do QR devolvidos pelo jsQR.
+// markers: false gera a folha antiga, sem os quadrados de leitura.
+function gerarFotoDaFolha({ width, height, marks, skew = 40, noise = 18, seed = 7, qrError = 0, markers = true }) {
   const pageCorners = [[0, 0], [PAGE.widthMm, 0], [PAGE.widthMm, PAGE.heightMm], [0, PAGE.heightMm]];
   const photoCorners = cantosDaPaginaNaFoto(width, height, skew);
   const photoToPage = criarHomografia(photoCorners, pageCorners);
@@ -70,6 +84,8 @@ function gerarFotoDaFolha({ width, height, marks, skew = 40, noise = 18, seed = 
         gray = 235;
         const inQr = point.x >= QR.xMm && point.x <= QR.xMm + QR.sizeMm && point.y >= QR.yMm && point.y <= QR.yMm + QR.sizeMm;
         if (inQr) gray = (Math.floor(point.x) + Math.floor(point.y)) % 2 ? 20 : 235;
+        if (markers && MARKERS.some((m) => point.x >= m.xMm && point.x <= m.xMm + m.sizeMm && point.y >= m.yMm && point.y <= m.yMm + m.sizeMm)) gray = 15;
+        if (noRotulo(point, marks.length)) gray = 30;
         const inGrid = point.x >= gridBox.minX && point.x <= gridBox.maxX && point.y >= gridBox.minY && point.y <= gridBox.maxY;
         for (const bubble of inGrid ? bubbles : []) {
           const distance = Math.hypot(point.x - bubble.xMm, point.y - bubble.yMm);
@@ -88,13 +104,15 @@ function gerarFotoDaFolha({ width, height, marks, skew = 40, noise = 18, seed = 
     }
   }
 
-  // Cantos do QR na foto, no formato que o jsQR devolve em qr.location.
-  const qrCorner = (xMm, yMm) => aplicarHomografia(pageToPhoto, xMm, yMm);
+  // Cantos do QR na foto, no formato que o jsQR devolve em qr.location. O
+  // jsQR estima esses cantos a partir dos padrões de localização e costuma
+  // errar alguns pixels; qrError reproduz isso empurrando cada canto.
+  const qrCorner = (xMm, yMm, dx, dy) => aplicarHomografia(pageToPhoto, xMm + dx * qrError, yMm + dy * qrError);
   const qrLocation = {
-    topLeftCorner: qrCorner(QR.xMm, QR.yMm),
-    topRightCorner: qrCorner(QR.xMm + QR.sizeMm, QR.yMm),
-    bottomRightCorner: qrCorner(QR.xMm + QR.sizeMm, QR.yMm + QR.sizeMm),
-    bottomLeftCorner: qrCorner(QR.xMm, QR.yMm + QR.sizeMm)
+    topLeftCorner: qrCorner(QR.xMm, QR.yMm, 1, 0.5),
+    topRightCorner: qrCorner(QR.xMm + QR.sizeMm, QR.yMm, 0.5, -1),
+    bottomRightCorner: qrCorner(QR.xMm + QR.sizeMm, QR.yMm + QR.sizeMm, -1, 0.5),
+    bottomLeftCorner: qrCorner(QR.xMm, QR.yMm + QR.sizeMm, 0.5, 1)
   };
   return { data, qrLocation };
 }
@@ -148,7 +166,26 @@ describe("leitor OMR com folha sintética (T48)", () => {
     const height = 1280;
     const { data, qrLocation } = gerarFotoDaFolha({ width, height, marks: GABARITO_PREENCHIDO });
     expect(lerRespostasDaFolha(data, width, height, qrLocation, 5)).toHaveLength(5);
-    expect(lerRespostasDaFolha(data, width, height, null, 5)).toEqual([]);
+    expect(lerRespostasDaFolha(data, width, height, null, 5)).toBeNull();
+  });
+
+  // Reproduz a leitura errada da folha impressa: com os cantos do QR
+  // imprecisos, a posição prevista das bolhas caía sobre o rótulo "Qn:" e quase
+  // tudo era lido como A. Os marcadores ao redor da grade corrigem isso.
+  it("lê corretamente mesmo com os cantos do QR imprecisos", () => {
+    const marks = [[4], [4], [0], [2], [0], [2], [2], [1], [4], [0]];
+    const width = 1080;
+    const height = 1920;
+    const { data, qrLocation } = gerarFotoDaFolha({ width, height, marks, skew: 60, seed: 11, qrError: 1.5 });
+    const answers = lerRespostasDaFolha(data, width, height, qrLocation, marks.length);
+    expect(resumo(answers)).toEqual(esperado(marks));
+  });
+
+  it("não lê respostas quando os marcadores da grade não aparecem na imagem", () => {
+    const width = 720;
+    const height = 1280;
+    const { data, qrLocation } = gerarFotoDaFolha({ width, height, marks: GABARITO_PREENCHIDO, markers: false });
+    expect(lerRespostasDaFolha(data, width, height, qrLocation, GABARITO_PREENCHIDO.length)).toBeNull();
   });
 
   it("lê uma folha de 20 questões em menos de 100 ms (RNF08)", () => {

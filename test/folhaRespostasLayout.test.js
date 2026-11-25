@@ -27,6 +27,30 @@ test('QR Code fica dentro da página e não sobrepõe nenhum marcador de canto',
   }
 });
 
+test('marcadores de leitura cercam a grade sem encostar em nenhuma bolha de até 25 questões', () => {
+  const { MARKERS, BUBBLE_GRID } = layout;
+  const raio = BUBBLE_GRID.bubbleDiameterMm / 2;
+  const bolhas = [];
+  for (let questao = 0; questao < BUBBLE_GRID.maxQuestions; questao++) {
+    for (let alternativa = 0; alternativa < BUBBLE_GRID.alternatives.length; alternativa++) {
+      bolhas.push(layout.obterPosicaoBolha(questao, alternativa));
+    }
+  }
+  const minX = Math.min(...MARKERS.map((m) => m.xMm));
+  const maxX = Math.max(...MARKERS.map((m) => m.xMm + m.sizeMm));
+  const minY = Math.min(...MARKERS.map((m) => m.yMm));
+  const maxY = Math.max(...MARKERS.map((m) => m.yMm + m.sizeMm));
+  for (const bolha of bolhas) {
+    assert.ok(bolha.xMm - raio > minX && bolha.xMm + raio < maxX, 'bolha dentro da largura dos marcadores');
+    assert.ok(bolha.yMm - raio > minY && bolha.yMm + raio < maxY, 'bolha dentro da altura dos marcadores');
+    for (const m of MARKERS) {
+      const dx = Math.max(m.xMm - bolha.xMm, 0, bolha.xMm - (m.xMm + m.sizeMm));
+      const dy = Math.max(m.yMm - bolha.yMm, 0, bolha.yMm - (m.yMm + m.sizeMm));
+      assert.ok(Math.hypot(dx, dy) > raio + 1, `bolha longe do marcador ${m.id}`);
+    }
+  }
+});
+
 test('obterPosicaoQuestao distribui até 25 questões em uma coluna', () => {
   const posicoes = Array.from({ length: layout.BUBBLE_GRID.maxQuestions }, (_, indice) =>
     layout.obterPosicaoQuestao(indice)

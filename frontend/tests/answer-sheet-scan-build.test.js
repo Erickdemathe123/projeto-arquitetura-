@@ -41,9 +41,9 @@ describe("leitor da folha empacotado pelo build de produção", () => {
         bottomLeftCorner: { x: 200, y: 400 }
       };
 
-      const respostas = lerRespostasDaFolha(imagemBranca, width, height, qrLocation, 3);
-      expect(respostas).toHaveLength(3);
-      expect(respostas.every((resposta) => resposta.status === "blank")).toBe(true);
+      // Imagem em branco: o leitor precisa receber o layout (sem lançar erro)
+      // e responder que a área de respostas não está visível.
+      expect(lerRespostasDaFolha(imagemBranca, width, height, qrLocation, 3)).toBeNull();
     } finally {
       await rm(outDir, { recursive: true, force: true });
     }

@@ -1,6 +1,11 @@
 <script>
 import jsQR from "jsqr";
-import { lerRespostasDaFolha } from "../utils/answerSheetScan";
+import { leiturasIguais, lerRespostasDaFolha } from "../utils/answerSheetScan";
+
+// Depois de achar o QR, a câmera espera até este tempo pela área de respostas
+// completa. Passado esse tempo, entrega só o QR (folhas antigas sem marcadores
+// ou lançamento manual).
+const ESPERA_AREA_RESPOSTAS_MS = 8000;
 
 export default {
   props: {
@@ -19,7 +24,11 @@ export default {
       stream: null,
       animationFrame: null,
       lastFrameAt: 0,
-      disposed: false
+      disposed: false,
+      guidance: "",
+      pendingQr: null,
+      pendingAnswers: null,
+      qrSeenAt: 0
     };
   },
   beforeUnmount() {
@@ -41,8 +50,14 @@ export default {
 
       this.starting = true;
       try {
+        // Resolução alta: na resolução padrão (640x480) cada bolha fica com
+        // poucos pixels e a leitura das marcações não é confiável.
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: "environment" } },
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1920 },
+            height: { ideal: 1080 }
+          },
           audio: false
         });
         if (this.disposed) {
@@ -56,6 +71,7 @@ export default {
         video.srcObject = stream;
         await video.play();
         this.lastFrameAt = 0;
+        this.resetPending();
         this.readFrame();
       } catch (error) {
         this.stopCamera();
@@ -63,6 +79,18 @@ export default {
       } finally {
         this.starting = false;
       }
+    },
+    resetPending() {
+      this.guidance = "";
+      this.pendingQr = null;
+      this.pendingAnswers = null;
+      this.qrSeenAt = 0;
+    },
+    finish(qrCode, answers) {
+      this.hasScanned = true;
+      this.stopCamera();
+      this.resetPending();
+      this.$emit("detected", { qrCode, answers });
     },
     stopCamera() {
       this.active = false;
@@ -110,11 +138,28 @@ export default {
           const image = context.getImageData(0, 0, canvas.width, canvas.height);
           const qr = jsQR(image.data, image.width, image.height, { inversionAttempts: "attemptBoth" });
           if (qr?.data) {
-            this.hasScanned = true;
+            if (qr.data !== this.pendingQr) {
+              this.pendingQr = qr.data;
+              this.pendingAnswers = null;
+              this.qrSeenAt = Date.now();
+            }
             const answers = lerRespostasDaFolha(image.data, image.width, image.height, qr.location, this.answerCount);
-            this.stopCamera();
-            this.$emit("detected", { qrCode: qr.data, answers });
-            return;
+            if (answers) {
+              // Só aceita quando duas imagens seguidas dão o mesmo resultado.
+              if (leiturasIguais(answers, this.pendingAnswers)) {
+                this.finish(qr.data, answers);
+                return;
+              }
+              this.pendingAnswers = answers;
+              this.guidance = "Mantenha a câmera parada...";
+            } else {
+              this.pendingAnswers = null;
+              this.guidance = "QR Code encontrado. Afaste a câmera até aparecer toda a área de respostas com os 4 quadrados pretos.";
+              if (Date.now() - this.qrSeenAt >= ESPERA_AREA_RESPOSTAS_MS) {
+                this.finish(qr.data, []);
+                return;
+              }
+            }
           }
         } catch (error) {
           console.error("Falha ao processar a imagem para leitura do QR Code:", error);
@@ -153,7 +198,8 @@ export default {
     <p v-else-if="error" class="auth-error" role="alert">{{ error }}</p>
     <p v-else-if="busy" class="qr-scan-feedback" aria-live="polite">Validando o QR Code na avaliação...</p>
     <p v-else-if="feedback" class="qr-scan-feedback" aria-live="polite">{{ feedback }}</p>
-    <p v-else-if="active" class="qr-scan-feedback" aria-live="polite">Aponte a câmera para o QR Code da folha.</p>
+    <p v-else-if="active && guidance" class="qr-scan-feedback" aria-live="polite">{{ guidance }}</p>
+    <p v-else-if="active" class="qr-scan-feedback" aria-live="polite">Enquadre toda a área de respostas: o QR Code, as bolhas e os 4 quadrados pretos.</p>
     <p v-else class="qr-scan-feedback">A câmera será usada somente enquanto estiver ligada.</p>
   </div>
 </template>

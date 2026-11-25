@@ -1,18 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { flushPromises, mount } from "@vue/test-utils";
 
-const { decodeQr } = vi.hoisted(() => ({ decodeQr: vi.fn() }));
+const { decodeQr, readSheet } = vi.hoisted(() => ({ decodeQr: vi.fn(), readSheet: vi.fn() }));
 
 import QrScanner from "../src/components/QrScanner.vue";
 import ScanScreen from "../src/components/ScanScreen.vue";
 
 vi.mock("jsqr", () => ({ default: (...args) => decodeQr(...args) }));
+vi.mock("../src/utils/answerSheetScan", async (importOriginal) => ({
+  ...(await importOriginal()),
+  lerRespostasDaFolha: (...args) => readSheet(...args)
+}));
 
 let mediaDevicesDescriptor;
 
 beforeEach(() => {
   mediaDevicesDescriptor = Object.getOwnPropertyDescriptor(navigator, "mediaDevices");
   decodeQr.mockReset();
+  readSheet.mockReset();
 });
 
 afterEach(() => {
@@ -67,12 +72,11 @@ describe("QrScanner", () => {
     wrapper.unmount();
   });
 
-  it("lê o QR continuamente, emite o conteúdo e encerra o stream após a leitura", async () => {
-    const stopTrack = vi.fn();
+  // Abre a câmera simulada e devolve uma função que processa o próximo quadro.
+  async function abrirCamera(stopTrack, getUserMedia = vi.fn()) {
     const stream = { getTracks: () => [{ stop: stopTrack }] };
-    definirMediaDevices({ getUserMedia: vi.fn().mockResolvedValue(stream) });
-    decodeQr.mockReturnValue({ data: "opaque-code" });
-
+    getUserMedia.mockResolvedValue(stream);
+    definirMediaDevices({ getUserMedia });
     let nextFrame;
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
       nextFrame = callback;
@@ -85,21 +89,58 @@ describe("QrScanner", () => {
       getImageData: () => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 })
     });
 
-    const wrapper = mount(QrScanner);
+    const wrapper = mount(QrScanner, { props: { answerCount: 2 } });
     await wrapper.find("button").trigger("click");
     await flushPromises();
-
     const video = wrapper.find("video").element;
     Object.defineProperties(video, {
-      videoWidth: { configurable: true, value: 640 },
-      videoHeight: { configurable: true, value: 480 }
+      videoWidth: { configurable: true, value: 1920 },
+      videoHeight: { configurable: true, value: 1080 }
     });
-    nextFrame();
-    await flushPromises();
+    let clock = 1000;
+    vi.spyOn(Date, "now").mockImplementation(() => clock);
+    const frame = async (advanceMs = 200) => {
+      clock += advanceMs;
+      nextFrame();
+      await flushPromises();
+    };
+    return { wrapper, frame };
+  }
 
-    expect(wrapper.emitted("detected")).toEqual([[{ qrCode: "opaque-code", answers: [] }]]);
+  it("pede alta resolução e só entrega a leitura quando duas imagens seguidas concordam", async () => {
+    const stopTrack = vi.fn();
+    const getUserMedia = vi.fn();
+    decodeQr.mockReturnValue({ data: "opaque-code", location: {} });
+    const answers = [{ status: "marked", markedIndex: 4 }, { status: "blank", markedIndex: null }];
+    readSheet.mockReturnValue(answers);
+    const { wrapper, frame } = await abrirCamera(stopTrack, getUserMedia);
+
+    expect(getUserMedia.mock.calls[0][0].video.width).toEqual({ ideal: 1920 });
+    await frame();
+    expect(wrapper.emitted("detected")).toBeUndefined();
+    expect(wrapper.text()).toContain("Mantenha a câmera parada");
+
+    await frame();
+    expect(wrapper.emitted("detected")).toEqual([[{ qrCode: "opaque-code", answers }]]);
     expect(stopTrack).toHaveBeenCalledOnce();
     expect(wrapper.text()).toContain("Escanear próxima folha");
+    wrapper.unmount();
+  });
+
+  it("orienta a afastar a câmera quando a área de respostas não está inteira na imagem", async () => {
+    const stopTrack = vi.fn();
+    decodeQr.mockReturnValue({ data: "opaque-code", location: {} });
+    readSheet.mockReturnValue(null);
+    const { wrapper, frame } = await abrirCamera(stopTrack);
+
+    await frame();
+    expect(wrapper.emitted("detected")).toBeUndefined();
+    expect(wrapper.text()).toContain("4 quadrados pretos");
+    expect(stopTrack).not.toHaveBeenCalled();
+
+    // Sem a grade por muito tempo: entrega só o QR para o lançamento manual.
+    await frame(9000);
+    expect(wrapper.emitted("detected")).toEqual([[{ qrCode: "opaque-code", answers: [] }]]);
     wrapper.unmount();
   });
 

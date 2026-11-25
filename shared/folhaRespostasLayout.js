@@ -14,22 +14,24 @@
 
 const PAGE = { widthMm: 210, heightMm: 297 };
 
-// Margem entre a borda da página e a área de conteúdo (onde ficam os 4
-// marcadores de canto, usados para corrigir a perspectiva da foto na leitura).
+// Margem do documento PDF.
 const MARGIN_MM = 15;
-const MARKER_SIZE_MM = 10;
+const MARKER_SIZE_MM = 4;
 
-// Os 4 marcadores de canto ficam nos cantos da área de conteúdo (não da
-// página), afastados da margem, formando o retângulo que o leitor usa como
-// referência para desfazer a perspectiva da foto.
+// Quatro quadrados pequenos ao redor da grade de respostas, como no modelo de
+// gabarito do cliente. O leitor localiza cada um na foto e usa os centros para
+// desfazer a perspectiva. Como eles cercam as bolhas, a posição de cada bolha é
+// interpolada entre pontos conhecidos, em vez de extrapolada a partir do QR.
 const MARKERS = [
-  { id: 'topLeft', xMm: MARGIN_MM, yMm: MARGIN_MM },
-  { id: 'topRight', xMm: PAGE.widthMm - MARGIN_MM - MARKER_SIZE_MM, yMm: MARGIN_MM },
-  { id: 'bottomLeft', xMm: MARGIN_MM, yMm: PAGE.heightMm - MARGIN_MM - MARKER_SIZE_MM },
-  { id: 'bottomRight', xMm: PAGE.widthMm - MARGIN_MM - MARKER_SIZE_MM, yMm: PAGE.heightMm - MARGIN_MM - MARKER_SIZE_MM }
+  { id: 'topLeft', xMm: 145, yMm: 134 },
+  { id: 'topRight', xMm: 182, yMm: 134 },
+  { id: 'bottomLeft', xMm: 145, yMm: 267 },
+  { id: 'bottomRight', xMm: 182, yMm: 267 }
 ].map((marker) => ({ ...marker, sizeMm: MARKER_SIZE_MM }));
 
-// QR Code da atribuição, no painel esquerdo da folha.
+// QR Code da atribuição. O símbolo ocupa exatamente estes 30mm: ele é gerado
+// sem borda branca, para que os cantos devolvidos pelo jsQR coincidam com estas
+// coordenadas.
 const QR = { xMm: 110, yMm: 178, sizeMm: 30 };
 
 // Campos de identificação do aluno, no cabeçalho da folha.
@@ -49,7 +51,7 @@ const ANSWER_SHEET = {
   gridPanel: { xMm: 104, yMm: 129, widthMm: 86, heightMm: 145 }
 };
 
-// Grade de bolhas: até 25 questões, em duas colunas de até 13 linhas.
+// Grade de bolhas: até 25 questões em uma coluna, entre os quatro marcadores.
 const ALTERNATIVES = ['A', 'B', 'C', 'D', 'E'];
 const BUBBLE_GRID = {
   maxQuestions: 25,
@@ -57,7 +59,7 @@ const BUBBLE_GRID = {
   columns: 1,
   rowsPerColumn: 25,
   gridStartYMm: 149,
-  rowHeightMm: 4.8,
+  rowHeightMm: 4.6,
   columnStartXMm: [145],
   questionLabelWidthMm: 8,
   bubbleDiameterMm: 3.2,

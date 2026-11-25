@@ -68,8 +68,6 @@ function drawAnswerSheet(doc, {
 
   // Moldura principal da folha.
   doc.roundedRect(mm(layout.ANSWER_SHEET.frame.xMm), mm(layout.ANSWER_SHEET.frame.yMm), mm(layout.ANSWER_SHEET.frame.widthMm), mm(layout.ANSWER_SHEET.frame.heightMm), mm(1.5)).stroke('#777777');
-  // A câmera usa o QR Code para corrigir a perspectiva; os marcadores pretos
-  // não são necessários na folha e foram removidos do desenho impresso.
 
   const logo = imageBuffer(settings.logo);
   if (logo) {
@@ -129,6 +127,12 @@ function drawAnswerSheet(doc, {
   }
   doc.font('Helvetica').fontSize(7).text('QR Code da prova', mm(106), mm(221), { width: mm(35), align: 'center' });
   doc.font('Helvetica').fontSize(7).text(`Código: ${avaliacao.publicCode || '-'}`, mm(106), mm(263), { width: mm(35), align: 'center' });
+
+  // Marcadores de leitura ao redor da grade (ver layout.MARKERS).
+  for (const marker of layout.MARKERS) {
+    doc.rect(mm(marker.xMm), mm(marker.yMm), mm(marker.sizeMm), mm(marker.sizeMm)).fill('#000000');
+  }
+  doc.fillColor('black');
 
   const grid = answerPanel;
   doc.font('Helvetica-Bold').fontSize(7).text('RESPOSTAS', mm(dividerX + 2), mm(grid.yMm + 4), { width: mm(grid.widthMm - 43), align: 'center' });
