@@ -2,11 +2,11 @@
 
 # SGP — Sistema de Geração de Provas
 
-**Plataforma web em desenvolvimento para professores organizarem turmas, criarem questões e montarem avaliações.**
+**Plataforma web para professores organizarem turmas, criarem questões, montarem avaliações e corrigirem as provas pela câmera do celular.**
 
 🔗 **Link do sistema hospedado:** https://projeto-arquitetura-iota.vercel.app/
 
-> **Estado do projeto (N3):** login/cadastro, turmas e alunos (importação por CSV e Excel), banco de questões, avaliações com pontos por questão, versões embaralhadas, caderno em PDF e Word, folha de respostas com QR Code, provas individualizadas por aluno, correção pela câmera do celular com cálculo automático da nota, folha avulsa, estatísticas por avaliação e consulta do aluno com acertos por questão são persistidos pela API Express no MySQL. O teste de correção com folhas reais em Android e iPhone (T63) segue o roteiro de [docs/teste-camera-t63.md](docs/teste-camera-t63.md).
+> **Estado do projeto (N3):** login/cadastro, turmas e alunos (importação por CSV e Excel), banco de questões, avaliações com pontos por questão, versões embaralhadas, caderno em PDF e Word, folha de respostas com QR Code, provas individualizadas por aluno, correção pela câmera do celular com cálculo automático da nota, folha avulsa, estatísticas por avaliação, relatório de notas em Excel e consulta do aluno com acertos por questão são persistidos pela API Express no MySQL. O teste de correção com folhas reais em Android e iPhone (T63) segue o roteiro de [docs/teste-camera-t63.md](docs/teste-camera-t63.md).
 
 ![Vue.js](https://img.shields.io/badge/Vue.js-35495E?style=for-the-badge&logo=vuedotjs&logoColor=4FC08D)
 ![Node.js](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=nodedotjs&logoColor=white)
@@ -15,7 +15,7 @@
 ![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
 ![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)
 
-![Status](https://img.shields.io/badge/status-em%20desenvolvimento-F5A623?style=flat-square)
+![Status](https://img.shields.io/badge/status-funcional-2EA44F?style=flat-square)
 ![Entrega](https://img.shields.io/badge/entrega%20atual-N3-3D348B?style=flat-square)
 ![Licença](https://img.shields.io/badge/licença-uso%20acadêmico-7B4FA6?style=flat-square)
 
@@ -110,7 +110,7 @@ Substitui o fluxo simulado da N1/N2 pela correção automática pela câmera. O 
 
 1. O professor acessa **Corrigir Provas** e o sistema carrega as avaliações com o andamento da correção. Se nenhuma avaliação foi aplicada a uma turma, o sistema exibe um aviso e o fluxo termina.
 2. O professor seleciona a avaliação e abre a câmera. Se a câmera não estiver disponível (permissão negada, aparelho sem câmera ou página sem HTTPS), o sistema mostra o motivo e o professor lança a nota manualmente.
-3. O sistema captura quadros do vídeo até encontrar um QR Code. Depois corrige a perspectiva pelos cantos do QR, mede o preenchimento de cada bolha e classifica cada questão como marcada, em branco ou com dupla marcação.
+3. O sistema captura quadros do vídeo até encontrar um QR Code. Depois localiza os 4 quadrados pretos impressos ao redor da grade de respostas, corrige a perspectiva por eles, mede o preenchimento de cada bolha e classifica cada questão como marcada, em branco ou com dupla marcação. A leitura só é aceita quando dois quadros seguidos dão o mesmo resultado.
 4. O sistema valida o QR na API. Um QR de outra prova, não atribuído ou já lido no lote é recusado sem gerar nota.
 5. Com o QR válido, o professor confere o aluno, a versão e as respostas lidas, ajusta alguma leitura se precisar, informa o RA se a prova não tiver identificação e confirma.
 6. O sistema calcula a nota de 0 a 10 com o gabarito e os pesos da versão, grava `results` e `result_answers` numa transação e atualiza o status da avaliação. O laço se repete para a próxima folha.
@@ -135,7 +135,7 @@ Se os dados forem inválidos, a API retorna HTTP 400 e o front-end apresenta men
 
 ![Diagrama de Sequência da correção](docs/uml/sequencia-correcao.png)
 
-Mostra a correção de uma folha de ponta a ponta. A leitura acontece toda no navegador (RNF05). O `QrScanner.vue` lê o QR com o jsQR, e o `answerSheetScan.js` usa os cantos do QR e as coordenadas em mm do layout compartilhado (`shared/folhaRespostasLayout.js`) para localizar e medir cada bolha. O front-end valida o QR em `POST /api/avaliacoes/:id/atribuicoes/validar-qr`. A API responde 404 para QR de outra prova; para QR válido, devolve o aluno e a versão para a tela de conferência. Depois da confirmação, `POST /api/avaliacoes/:id/correcoes` calcula a nota com o gabarito e os pesos da versão e grava `results` e `result_answers` numa única transação. Aluno fora da turma, versão inexistente ou número errado de respostas resultam em HTTP 400/404/409.
+Mostra a correção de uma folha de ponta a ponta. A leitura acontece toda no navegador (RNF05). O `QrScanner.vue` lê o QR com o jsQR, e o `answerSheetScan.js` usa os cantos do QR só para estimar onde estão os 4 marcadores pretos impressos ao redor da grade de respostas. Localizados os marcadores, a perspectiva é corrigida por eles e cada bolha é localizada e medida pelas coordenadas em mm do layout compartilhado (`shared/folhaRespostasLayout.js`). A leitura só é aceita quando dois quadros seguidos dão o mesmo resultado; se os marcadores não aparecerem em 8 segundos (por exemplo, numa folha impressa antes deles existirem), o leitor entrega só o QR e o professor digita as respostas ou lança a nota manualmente. O front-end valida o QR em `POST /api/avaliacoes/:id/atribuicoes/validar-qr`. A API responde 404 para QR de outra prova; para QR válido, devolve o aluno e a versão para a tela de conferência. Depois da confirmação, `POST /api/avaliacoes/:id/correcoes` calcula a nota com o gabarito e os pesos da versão e grava `results` e `result_answers` numa única transação. Aluno fora da turma, versão inexistente ou número errado de respostas resultam em HTTP 400/404/409.
 
 ## 4. Telas do Sistema
 
@@ -623,12 +623,13 @@ retornam `204 No Content`.
 | POST | `/api/avaliacoes/:id/atribuicoes` | Professor | Distribui as versões entre os alunos da turma e gera um QR Code opaco por aluno; exige turma, versões e alunos matriculados |
 | POST | `/api/avaliacoes/:id/correcoes` | Professor | Corrige uma folha lida pela câmera: recebe `respostas` (letra, índice ou `{ markedIndex, status }`), `versao` e `ra` ou `studentId`; calcula a nota pelo gabarito e pesos da versão e grava `results` e `result_answers` numa transação |
 | GET | `/api/avaliacoes/:id/estatisticas` | Professor | Estatísticas da avaliação (RF11): `media`, `minima`, `maxima` e, por questão, `acertos`, `erros`, `brancos`, `taxaAcerto`, contagem de marcações por alternativa (convertida da ordem impressa de cada versão) e `alternativaIncorretaMaisMarcada` (em empate, vale a primeira alternativa) |
+| GET | `/api/avaliacoes/:id/resultados/excel` | Professor | Baixa o relatório de notas em Excel (RF12), `relatorio-avaliacao-<id>.xlsx`, com duas abas: **Notas** (RA, nome e nota) e **Respostas** (por aluno e questão: versão, alternativa marcada, alternativa correta e situação). Retorna `404` se a avaliação não for do professor |
 | GET | `/api/configuracoes/folha-respostas` | Professor | Retorna o modelo configurável da prova e da folha (instituição, logo, orientações, texto e endereço de consulta) |
 | PUT | `/api/configuracoes/folha-respostas` | Professor | Atualiza o modelo da prova e da folha de respostas |
 
 ## 12. Testes e Validações
 
-Execute `npm test` na raiz para rodar os testes automatizados da API sem conectar ao MySQL (os repositórios são simulados). A suíte cobre autenticação e proteção por perfil, validação de IDs e de corpo das requisições, tratamento de erros, importação de alunos por CSV e `.xlsx` (incluindo o relatório de erros por linha), versões e embaralhamento com semente, atribuições e QR Codes, caderno em `.docx`, folha avulsa, correção automática, estatísticas por questão, consulta pública do aluno (nota e acertos por questão, só depois da liberação e com o RA correto) e limite de tentativas.
+Execute `npm test` na raiz para rodar os testes automatizados da API sem conectar ao MySQL (os repositórios são simulados). A suíte cobre autenticação e proteção por perfil, validação de IDs e de corpo das requisições, tratamento de erros, importação de alunos por CSV e `.xlsx` (incluindo o relatório de erros por linha), versões e embaralhamento com semente, atribuições e QR Codes, caderno em `.docx`, folha avulsa, correção automática, estatísticas por questão, relatório em Excel, limite de 25 questões por avaliação, consulta pública do aluno (nota e acertos por questão, só depois da liberação e com o RA correto) e limite de tentativas.
 
 Os componentes e utilitários do front-end têm testes próprios (Vitest + Vue Test Utils), executados com `npm --prefix frontend test`; eles incluem a leitura das bolhas com folhas sintéticas e a medição do tempo por folha (RNF08). O workflow `.github/workflows/testes.yml` roda os testes da API, os do front-end e o build a cada pull request e a cada push na `main`.
 
