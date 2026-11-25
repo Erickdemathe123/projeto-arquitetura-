@@ -257,6 +257,7 @@ export default {
           students: []
         }));
         this.exams = exams;
+        this.refreshCorrectionStatus();
         if (settings) {
           this.answerSheetSettings = answerSheetSettingsFrom(settings);
           this.answerSheetForm = { ...this.answerSheetSettings };
@@ -299,6 +300,19 @@ export default {
     navigate(screen) {
       this.screen = screen;
       this.error = "";
+      if (screen === "dashboard" || screen === "exams") this.refreshCorrectionStatus();
+    },
+    // Atualiza em segundo plano o status da correção mostrado em Início e em
+    // Minhas Avaliações (passo 12 do roteiro). Falha aqui não deve bloquear a tela.
+    async refreshCorrectionStatus() {
+      try {
+        const entries = await Promise.all(
+          this.examsForScan.map(async (exam) => [exam.id, await resultadosApi.listar(exam.id)])
+        );
+        this.scanSummaries = { ...this.scanSummaries, ...Object.fromEntries(entries) };
+      } catch (erro) {
+        console.warn("Não foi possível atualizar o status das correções:", erro);
+      }
     },
     logout() {
       authApi.logout();
@@ -970,6 +984,7 @@ export default {
           :name="name"
           :exams="exams"
           :questions="questions"
+          :summaries="scanSummaries"
           @new-question="newQuestion"
           @new-exam="newExam"
           @open-classes="navigate('classes'); selectedTurmaId = null"
@@ -1024,6 +1039,7 @@ export default {
           v-if="screen === 'exams'"
           :exams="exams"
           :questions="questions"
+          :summaries="scanSummaries"
           @new="newExam"
           @new-avulsa="newStandaloneSheet"
           @release="releaseExam"

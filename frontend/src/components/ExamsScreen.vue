@@ -1,10 +1,11 @@
 <script>
-import { examQuestionsCountLabel, formatPoints } from "../utils/exam";
+import { correctionStatusLabel, examQuestionsCountLabel, formatPoints } from "../utils/exam";
 
 export default {
   props: {
     exams: { type: Array, required: true },
-    questions: { type: Array, required: true }
+    questions: { type: Array, required: true },
+    summaries: { type: Object, default: () => ({}) }
   },
   emits: ["new", "new-avulsa", "release", "preview", "export-docx", "export-pdf", "statistics", "edit", "remove"],
   computed: {
@@ -14,6 +15,7 @@ export default {
     }
   },
   methods: {
+    correctionStatusLabel,
     examQuestionsCountLabel,
     formatPoints
   }
@@ -32,7 +34,7 @@ export default {
   <div v-else class="question-list">
     <article v-for="exam in exams" :key="exam.id" class="question-item">
       <span class="question-number">▣</span>
-      <div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · {{ formatPoints(exam.totalPoints) }} · Código: {{ exam.publicCode }} · {{ exam.released === true ? "Gabarito liberado" : "Gabarito bloqueado" }}</small></div>
+      <div><strong>{{ exam.name }}</strong><small>{{ examQuestionsCountLabel(exam) }} · {{ formatPoints(exam.totalPoints) }} · Código: {{ exam.publicCode }} · {{ exam.released === true ? "Gabarito liberado" : "Gabarito bloqueado" }}<template v-if="summaries[exam.id]"> · <span class="correction-status" :data-status="summaries[exam.id].status">{{ correctionStatusLabel(summaries[exam.id]) }}</span></template></small></div>
       <div class="question-actions">
         <button class="edit-button" @click="$emit('release', exam)" :aria-label="exam.released ? 'Gabarito liberado' : 'Liberar gabarito'" :title="exam.released ? 'Gabarito liberado' : 'Liberar gabarito'">{{ exam.released ? "🔓" : "🔒" }}</button>
         <button v-if="!exam.standaloneAnswerSheet" class="edit-button" @click="$emit('preview', exam)" aria-label="Pré-visualizar prova" title="Pré-visualizar prova">◉</button>

@@ -1,5 +1,7 @@
-import * as layoutModule from "../../../shared/folhaRespostasLayout.js";
-const layout = layoutModule;
+// Import default: o módulo compartilhado é CommonJS. Com "import * as", o build
+// de produção do Vite entrega um namespace vazio (layout.QR fica undefined) e a
+// leitura quebra assim que o QR é encontrado.
+import layout from "../../../shared/folhaRespostasLayout.js";
 
 function solveLinearSystem(matrix, values) {
   const size = values.length;

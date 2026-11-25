@@ -1,4 +1,5 @@
 const layout = require('../../shared/folhaRespostasLayout');
+const padrao = require('../config/folhaRespostasPadrao');
 
 function mm(value) {
   return value * 72 / 25.4;
@@ -16,10 +17,12 @@ function asConfig(avaliacao, config = {}) {
   return {
     institutionName: answerSheet.institutionName || avaliacao.institution || '',
     logo: answerSheet.logo || avaliacao.logo || '',
-    proofInstructions: hasAnswerSheetConfig ? (answerSheet.proofInstructions || '') : (avaliacao.instructions || ''),
-    answerInstructions: answerSheet.answerInstructions || '',
-    resultUrl: answerSheet.resultUrl || '',
-    resultText: answerSheet.resultText || ''
+    // Avaliações criadas antes dos valores padrão guardaram estes campos vazios:
+    // o padrão vale também para elas, sem precisar editar a prova.
+    proofInstructions: (hasAnswerSheetConfig ? answerSheet.proofInstructions : avaliacao.instructions) || padrao.DEFAULT_PROOF_INSTRUCTIONS,
+    answerInstructions: answerSheet.answerInstructions || padrao.DEFAULT_ANSWER_INSTRUCTIONS,
+    resultUrl: answerSheet.resultUrl || padrao.DEFAULT_RESULT_URL,
+    resultText: answerSheet.resultText || padrao.DEFAULT_RESULT_TEXT
   };
 }
 
@@ -148,4 +151,4 @@ function drawAnswerSheet(doc, {
   }
 }
 
-module.exports = { drawAnswerSheet, imageBuffer };
+module.exports = { drawAnswerSheet, imageBuffer, asConfig };

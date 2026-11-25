@@ -1,4 +1,6 @@
 <script>
+import { answerSheetSettingsFrom } from "../utils/answerSheetSettings";
+
 export default {
   props: {
     exam: { type: Object, default: null },
@@ -7,7 +9,7 @@ export default {
   emits: ["back"],
   computed: {
     answerSheetSettings() {
-      return this.exam?.answerSheet || {};
+      return answerSheetSettingsFrom(this.exam?.answerSheet || {});
     },
     answerRows() {
       if (!this.exam) return Array.from({ length: 5 }, (_, index) => ({ number: index + 1, letters: ["A", "B", "C", "D", "E"] }));
