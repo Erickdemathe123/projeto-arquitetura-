@@ -89,4 +89,21 @@ async function remover(examId, studentId) {
   return result.affectedRows > 0;
 }
 
-module.exports = { listarPorAvaliacao, contarMatriculados, registrar, registrarAutomatico, remover };
+// Marcações de todos os alunos da avaliação, já com a versão (caderno) que cada um recebeu
+async function listarRespostasPorAvaliacao(examId) {
+  const [rows] = await pool.query(
+    `SELECT ra.student_id, ra.question_id, ra.marked_index, ea.version_id
+       FROM result_answers ra
+       JOIN exam_assignments ea ON ea.exam_id = ra.exam_id AND ea.student_id = ra.student_id
+      WHERE ra.exam_id = ?`,
+    [examId]
+  );
+  return rows.map((row) => ({
+    studentId: Number(row.student_id),
+    questionId: Number(row.question_id),
+    markedIndex: row.marked_index === null || row.marked_index === undefined ? null : Number(row.marked_index),
+    versionId: Number(row.version_id)
+  }));
+}
+
+module.exports = { listarRespostasPorAvaliacao, listarPorAvaliacao, contarMatriculados, registrar, registrarAutomatico, remover };
