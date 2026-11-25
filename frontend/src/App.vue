@@ -734,7 +734,15 @@ export default {
       this.error = "";
       this.navigate("statistics");
       try {
-        this.statisticsSummary = await resultadosApi.listar(exam.id);
+     const [resultados, estatisticas] = await Promise.all([
+  resultadosApi.listar(exam.id),
+  resultadosApi.estatisticas(exam.id)
+]);
+
+this.statisticsSummary = {
+  ...resultados,
+  questoes: estatisticas.questoes || []
+};
       } catch (erro) {
         this.error = erro.message;
       } finally {
