@@ -45,6 +45,33 @@ describe("StudentPortal", () => {
     expect(wrapper.find(".released-result").text()).toContain("Nota: 8");
   });
 
+  it("mostra acertos e gabarito por questão quando a API devolve os detalhes (T57)", () => {
+    const detalhes = {
+      versao: "B", acertos: 1, total: 2,
+      questoes: [
+        { numero: 1, enunciado: "Qual vem primeiro?", alternativas: [{ letra: "A", texto: "y" }, { letra: "B", texto: "x" }], respostaAluno: "B", respostaCorreta: "B", emBranco: false, acertou: true },
+        { numero: 2, enunciado: "Qual é a do meio?", alternativas: [{ letra: "A", texto: "c" }, { letra: "B", texto: "a" }, { letra: "C", texto: "b" }], respostaAluno: "A", respostaCorreta: "C", emBranco: false, acertou: false }
+      ]
+    };
+    const wrapper = mount(StudentPortal, {
+      props: { result: { released: true, resultAvailable: true, name: "Prova 1", score: 5, detalhes } }
+    });
+    expect(wrapper.find(".review-summary").text()).toContain("1 de 2");
+    const questoes = wrapper.findAll(".review-question");
+    expect(questoes).toHaveLength(2);
+    expect(questoes[0].classes()).toContain("is-correct");
+    expect(questoes[1].classes()).toContain("is-wrong");
+    expect(questoes[1].find("li.is-answer").text()).toContain("C) b");
+    expect(questoes[1].find("li.is-marked").text()).toContain("sua resposta");
+  });
+
+  it("não mostra a revisão por questão quando não há detalhes", () => {
+    const wrapper = mount(StudentPortal, {
+      props: { result: { released: true, resultAvailable: true, name: "Prova 1", score: 8 } }
+    });
+    expect(wrapper.find(".question-review").exists()).toBe(false);
+  });
+
   it("avisa quando o gabarito ainda não foi liberado", () => {
     const wrapper = mount(StudentPortal, { props: { result: { released: false } } });
     expect(wrapper.text()).toContain("Gabarito ainda não liberado");

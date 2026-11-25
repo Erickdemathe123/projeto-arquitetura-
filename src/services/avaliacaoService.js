@@ -110,13 +110,44 @@ async function remover(professorId, id) {
   if (!removed) throw new ErroDeNegocio(404, 'Avaliação não encontrada.');
 }
 
+function letra(indice) {
+  return String.fromCharCode(65 + indice);
+}
+
+// Monta, na ordem do caderno do aluno, o acerto de cada questão e o gabarito da versão dele (T57)
+function montarQuestoesDoAluno({ versionLabel, printedItems, snapshots, answers }) {
+  const porQuestao = new Map(snapshots.map((questao) => [Number(questao.id), questao]));
+  const marcacoes = new Map(answers.map((resposta) => [resposta.questionId, resposta.markedIndex]));
+
+  const questoes = printedItems.map((item, posicao) => {
+    const questao = porQuestao.get(Number(item.question_id));
+    const textos = questao?.alternatives || [];
+    const marcada = marcacoes.has(Number(item.question_id)) ? marcacoes.get(Number(item.question_id)) : null;
+    return {
+      numero: posicao + 1,
+      enunciado: questao?.text || '',
+      alternativas: (item.alternative_order || []).map((original, indice) => ({
+        letra: letra(indice),
+        texto: textos[original] ?? ''
+      })),
+      respostaAluno: marcada === null ? null : letra(marcada),
+      respostaCorreta: letra(item.correct_index),
+      emBranco: marcada === null,
+      acertou: marcada === item.correct_index
+    };
+  });
+  return { versao: versionLabel, acertos: questoes.filter((q) => q.acertou).length, total: questoes.length, questoes };
+}
+
 async function consultarCodigo(code, ra) {
   const normalized = typeof code === 'string' ? code.trim().toUpperCase() : '';
   if (!normalized) throw new ErroDeNegocio(400, 'Informe o código da prova.');
   const raLimpo = typeof ra === 'string' ? ra.trim() : '';
   const result = await repository.buscarPublicoPorCodigo(normalized, raLimpo || null);
   if (!result) throw new ErroDeNegocio(404, 'Código de prova não encontrado.');
-  return result;
+  // O detalhe só existe depois da liberação do gabarito e com o RA do próprio aluno
+  const { detalhe, ...publico } = result;
+  return detalhe ? { ...publico, detalhes: montarQuestoesDoAluno(detalhe) } : publico;
 }
 
 module.exports = {
@@ -126,5 +157,6 @@ module.exports = {
   atualizar,
   definirLiberada,
   remover,
-  consultarCodigo
+  consultarCodigo,
+  montarQuestoesDoAluno
 };

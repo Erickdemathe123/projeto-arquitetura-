@@ -188,9 +188,10 @@ test('consulta pública por código + RA devolve a nota só quando o gabarito es
   t.mock.method(pool, 'query', async (sql, params) => {
     chamadas.push(params);
     if (sql.startsWith('SELECT id, title, answer_key_released')) {
-      return [[{ id: 9, title: 'Avaliação de teste', answer_key_released: 1 }]];
+      return [[{ id: 9, title: 'Avaliação de teste', answer_key_released: 1, legacy_details: null }]];
     }
-    return [[{ score: '8.50' }]];
+    if (/FROM results r/.test(sql)) return [[{ score: '8.50', student_id: 5 }]];
+    return [[]]; // sem versão atribuída nem respostas gravadas (nota lançada à mão)
   });
 
   const response = await fetch(`${baseUrl}/api/avaliacoes/codigo/sgp-abc123?ra=RA-1`);
@@ -201,7 +202,7 @@ test('consulta pública por código + RA devolve a nota só quando o gabarito es
     resultAvailable: true,
     score: 8.5
   });
-  assert.deepEqual(chamadas, [['SGP-ABC123'], ['RA-1', 9]]);
+  assert.deepEqual(chamadas, [['SGP-ABC123'], ['RA-1', 9], [9, 5]]);
 });
 
 test('consulta pública com código inexistente retorna 404 em vez de erro interno', async (t) => {
@@ -237,7 +238,8 @@ test('consulta pública limita cinco tentativas por IP e RA, inclusive respostas
     if (sql.startsWith('SELECT id, title, answer_key_released')) {
       return [[{ id: 9, title: 'Avaliação de teste', answer_key_released: 1 }]];
     }
-    return [[{ score: '8.50' }]];
+    if (/FROM results r/.test(sql)) return [[{ score: '8.50', student_id: 5 }]];
+    return [[]];
   });
 
   const consultar = (ra) => fetch(`${baseUrl}/api/avaliacoes/codigo/sgp-t58-limit?ra=${ra}`);
