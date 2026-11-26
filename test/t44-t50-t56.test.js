@@ -65,6 +65,7 @@ test('T50 calcula nota pela nota de cada questão e persiste respostas numa tran
   }]);
   t.mock.method(alunoRepository, 'buscarPorRa', async () => ({ id: 51, nome: 'Ana', ra: 'RA-1' }));
   t.mock.method(turmaRepository, 'estaMatriculado', async () => true);
+  t.mock.method(atribuicaoRepository, 'buscarPorAluno', async () => null);
   let registroAutomatico = null;
   t.mock.method(resultadoRepository, 'registrarAutomatico', async (dados) => {
     registroAutomatico = dados;
@@ -83,6 +84,97 @@ test('T50 calcula nota pela nota de cada questão e persiste respostas numa tran
     { questionId: 2, markedIndex: 0 }
   ]);
   assert.equal(registroAutomatico.versionId, 2);
+});
+
+// Reproduz a nota trocada entre alunos: duas folhas no mesmo lote, cada uma
+// com o QR e a versão do próprio aluno.
+function avaliacaoComDuasVersoes(t) {
+  t.mock.method(avaliacaoRepository, 'buscarPorId', async () => ({
+    id: 8,
+    applicationClassId: 4,
+    questionIds: [1, 2],
+    questionPoints: [1, 1],
+    questionSnapshots: [{ id: 1 }, { id: 2 }]
+  }));
+  t.mock.method(versaoRepository, 'listarPorAvaliacao', async () => [
+    { id: 10, label: 'A', printedItems: [
+      { question_id: 1, alternative_order: [0, 1], correct_index: 0 },
+      { question_id: 2, alternative_order: [0, 1], correct_index: 0 }
+    ] },
+    { id: 11, label: 'B', printedItems: [
+      { question_id: 2, alternative_order: [1, 0], correct_index: 1 },
+      { question_id: 1, alternative_order: [1, 0], correct_index: 1 }
+    ] }
+  ]);
+  t.mock.method(turmaRepository, 'estaMatriculado', async () => true);
+  const alunos = { 51: { id: 51, nome: 'Cristiano', ra: 'CR7' }, 52: { id: 52, nome: 'Henrique', ra: '96532' } };
+  t.mock.method(alunoRepository, 'buscarPorId', async (id) => alunos[id] || null);
+  t.mock.method(alunoRepository, 'buscarPorRa', async (ra) => Object.values(alunos).find((aluno) => aluno.ra === ra) || null);
+  const atribuicoes = {
+    'qr-cristiano': { studentId: 51, versionId: 10, versionLabel: 'A' },
+    'qr-henrique': { studentId: 52, versionId: 11, versionLabel: 'B' }
+  };
+  t.mock.method(atribuicaoRepository, 'buscarPorQrCode', async (examId, qrCode) => atribuicoes[qrCode] || null);
+  t.mock.method(atribuicaoRepository, 'buscarPorAluno', async (examId, studentId) =>
+    Object.values(atribuicoes).find((item) => item.studentId === studentId) || null);
+  const registros = [];
+  t.mock.method(resultadoRepository, 'registrarAutomatico', async (dados) => {
+    registros.push(dados);
+    return dados;
+  });
+  return registros;
+}
+
+test('correção pelo QR usa o aluno e a versão da própria folha, ignorando o que vier no corpo', async (t) => {
+  const registros = avaliacaoComDuasVersoes(t);
+
+  // Henrique (versão B) acerta tudo: B, B.
+  await resultadoService.corrigirAutomaticamente(17, 8, { qrCode: 'qr-henrique', respostas: [1, 1], versao: 'A', studentId: 51 });
+  // Cristiano (versão A) acerta só a primeira.
+  await resultadoService.corrigirAutomaticamente(17, 8, { qrCode: 'qr-cristiano', respostas: [0, 1] });
+
+  assert.deepEqual(registros.map(({ studentId, versionId, score }) => ({ studentId, versionId, score })), [
+    { studentId: 52, versionId: 11, score: 10 },
+    { studentId: 51, versionId: 10, score: 5 }
+  ]);
+});
+
+test('correção manual usa a versão atribuída ao aluno e recusa versão diferente', async (t) => {
+  const registros = avaliacaoComDuasVersoes(t);
+
+  await resultadoService.corrigirAutomaticamente(17, 8, { ra: '96532', respostas: [1, 1] });
+  assert.equal(registros[0].versionId, 11);
+  assert.equal(registros[0].score, 10);
+
+  await assert.rejects(
+    resultadoService.corrigirAutomaticamente(17, 8, { ra: '96532', versao: 'A', respostas: [1, 1] }),
+    (erro) => erro.status === 409 && /versão B/.test(erro.message)
+  );
+  await assert.rejects(
+    resultadoService.corrigirAutomaticamente(17, 8, { qrCode: 'qr-de-outra-prova', respostas: [1, 1] }),
+    (erro) => erro.status === 404
+  );
+});
+
+test('correção não altera a versão de uma atribuição existente', async (t) => {
+  const queries = [];
+  const connection = {
+    beginTransaction: async () => {},
+    query: async (sql, params) => { queries.push({ sql, params }); return [[], []]; },
+    commit: async () => {},
+    rollback: async () => {},
+    release: () => {}
+  };
+  t.mock.method(pool, 'getConnection', async () => connection);
+  t.mock.method(pool, 'query', async () => [[{ id: 1, exam_id: 8, student_id: 52, score: 10 }]]);
+
+  await resultadoRepository.registrarAutomatico({
+    examId: 8, teacherId: 17, studentId: 52, score: 10, versionId: 10, persistAnswers: true, answers: []
+  });
+
+  const upsert = queries.find(({ sql }) => /INSERT INTO exam_assignments/.test(sql));
+  assert.ok(upsert);
+  assert.doesNotMatch(upsert.sql, /UPDATE\s+version_id/);
 });
 
 test('T50 valida respostas, versão e aluno antes de corrigir', async (t) => {

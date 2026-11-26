@@ -5,6 +5,7 @@ const resultadoRepository = require('../repositories/resultadoRepository');
 const alunoRepository = require('../repositories/alunoRepository');
 const turmaRepository = require('../repositories/turmaRepository');
 const versaoRepository = require('../repositories/versaoRepository');
+const atribuicaoRepository = require('../repositories/atribuicaoRepository');
 const { ErroDeNegocio } = require('../errors/appError');
 
 function validarId(id, nome) {
@@ -116,6 +117,7 @@ async function corrigirAutomaticamente(professorId, examIdRaw, body = {}) {
   let respostas = normalizarRespostas(body.respostas);
   let questionItems = [];
   let pointsByQuestion = new Map();
+  let versionIdForCorrection = null;
 
   if (avaliacao.standaloneAnswerSheet) {
     const total = Number(avaliacao.questionCount);
@@ -129,11 +131,50 @@ async function corrigirAutomaticamente(professorId, examIdRaw, body = {}) {
       correctIndex: answer.charCodeAt(0) - 65,
       points: 1
     }));
+  }
+
+  // Aluno e caderno. Com o QR da folha, os dois vêm da atribuição impressa e o
+  // que o navegador enviar sobre aluno ou versão é ignorado. Sem QR, o aluno
+  // vem do RA ou do id, e a versão vem da atribuição dele quando existir.
+  let aluno = null;
+  let atribuicao = null;
+  const qrCode = typeof body.qrCode === 'string' ? body.qrCode.trim() : '';
+  if (qrCode && !avaliacao.standaloneAnswerSheet) {
+    atribuicao = await atribuicaoRepository.buscarPorQrCode(examId, qrCode);
+    if (!atribuicao) throw new ErroDeNegocio(404, 'Este QR Code não pertence a esta avaliação.');
+    aluno = await alunoRepository.buscarPorId(atribuicao.studentId);
+  } else if (body.studentId) {
+    aluno = await alunoRepository.buscarPorId(validarId(body.studentId, 'Id do aluno'));
   } else {
+    const ra = typeof body.ra === 'string' ? body.ra.trim() : '';
+    if (!ra) throw new ErroDeNegocio(400, 'Informe o RA ou o Id do aluno.');
+    aluno = await alunoRepository.buscarPorRa(ra);
+  }
+  if (!aluno) throw new ErroDeNegocio(404, 'Aluno não encontrado.');
+
+  if (avaliacao.applicationClassId) {
+    const matriculado = await turmaRepository.estaMatriculado(avaliacao.applicationClassId, aluno.id);
+    if (!matriculado) throw new ErroDeNegocio(409, 'Este aluno não está matriculado na turma desta avaliação.');
+  }
+
+  if (!avaliacao.standaloneAnswerSheet) {
     const versions = await versaoRepository.listarPorAvaliacao(examId);
     if (!versions.length) throw new ErroDeNegocio(409, 'Gere as versões da avaliação antes de corrigir.');
+    if (!atribuicao) atribuicao = await atribuicaoRepository.buscarPorAluno(examId, aluno.id);
     const versionLabel = typeof body.versao === 'string' ? body.versao.trim().toUpperCase() : '';
-    const versao = versionLabel ? versions.find((item) => item.label === versionLabel) : versions[0];
+    let versao;
+    if (atribuicao) {
+      versao = versions.find((item) => Number(item.id) === Number(atribuicao.versionId));
+      if (!qrCode && versionLabel && versao && versao.label !== versionLabel) {
+        throw new ErroDeNegocio(409, `A folha de ${aluno.nome} é da versão ${versao.label}, não da ${versionLabel}.`);
+      }
+    } else if (versionLabel) {
+      versao = versions.find((item) => item.label === versionLabel);
+    } else if (versions.length === 1) {
+      versao = versions[0];
+    } else {
+      throw new ErroDeNegocio(400, 'Informe a versão da folha deste aluno.');
+    }
     if (!versao) throw new ErroDeNegocio(404, `A versão ${versionLabel} não existe nesta avaliação.`);
     if (!Array.isArray(versao.printedItems) || !versao.printedItems.length) {
       throw new ErroDeNegocio(409, 'A versão selecionada não possui itens impressos.');
@@ -149,23 +190,7 @@ async function corrigirAutomaticamente(professorId, examIdRaw, body = {}) {
       correctIndex: Number(item.correct_index),
       points: pointsByQuestion.get(Number(item.question_id)) || 1
     }));
-    var versionIdForCorrection = Number(versao.id);
-  }
-
-  let aluno = null;
-  if (body.studentId) {
-    const studentId = validarId(body.studentId, 'Id do aluno');
-    aluno = await alunoRepository.buscarPorId ? await alunoRepository.buscarPorId(studentId) : null;
-  } else {
-    const ra = typeof body.ra === 'string' ? body.ra.trim() : '';
-    if (!ra) throw new ErroDeNegocio(400, 'Informe o RA ou o Id do aluno.');
-    aluno = await alunoRepository.buscarPorRa(ra);
-  }
-  if (!aluno) throw new ErroDeNegocio(404, 'Aluno não encontrado.');
-
-  if (avaliacao.applicationClassId) {
-    const matriculado = await turmaRepository.estaMatriculado(avaliacao.applicationClassId, aluno.id);
-    if (!matriculado) throw new ErroDeNegocio(409, 'Este aluno não está matriculado na turma desta avaliação.');
+    versionIdForCorrection = Number(versao.id);
   }
 
   let pontosObtidos = 0;

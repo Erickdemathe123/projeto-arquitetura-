@@ -12,11 +12,16 @@ const { criarLimiteTentativas } = require('../middlewares/limiteTentativas');
 
 const router = Router();
 
+// Consulta pública do aluno. Consultar a própria nota quantas vezes quiser não
+// é limitado. O limite conta só tentativas sem resultado (código inexistente ou
+// RA sem nota nesta prova), por IP e código, para impedir que alguém descubra
+// notas testando RAs. A chave não inclui o RA: quem testa RAs troca de RA a
+// cada tentativa.
 const limiteConsultaPublica = criarLimiteTentativas({
-  maxTentativas: 5,
+  maxTentativas: 30,
   janelaMs: 15 * 60 * 1000,
-  obterIdentificador: (req) => req.query.ra,
-  contarSucessos: true
+  obterIdentificador: (req) => req.params.code,
+  ehFalha: (req, res) => res.statusCode === 404 || res.locals.consultaSemResultado === true
 });
 
 router.get('/codigo/:code', limiteConsultaPublica, controller.consultarCodigo);

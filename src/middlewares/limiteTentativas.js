@@ -4,7 +4,11 @@ function criarLimiteTentativas({
   janelaMs = 15 * 60 * 1000,
   agora = () => Date.now(),
   obterIdentificador = (req) => req.body?.email,
-  contarSucessos = false
+  contarSucessos = false,
+  // Opcional: decide se a resposta conta como tentativa falha. Quando
+  // informado, substitui a regra padrão baseada no status HTTP e respostas
+  // não contadas não zeram o contador.
+  ehFalha = null
 } = {}) {
   const tentativas = new Map();
 
@@ -35,6 +39,13 @@ function criarLimiteTentativas({
     }
 
     res.on('finish', () => {
+      if (typeof ehFalha === 'function') {
+        if (!ehFalha(req, res)) return;
+        const atual = tentativas.get(key);
+        if (atual && atual.expiraEm > agora()) atual.falhas += 1;
+        else tentativas.set(key, { falhas: 1, expiraEm: agora() + janelaMs });
+        return;
+      }
       const respostaDeErroDoCliente = res.statusCode >= 400 && res.statusCode < 500;
       const contabilizar = respostaDeErroDoCliente || (contarSucessos && res.statusCode < 400);
       if (contabilizar) {

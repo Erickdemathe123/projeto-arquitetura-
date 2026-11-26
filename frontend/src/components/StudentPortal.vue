@@ -33,7 +33,7 @@ export default {
             </p>
             <article v-for="questao in result.detalhes.questoes" :key="questao.numero" class="review-question" :class="questao.acertou ? 'is-correct' : 'is-wrong'">
               <h3>
-                <span class="review-badge">{{ questao.acertou ? "Acertou" : questao.emBranco ? "Em branco" : "Errou" }}</span>
+                <span class="review-badge" :class="questao.acertou ? 'is-correct' : questao.emBranco ? 'is-blank' : 'is-wrong'">{{ questao.acertou ? "Acertou" : questao.emBranco ? "Em branco" : "Errou" }}</span>
                 {{ questao.numero }}. {{ questao.enunciado }}
               </h3>
               <ul>
