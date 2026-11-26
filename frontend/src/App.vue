@@ -887,6 +887,8 @@ this.statisticsSummary = {
             return answer === null ? "?" : String.fromCharCode(65 + answer);
           }).join(", ");
           this.scanConference = {
+            qrCode,
+            studentId: folha.studentId,
             studentName: folha.studentName || "Folha avulsa",
             ra: folha.studentRa || "",
             versionLabel: folha.versionLabel,
@@ -919,18 +921,18 @@ this.statisticsSummary = {
           const respostas = this.scanForm.detectedAnswers?.length
             ? this.scanForm.detectedAnswers
             : this.scanForm.answers.split(/[,\s]+/).map((item) => item.trim()).filter(Boolean).map((item) => /^[A-Ea-e]$/.test(item) ? item.toUpperCase() : Number(item));
-          const identified = this.scanQrBatch.find((item) => item.studentId);
-          resultado = await resultadosApi.corrigirAutomaticamente(this.scanActiveExam.id, {
-            ra: this.scanForm.ra,
-            versao: this.scanForm.version,
-            respostas,
-            studentId: identified?.studentId
-          });
+          // A folha em conferência define aluno e versão pelo QR dela. Antes era
+          // usada a primeira folha da lista, e a nota ia para o aluno errado.
+          const folha = this.scanForm.detectedAnswers?.length ? this.scanConference : null;
+          resultado = await resultadosApi.corrigirAutomaticamente(this.scanActiveExam.id, folha?.studentId
+            ? { qrCode: folha.qrCode, respostas }
+            : { ra: this.scanForm.ra, versao: this.scanForm.version, respostas });
         } else {
           resultado = await resultadosApi.registrar(this.scanActiveExam.id, this.scanForm);
         }
         this.scanSummaries[this.scanActiveExam.id] = await resultadosApi.listar(this.scanActiveExam.id);
         this.scanForm = { ra: "", score: "", answers: "", version: "", detectedAnswers: [] };
+        this.scanConference = null;
         this.notify(`Nota registrada para ${resultado.studentName}.`);
       } catch (erro) {
         this.error = erro.message;

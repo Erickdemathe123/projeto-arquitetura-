@@ -232,23 +232,27 @@ test('consulta pública acrescenta answer_key_released quando a coluna antiga es
   assert.equal(calls, 3);
 });
 
-test('consulta pública limita cinco tentativas por IP e RA, inclusive respostas de sucesso', async (t) => {
+test('consulta pública não limita o aluno que encontra a nota e bloqueia quem testa RAs sem nota', async (t) => {
   const baseUrl = await iniciarServidor(t);
-  t.mock.method(pool, 'query', async (sql) => {
+  t.mock.method(pool, 'query', async (sql, params) => {
     if (sql.startsWith('SELECT id, title, answer_key_released')) {
       return [[{ id: 9, title: 'Avaliação de teste', answer_key_released: 1 }]];
     }
-    if (/FROM results r/.test(sql)) return [[{ score: '8.50', student_id: 5 }]];
+    if (/FROM results r/.test(sql)) return params[0] === 'RA-COM-NOTA' ? [[{ score: '8.50', student_id: 5 }]] : [[]];
     return [[]];
   });
 
-  const consultar = (ra) => fetch(`${baseUrl}/api/avaliacoes/codigo/sgp-t58-limit?ra=${ra}`);
-  for (let tentativa = 0; tentativa < 5; tentativa += 1) {
-    assert.equal((await consultar('RA-T58-LIMITE')).status, 200);
+  const consultar = (code, ra) => fetch(`${baseUrl}/api/avaliacoes/codigo/${code}?ra=${ra}`);
+  for (let tentativa = 0; tentativa < 40; tentativa += 1) {
+    assert.equal((await consultar('sgp-limite-a', 'RA-COM-NOTA')).status, 200);
   }
 
-  const bloqueada = await consultar('RA-T58-LIMITE');
+  for (let tentativa = 0; tentativa < 30; tentativa += 1) {
+    assert.equal((await consultar('sgp-limite-b', `RA-SEM-NOTA-${tentativa}`)).status, 200);
+  }
+  const bloqueada = await consultar('sgp-limite-b', 'RA-SEM-NOTA-31');
   assert.equal(bloqueada.status, 429);
   assert.equal(bloqueada.headers.get('retry-after'), '900');
-  assert.equal((await consultar('RA-T58-OUTRO')).status, 200);
+  // O bloqueio vale para aquele código; o aluno de outra prova continua consultando.
+  assert.equal((await consultar('sgp-limite-a', 'RA-COM-NOTA')).status, 200);
 });

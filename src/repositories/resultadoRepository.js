@@ -59,7 +59,7 @@ async function registrarAutomatico({ examId, teacherId, studentId, score, answer
       await connection.query(
         `INSERT INTO exam_assignments (exam_id, student_id, student_role, version_id, qr_code)
          VALUES (?, ?, 'aluno', ?, ?)
-         ON DUPLICATE KEY UPDATE version_id = VALUES(version_id)`,
+         ON DUPLICATE KEY UPDATE exam_id = exam_id`,
         [examId, studentId, versionId, `SGP-${crypto.randomBytes(24).toString('hex')}`]
       );
       await connection.query('DELETE FROM result_answers WHERE exam_id = ? AND student_id = ?', [examId, studentId]);

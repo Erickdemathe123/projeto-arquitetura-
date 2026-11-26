@@ -11,7 +11,11 @@ function tratar(acao) {
 }
 
 const consultarCodigo = tratar(async (req, res) => {
-  res.json(await service.consultarCodigo(req.params.code, req.query.ra));
+  const resultado = await service.consultarCodigo(req.params.code, req.query.ra);
+  // Sinaliza ao limite de tentativas um RA que não tem nota nesta prova: é o
+  // padrão de quem testa RAs alheios. Consultas que encontram a nota não contam.
+  res.locals.consultaSemResultado = Boolean(req.query.ra && resultado.released && !resultado.resultAvailable);
+  res.json(resultado);
 });
 
 const listar = tratar(async (req, res) => {
